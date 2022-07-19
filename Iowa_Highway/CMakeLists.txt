@@ -56,21 +56,17 @@ endif()
 # Include paths and libraries
 #--------------------------------------------------------------
 
-# (A) Path to the Chrono include headers
-# - If using an installed version of Chrono, this will be the path
-#   to the installed headers (the configuration headers are also
-#   available there)
-# - If using a build version of Chrono, this will contain both the
-#   path to the Chrono sources and the path to the chrono BUILD tree
-#   (the latter for the configuration headers)
-#
-# (B) Path to the top of the source tree for this project
-# - for access to utility headers
-
 include_directories(
     ${CHRONO_INCLUDE_DIRS}
     ${CMAKE_SOURCE_DIR}
 )
+
+set(EXT_LIBRARIES 
+	ChronoEngine_hil
+)
+
+
+
 #--------------------------------------------------------------
 # Append to the parent's list of DLLs
 #--------------------------------------------------------------
@@ -90,22 +86,6 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 endif()
 
 #--------------------------------------------------------------
-# Grab the extras
-#--------------------------------------------------------------
-set(EXTRAS
-	# extras/driver/ChCSLDriver.h
-	# extras/driver/ChCSLDriver.cpp
-	extras/driver/ChLidarWaypointDriver.h
-	extras/driver/ChLidarWaypointDriver.cpp
-	# extras/driver/joystick.h
-	extras/ChCSLSoundEngine.h
-	extras/ChCSLSoundEngine.cpp
-	extras/driver/ChNSF_Drivers.h
-	extras/driver/ChNSF_Drivers.cpp
-	extras/timer/ChRealtimeCumulative.h
-)
-
-#--------------------------------------------------------------
 # Loop over all demo programs and build them
 #--------------------------------------------------------------
 
@@ -115,7 +95,7 @@ foreach(PROGRAM ${DEMOS})
 
   message(STATUS "...add ${PROGRAM}")
 
-  add_executable(${PROGRAM}  "${PROGRAM}.cpp" ${EXTRAS})
+  add_executable(${PROGRAM}  "${PROGRAM}.cpp")
   source_group(""  FILES "${PROGRAM}.cpp")
   set_target_properties(${PROGRAM} PROPERTIES
     FOLDER demos
@@ -124,6 +104,6 @@ foreach(PROGRAM ${DEMOS})
     LINK_FLAGS "${CHRONO_LINKER_FLAGS}"
   )
 
-	target_link_libraries(${PROGRAM} ${CHRONO_LIBRARIES} "-L/usr/local/cuda/lib64")# -lcudart")
+	target_link_libraries(${PROGRAM} ${EXT_LIBRARIES} ${CHRONO_LIBRARIES} "-L/usr/local/cuda/lib64")# -lcudart")
 
 endforeach(PROGRAM)
