@@ -101,30 +101,30 @@ endif()
 # of the requested modules.
 #--------------------------------------------------------------
 
-include_directories(${CHRONO_INCLUDE_DIRS})
+#include_directories(${CHRONO_INCLUDE_DIRS})
 
 #-----------------------------------------------------------------------------
 # Fix for VS 2017 15.8 and newer to handle alignment specification with Eigen
 #-----------------------------------------------------------------------------
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-  if(MSVC AND ${MSVC_VERSION} GREATER_EQUAL 1915)
-    add_definitions( "-D_ENABLE_EXTENDED_ALIGNED_STORAGE" )
-  endif()
-endif()
+#if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+#  if(MSVC AND ${MSVC_VERSION} GREATER_EQUAL 1915)
+#    add_definitions( "-D_ENABLE_EXTENDED_ALIGNED_STORAGE" )
+#  endif()
+#endif()
 
 #--------------------------------------------------------------
 # Tweaks to disable some warnings with MSVC
 #--------------------------------------------------------------
-if(MSVC)
-    add_definitions("-D_CRT_SECURE_NO_DEPRECATE")  # avoids deprecation warnings
-    add_definitions("-D_SCL_SECURE_NO_DEPRECATE")  # avoids deprecation warnings
-    add_definitions( "-DNOMINMAX" )                # do not use MSVC's min/max macros
-    add_compile_options(/wd4275)                   # disable warnings triggered by Irrlicht
-    add_compile_options(/wd4251)                   # class needs to have dll-interface
-else()
-    set(EXTRA_COMPILE_FLAGS "")
-endif()
+#if(MSVC)
+#    add_definitions("-D_CRT_SECURE_NO_DEPRECATE")  # avoids deprecation warnings
+#    add_definitions("-D_SCL_SECURE_NO_DEPRECATE")  # avoids deprecation warnings
+#    add_definitions( "-DNOMINMAX" )                # do not use MSVC's min/max macros
+#    add_compile_options(/wd4275)                   # disable warnings triggered by Irrlicht
+#    add_compile_options(/wd4251)                   # class needs to have dll-interface
+#else()
+#    set(EXTRA_COMPILE_FLAGS "")
+#endif()
 
 #--------------------------------------------------------------
 # === 3 ===

@@ -1123,12 +1123,13 @@ int main(int argc, char *argv[]) {
       cam->SetName("Camera Sensor");
 
       if (sensor_vis)
-        cam->PushFilter(
-            chrono_types::make_shared<ChFilterVisualize>(1280, 720, "", false));
+        // cam->PushFilter(
+        //     chrono_types::make_shared<ChFilterVisualize>(1280, 720, "",
+        //     false));
 
-      // add sensor to the manager
+        // add sensor to the manager
 
-      manager.AddSensor(cam);
+        manager.AddSensor(cam);
     }
 
     // -------------------------------------------------------

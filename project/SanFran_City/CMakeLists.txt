@@ -75,9 +75,9 @@ set(ALL_DLLS "${ALL_DLLS}" PARENT_SCOPE)
 set(COMPILE_FLAGS ${CHRONO_CXX_FLAGS})
 
 # Disable some warnings triggered by Irrlicht (Windows only)
-if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-    SET(COMPILE_FLAGS "${COMPILE_FLAGS} /wd4275")
-endif()
+#if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+#    SET(COMPILE_FLAGS "${COMPILE_FLAGS} /wd4275")
+#endif()
 
 #--------------------------------------------------------------
 # Loop over all demo programs and build them
@@ -91,12 +91,10 @@ foreach(PROGRAM ${DEMOS})
 
   add_executable(${PROGRAM}  "${PROGRAM}.cpp")
   source_group(""  FILES "${PROGRAM}.cpp")
-  set_target_properties(${PROGRAM} PROPERTIES
-    FOLDER demos
-    COMPILE_FLAGS "${COMPILE_FLAGS}"
-    COMPILE_DEFINITIONS "PROJECTS_DATA_DIR=\"${PROJECTS_DATA_DIR}\";CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\""
-    LINK_FLAGS "${CHRONO_LINKER_FLAGS}"
-  )
+  
+  target_compile_definitions(${PROGRAM} PUBLIC "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\"") 
+  target_compile_options(${PROGRAM} PUBLIC ${CHRONO_CXX_FLAGS})
+  target_link_options(${PROGRAM} PUBLIC ${CH_LINKERFLAG_SHARED})
 
 	target_link_libraries(${PROGRAM} ${EXT_LIBRARIES} ${CHRONO_LIBRARIES} "-L/usr/local/cuda/lib64")# -lcudart")
 

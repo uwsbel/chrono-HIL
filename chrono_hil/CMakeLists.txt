@@ -35,6 +35,8 @@ add_library(ChronoEngine_hil SHARED
 set_target_properties(ChronoEngine_hil PROPERTIES
                       COMPILE_FLAGS "${CXX_FLAGS}"
                       LINK_FLAGS "${CH_LINKERFLAG_SHARED}")
+                      
+include_directories(${CHRONO_INCLUDE_DIRS})
 
 
 target_compile_definitions(ChronoEngine_hil PRIVATE "CH_API_COMPILE_MODELS")

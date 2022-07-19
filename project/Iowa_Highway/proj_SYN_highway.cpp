@@ -1170,9 +1170,12 @@ int main(int argc, char *argv[]) {
     manager->scene->SetFogColor(fog_color);
   }
 
+  std::cout << "sensor output test 3" << std::endl;
+
   // ------------------------------------------------
   // Create a camera and add it to the sensor manager
   // ------------------------------------------------
+
   auto cam = chrono_types::make_shared<ChCameraSensor>(
       vehicle.GetChassisBody(), // body camera is attached to
       10,                       // update rate in Hz
@@ -1184,11 +1187,11 @@ int main(int argc, char *argv[]) {
       super_samples); // fov, lag, exposure
   cam->SetName("Camera Sensor");
   if (sensor_vis)
-    cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(1280, 720));
+    // cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(1280, 720));
 
-  // add sensor to the manager
-  if (cli.GetAsType<bool>("birdseye"))
-    manager->AddSensor(cam);
+    // add sensor to the manager
+    if (cli.GetAsType<bool>("birdseye"))
+      manager->AddSensor(cam);
 
   // -------------------------------------------------------
   // Create a second camera and add it to the sensor manager
