@@ -127,7 +127,7 @@ endif()
 # files in your project. 
 #--------------------------------------------------------------
 
-add_subdirectory(Iowa_Highway)
+add_subdirectory(project)
 add_subdirectory(chrono_hil)
 
 

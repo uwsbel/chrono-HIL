@@ -8,8 +8,7 @@
 #--------------------------------------------------------------
 
 set(DEMOS
-	test_SYN_highway
-	test_SYN_highway_syn
+	proj_SYN_city
 )
 
 #--------------------------------------------------------------
@@ -30,8 +29,6 @@ endif()
 
 # Get the path to the highway mesh
 set(HIGHWAY_DATA_DIR "" CACHE FILEPATH "Path to directory contain highway assets")
-#add_compile_definitions(HIGHWAY_COL_PATH="${HIGHWAY_DIR}Highway_new.obj")
-#add_compile_definitions(HIGHWAY_VIS_PATH="${HIGHWAY_DIR}Highway_new.obj")
 add_compile_definitions(HIGHWAY_DATA_DIR=${HIGHWAY_DATA_DIR})
 
 #---------------
