@@ -163,7 +163,7 @@ irr::core::position2d<irr::s32> end_left(950, 190);
 irr::core::position2d<irr::s32> eta_left(950, 310);
 double sm_needle = 140;
 
-std::string demo_data_path = std::string(STRINGIFY(HIGHWAY_DATA_DIR));
+std::string demo_data_path = std::string(STRINGIFY(HIL_DATA_DIR));
 
 // Driver parameters
 std::vector<double> followerParam;

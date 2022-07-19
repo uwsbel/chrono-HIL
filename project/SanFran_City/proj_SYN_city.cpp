@@ -130,7 +130,7 @@ bool load_roads_only = false;
 const int FS_WIDTH = 3840;
 const int FS_HEIGHT = 1080;
 
-std::string demo_data_path = std::string(STRINGIFY(HIGHWAY_DATA_DIR));
+std::string demo_data_path = std::string(STRINGIFY(HIL_DATA_DIR));
 
 struct PathVehicleSetup {
   VehicleType vehicle_type;

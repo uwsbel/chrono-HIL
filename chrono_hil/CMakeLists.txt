@@ -1,13 +1,13 @@
 message(STATUS "==== Chrono::HIL Module ====")
 
 set(DRIVER_FILES
-    driver/ChCSLDriver.h
-    driver/ChCSLDriver.cpp
+    #driver/ChCSLDriver.h
+    #driver/ChCSLDriver.cpp
     driver/ChLidarWaypointDriver.h
     driver/ChLidarWaypointDriver.cpp
     driver/ChNSF_Drivers.h
     driver/ChNSF_Drivers.cpp
-    driver/joystick.h
+    #driver/joystick.h
 )
 source_group("driver" FILES ${DRIVER_FILES})
 

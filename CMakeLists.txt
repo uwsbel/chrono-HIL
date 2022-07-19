@@ -16,7 +16,8 @@ cmake_minimum_required(VERSION 3.10)
 # Modify the project name if you want: 
 #--------------------------------------------------------------
 
-project(my_project)
+project(chrono_hil)
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 #--------------------------------------------------------------
 # === 2 ===
@@ -73,6 +74,10 @@ if (NOT Chrono_FOUND)
   message("Could not find Chrono or one of its required modules")
   return()
 endif()
+
+
+set(HIL_DATA_DIR "" CACHE FILEPATH "Path to directory contain data used for Chrono::HIL")
+add_compile_definitions(HIL_DATA_DIR=${HIL_DATA_DIR})
 
 #--------------------------------------------------------------
 # Enable creation of "application bundles" on MacOSX.

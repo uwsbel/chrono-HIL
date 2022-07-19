@@ -27,9 +27,6 @@ if(NOT Chrono_FOUND)
   return()
 endif()
 
-# Get the path to the highway mesh
-set(HIGHWAY_DATA_DIR "" CACHE FILEPATH "Path to directory contain highway assets")
-add_compile_definitions(HIGHWAY_DATA_DIR=${HIGHWAY_DATA_DIR})
 
 #---------------
 # Find DDS
