@@ -21,11 +21,12 @@
 
 #include "chrono_vehicle/ChConfigVehicle.h"
 #include "chrono_vehicle/ChVehicleModelData.h"
+#include "chrono_vehicle/ChWorldFrame.h"
 #include "chrono_vehicle/driver/ChIrrGuiDriver.h"
 #include "chrono_vehicle/terrain/RigidTerrain.h"
 #include "chrono_vehicle/utils/ChUtilsJSON.h"
 
-#include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleIrrApp.h"
+#include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
 #include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
 
 #include "chrono_synchrono/SynChronoManager.h"
@@ -415,11 +416,11 @@ void VehicleProcessMessageCallback(
 
 class IrrAppWrapper {
 public:
-  IrrAppWrapper(std::shared_ptr<ChWheeledVehicleIrrApp> app = nullptr)
+  IrrAppWrapper(
+      std::shared_ptr<ChWheeledVehicleVisualSystemIrrlicht> app = nullptr)
       : app(app) {}
 
-  void Synchronize(const std::string &msg,
-                   const ChDriver::Inputs &driver_inputs) {
+  void Synchronize(const std::string &msg, const DriverInputs &driver_inputs) {
     if (app)
       app->Synchronize(msg, driver_inputs);
   }
@@ -431,16 +432,19 @@ public:
 
   void Render() {
     if (app) {
-      app->BeginScene(true, true, irr::video::SColor(255, 140, 161, 192));
-      app->DrawAll();
+      // app->BeginScene(true, true, ChColor(255, 140, 161, 192));
+      app->BeginScene();
+      app->Render();
       app->EndScene();
     }
   }
 
-  void Set(std::shared_ptr<ChWheeledVehicleIrrApp> app) { this->app = app; }
+  void Set(std::shared_ptr<ChWheeledVehicleVisualSystemIrrlicht> app) {
+    this->app = app;
+  }
   bool IsOk() { return app ? app->GetDevice()->run() : true; }
 
-  std::shared_ptr<ChWheeledVehicleIrrApp> app;
+  std::shared_ptr<ChWheeledVehicleVisualSystemIrrlicht> app;
 };
 
 // =============================================================================
@@ -601,15 +605,26 @@ int main(int argc, char *argv[]) {
   minfo.kt = 2e5;     // tangential stiffness
   minfo.gt = 20.0;    // tangential viscous damping
   auto patch_mat = minfo.CreateMaterial(contact_method);
-  auto patch = terrain.AddPatch(patch_mat, ChVector<>({0, 0, -65.554}),
-                                ChVector<>({0, 0, 1}), 10000.0, 10000.0, 2,
-                                false, 1, false);
+
+  ChVector<> normal = ChVector<>({0, 0, 1});
+  ChVector<> up = normal.GetNormalized();
+  ChVector<> lateral = Vcross(up, ChWorldFrame::Forward());
+  lateral.Normalize();
+  ChVector<> forward = Vcross(lateral, up);
+  ChMatrix33<> rot;
+  rot.Set_A_axis(forward, lateral, up);
+
+  auto patch = terrain.AddPatch(
+      patch_mat,
+      ChCoordsys(ChVector<>({0, 0, -65.554}), rot.Get_A_quaternion()), 10000.0,
+      10000.0, 2, false, 1, false);
   terrain.Initialize();
 
   std::shared_ptr<ChLidarSensor> lidar;
   std::shared_ptr<ChCameraSensor> camera;
   std::shared_ptr<ChSensorManager> manager;
-  if (node_id == leader || !no_sensing) {
+
+  if (node_id == leader) {
     // add a sensor manager
     manager = chrono_types::make_shared<ChSensorManager>(vehicle.GetSystem());
     manager->SetRayRecursions(11);
@@ -625,88 +640,46 @@ int main(int argc, char *argv[]) {
 
     const int image_width = use_fullscreen ? FS_WIDTH : FS_WIDTH / 2;
     const int image_height = use_fullscreen ? FS_HEIGHT : FS_HEIGHT / 2;
-    if (node_id == leader) {
-      // camera at driver's eye location for Audi
-      auto driver_cam = chrono_types::make_shared<ChCameraSensor>(
-          vehicle.GetChassisBody(), // body camera is attached to
-          30.f,                     // update rate in Hz
-          chrono::ChFrame<double>({0.54, .381, 1.04},
-                                  Q_from_AngAxis(0, {0, 1, 0})), // offset pose
-          image_width,                                           // image width
-          image_height,                                          // image height
-          3.14 / 1.5,                                            // fov
-          1);
 
-      driver_cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
-          image_width, image_height, "Camera 1, Super Sampled",
-          use_fullscreen));
-      if (save)
-        driver_cam->PushFilter(
-            chrono_types::make_shared<ChFilterSave>("DEMO_OUTPUT/driver_cam/"));
-      manager->AddSensor(driver_cam);
+    // camera at driver's eye location for Audi
+    auto driver_cam = chrono_types::make_shared<ChCameraSensor>(
+        vehicle.GetChassisBody(), // body camera is attached to
+        30.f,                     // update rate in Hz
+        chrono::ChFrame<double>({0.54, .381, 1.04},
+                                Q_from_AngAxis(0, {0, 1, 0})), // offset pose
+        image_width,                                           // image width
+        image_height,                                          // image height
+        3.14 / 1.5,                                            // fov
+        1);
 
-      // third person camera, for any vehicle
-      camera = chrono_types::make_shared<ChCameraSensor>(
-          vehicle.GetChassisBody(), // body camera is attached to
-          30.f,                     // update rate in Hz
-          chrono::ChFrame<double>({-2.0 * cam_distance, 0, .45 * cam_distance},
-                                  Q_from_AngAxis(0, {0, 1, 0})), // offset pose
-          1280,                                                  // image width
-          720,                                                   // image height
-          3.14 / 4,                                              // fov
-          1);
+    driver_cam->SetName("DriverCam");
+    driver_cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
+        image_width, image_height, "Camera 1, Super Sampled", use_fullscreen));
+    if (save)
+      driver_cam->PushFilter(
+          chrono_types::make_shared<ChFilterSave>("DEMO_OUTPUT/driver_cam/"));
+    manager->AddSensor(driver_cam);
 
-      camera->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
-          1280, 720, "Camera 1, Super Sampled", false));
-      if (save)
-        camera->PushFilter(
-            chrono_types::make_shared<ChFilterSave>("DEMO_OUTPUT/cam_third/"));
-      // manager->AddSensor(camera);
+    /*
+          // third person camera, for any vehicle
+          camera = chrono_types::make_shared<ChCameraSensor>(
+              vehicle.GetChassisBody(), // body camera is attached to
+              30.f,                     // update rate in Hz
+              chrono::ChFrame<double>({-2.0 * cam_distance, 0, .45 *
+       cam_distance}, Q_from_AngAxis(0, {0, 1, 0})), // offset pose 1280, //
+       image width 720,                                                   //
+       image height 3.14 / 4,                                              //
+       fov 1);
 
-      // auto camera2 = chrono_types::make_shared<ChCameraSensor>(
-      //     patch->GetGroundBody(),  // body camera is attached to
-      //     30.f,                    // update rate in Hz
-      //     chrono::ChFrame<double>({925, -120.87, 200.0}, Q_from_AngAxis(3.14
-      //     / 2, {0, 1, 0})), 1080,  // 1080,  // image height 3.14 / 2, 1);
+          camera->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
+              1280, 720, "Camera 1, Super Sampled", false));
+          if (save)
+            camera->PushFilter(
+                chrono_types::make_shared<ChFilterSave>("DEMO_OUTPUT/cam_third/"));
 
-      // camera2->PushFilter(chrono_types::make_shared<ChFilterVisualize>(500,
-      // 500, "Camera 2", false)); if (save)
-      //     camera2->PushFilter(chrono_types::make_shared<ChFilterSave>("DEMO_OUTPUT/cam2/"));
-      // manager->AddSensor(camera2);
+          manager->AddSensor(camera);
+          */
 
-      // auto camer5 = chrono_types::make_shared<ChCameraSensor>(
-      //     patch->GetGroundBody(),  // body camera is attached to
-      //     30.f,                    // update rate in Hz
-      //     chrono::ChFrame<double>({725, -120.87, 200.0}, Q_from_AngAxis(3.14
-      //     / 2, {0, 1, 0})), 1080,  // 1080,  // image height 3.14 / 2, 1);
-
-      // camer5->PushFilter(chrono_types::make_shared<ChFilterVisualize>(500,
-      // 500, "Camera 5", false)); if (save)
-      //     camer5->PushFilter(chrono_types::make_shared<ChFilterSave>("DEMO_OUTPUT/cam2/"));
-      // manager->AddSensor(camer5);
-
-      // auto camera3 = chrono_types::make_shared<ChCameraSensor>(
-      //     patch->GetGroundBody(),  // body camera is attached to
-      //     30.f,                    // update rate in Hz
-      //     chrono::ChFrame<double>({925, 145.0, 200.0}, Q_from_AngAxis(3.14 /
-      //     2, {0, 1, 0})), 1080,  // 1080,  // image height 3.14 / 2, 1);
-
-      // camera3->PushFilter(chrono_types::make_shared<ChFilterVisualize>(700,
-      // 700, "Camera 3", false)); if (save)
-      //     camera3->PushFilter(chrono_types::make_shared<ChFilterSave>("DEMO_OUTPUT/cam2/"));
-      // manager->AddSensor(camera3);
-
-      // auto camera4 = chrono_types::make_shared<ChCameraSensor>(
-      //     patch->GetGroundBody(),  // body camera is attached to
-      //     30.f,                    // update rate in Hz
-      //     chrono::ChFrame<double>({725, -220.87, 200.0}, Q_from_AngAxis(3.14
-      //     / 2, {0, 1, 0})), 1080,  // 1080,  // image height 3.14 / 2, 1);
-
-      // camera4->PushFilter(chrono_types::make_shared<ChFilterVisualize>(700,
-      // 700, "Camera 4", false)); if (save)
-      //     camera4->PushFilter(chrono_types::make_shared<ChFilterSave>("DEMO_OUTPUT/cam2/"));
-      // manager->AddSensor(camera4);
-    }
     if (!no_sensing) {
       lidar = chrono_types::make_shared<ChLidarSensor>(
           vehicle.GetChassisBody(), // body lidar is attached to
@@ -747,30 +720,29 @@ int main(int argc, char *argv[]) {
 
   IrrAppWrapper app;
   std::shared_ptr<ChDriver> driver;
+
+  auto vis = chrono_types::make_shared<ChWheeledVehicleVisualSystemIrrlicht>();
+
   if (node_id == leader && replay_inputs) {
     auto data_driver =
         chrono_types::make_shared<ChDataDriver>(vehicle, driver_file, true);
     data_driver->Initialize();
     driver = data_driver;
   } else if (node_id == leader && cli.GetAsType<bool>("irr")) {
-    auto temp_app = chrono_types::make_shared<ChWheeledVehicleIrrApp>(
-        &vehicle, L"SynChrono Wheeled Vehicle Demo");
-    temp_app->AddSkyBox();
-    // temp_app->AddTypicalLights(irr::core::vector3df(30.f, -30.f, 100.f),
-    // irr::core::vector3df(30.f, 50.f, 100.f),
-    //                            250, 130);
-    temp_app->AddTypicalLights();
-    temp_app->SetChaseCamera(trackPoint, cam_distance, 0.5);
-    temp_app->SetTimestep(step_size);
-    temp_app->AssetBindAll();
-    temp_app->AssetUpdateAll();
+    vis->SetWindowTitle("San Francisco City Demo");
+    vis->SetChaseCamera(trackPoint, 6.0, 0.5);
+    vis->Initialize();
+    vis->AddTypicalLights();
+    vis->AddSkyBox();
+    vis->AddLogo();
+    vis->AttachVehicle(&vehicle);
 
     // Create the interactive driver system
-    auto irr_driver = chrono_types::make_shared<ChIrrGuiDriver>(*temp_app);
+    auto irr_driver = chrono_types::make_shared<ChIrrGuiDriver>(*vis);
 
     // optionally force the gui driver to use keyboard rather than joystick
     if (cli.GetAsType<bool>("keyboard"))
-      irr_driver->SetInputMode(ChIrrGuiDriver::KEYBOARD);
+      irr_driver->SetInputMode(ChIrrGuiDriver::InputMode::KEYBOARD);
 
     // Set the time response for steering and throttle keyboard inputs.
     double steering_time = 1.0; // time to go from 0 to +1 (or from 0 to -1)
@@ -781,7 +753,8 @@ int main(int argc, char *argv[]) {
     irr_driver->SetBrakingDelta(render_step_size / braking_time);
     irr_driver->Initialize();
 
-    app.Set(temp_app);
+    app.Set(vis);
+
     driver = irr_driver;
     // } else if (node_id == leader && cli.GetAsType<bool>("console")) {
     //     // Use custom CSL driver instead of irr driver
@@ -830,15 +803,13 @@ int main(int argc, char *argv[]) {
   float orbit_radius = 10.f;
   float orbit_rate = .25;
   double time = 0;
+
   while (app.IsOk() && syn_manager.IsOk() && time < end_time) {
+
     time = vehicle.GetSystem()->GetChTime();
 
-    // Render scene
-    // if (step_number % render_steps == 0)
-    //     app.Render();
-
     // Get driver inputs
-    ChDriver::Inputs driver_inputs = driver->GetInputs();
+    DriverInputs driver_inputs = driver->GetInputs();
 
     if (node_id == leader && record_inputs) {
       driver_csv << time << driver_inputs.m_steering << driver_inputs.m_throttle
@@ -858,13 +829,7 @@ int main(int argc, char *argv[]) {
     terrain.Advance(step_size);
     app.Advance(step_size);
 
-    if (manager) {
-      // if (camera) {
-      //     camera->SetOffsetPose(chrono::ChFrame<double>(
-      //         {-orbit_radius * cos(time * orbit_rate), -orbit_radius *
-      //         sin(time * orbit_rate), 1}, Q_from_AngAxis(time * orbit_rate,
-      //         {0, 0, 1})));
-      // }
+    if (node_id == leader) {
       manager->Update();
     }
 
@@ -875,9 +840,6 @@ int main(int argc, char *argv[]) {
     if (step_number % 500 == 0 && node_id == leader) {
       std::chrono::high_resolution_clock::time_point end =
           std::chrono::high_resolution_clock::now();
-      // auto time_span =
-      // std::chrono::duration_cast<std::chrono::milliseconds>(end -
-      // start).count()*1000;
       std::chrono::duration<double> wall_time =
           std::chrono::duration_cast<std::chrono::duration<double>>(end -
                                                                     start);
@@ -1036,11 +998,6 @@ void AddSceneMeshes(ChSystem *chsystem, RigidTerrain *terrain) {
   std::unordered_map<std::string, std::shared_ptr<ChTriangleMeshConnected>>
       mesh_map;
 
-  auto mesh_body = chrono_types::make_shared<ChBody>();
-  mesh_body->SetBodyFixed(true);
-  mesh_body->SetCollide(false);
-  chsystem->Add(mesh_body);
-
   int meshes_added = 0;
   int mesh_offset = 0;
   int num_meshes = 20000;
@@ -1049,6 +1006,11 @@ void AddSceneMeshes(ChSystem *chsystem, RigidTerrain *terrain) {
     int mesh_count = 0;
     int mesh_limit = mesh_offset + num_meshes;
     while (std::getline(infile, line) && mesh_count < mesh_limit) {
+
+      auto mesh_body = chrono_types::make_shared<ChBody>();
+      mesh_body->SetBodyFixed(true);
+      mesh_body->SetCollide(false);
+
       if (mesh_count < mesh_offset) {
         mesh_count++;
       } else {
@@ -1081,7 +1043,7 @@ void AddSceneMeshes(ChSystem *chsystem, RigidTerrain *terrain) {
                 instance_found = true;
               } else {
                 mmesh = chrono_types::make_shared<ChTriangleMeshConnected>();
-                mmesh->LoadWavefrontMesh(mesh_obj, false, true);
+                mmesh->LoadWavefrontMesh(mesh_obj, true, true);
                 mesh_map[mesh_obj] = mmesh;
               }
 
@@ -1097,12 +1059,14 @@ void AddSceneMeshes(ChSystem *chsystem, RigidTerrain *terrain) {
                   chrono_types::make_shared<ChTriangleMeshShape>();
               trimesh_shape->SetMesh(mmesh);
               trimesh_shape->SetName(mesh_name);
-              trimesh_shape->SetStatic(true);
               trimesh_shape->SetScale(scale);
-              trimesh_shape->Pos = pos;
-              trimesh_shape->Rot = ChMatrix33<>(rot);
+              trimesh_shape->SetMutable(false);
 
-              mesh_body->AddAsset(trimesh_shape);
+              mesh_body->AddVisualShape(trimesh_shape);
+              mesh_body->SetPos(pos);
+              mesh_body->SetRot(rot);
+
+              chsystem->Add(mesh_body);
 
               meshes_added++;
             }
@@ -1139,30 +1103,13 @@ void VehicleProcessMessageCallback(
     ChQuaternion<> q = Q_from_AngZ(max_angle * curr_steering);
 
     // Get the zombies position relative to this vehicle
-    auto zombie_pos = vehicle_message->chassis.GetFrame().GetPos() -
-                      vehicle.GetVehicleCOMPos();
-    zombie_pos = q.RotateBack(vehicle.GetVehicleRot().RotateBack(zombie_pos));
-    // zombie_pos = vehicle.GetVehicleRot().RotateBack(zombie_pos);
-
-    // std::cout<<"Zombie loc: "<<zombie_pos.x()<<", "<<zombie_pos.y()<<",
-    // "<<zombie_pos.z()<<std::endl;
+    auto zombie_pos =
+        vehicle_message->chassis.GetFrame().GetPos() - vehicle.GetPos();
+    zombie_pos = q.RotateBack(vehicle.GetRot().RotateBack(zombie_pos));
 
     if (zombie_pos.x() < x_max && zombie_pos.x() > x_min &&
         abs(zombie_pos.y()) < width / 2) {
       driver->SetCurrentDistance(zombie_pos.Length() - offset_for_chassis_size);
-      // std::cout << "Zombie dist: " << zombie_pos.Length() -
-      // offset_for_chassis_size << std::endl;
     }
-
-    // if (zombie_pos.x() < x_max && zombie_pos.x() > x_min) {
-    //     std::cout << "Zombie loc: " << zombie_pos.x() << ", " <<
-    //     zombie_pos.y() << ", " << zombie_pos.z()
-    //               << std::endl;
-
-    //     // driver->SetCurrentDistance(zombie_pos.Length() -
-    //     offset_for_chassis_size);
-    //     // std::cout << "Zombie dist: " << zombie_pos.Length() -
-    //     offset_for_chassis_size << std::endl;
-    // }
   }
 }

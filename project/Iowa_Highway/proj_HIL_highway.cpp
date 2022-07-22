@@ -27,18 +27,18 @@
 #include "chrono_vehicle/driver/ChDataDriver.h"
 #include "chrono_vehicle/driver/ChIrrGuiDriver.h"
 #include "chrono_vehicle/terrain/RigidTerrain.h"
-#include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleIrrApp.h"
+
 #include <irrlicht.h>
 #include <limits>
 #include <time.h>
 
-#include "chrono_thirdparty/filesystem/path.h"
-
 #include "chrono_sensor/ChSensorManager.h"
 #include "chrono_sensor/filters/ChFilterVisualize.h"
 #include "chrono_sensor/sensors/ChCameraSensor.h"
-#include "chrono_sensor/utils/ChVisualMaterialUtils.h"
 #include "chrono_thirdparty/cxxopts/ChCLI.h"
+#include "chrono_thirdparty/filesystem/path.h"
+#include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
+
 //#include "chrono_vehicle/driver/ChPathFollowerDriver.h"
 
 #include "chrono_hil/driver/ChCSLDriver.h"
@@ -295,12 +295,12 @@ void AddRoadway(ChSystem *chsystem);
 void AddBuildings(ChSystem *chsystem);
 
 // load textures for dashboard
-void IrrDashLoadTextures(ChWheeledVehicleIrrApp &app);
+void IrrDashLoadTextures(ChWheeledVehicleVisualSystemIrrlicht &app);
 // update irrlicht dashboard inside simulation loop
 void IrrDashUpdate(
     double sim_time, int step_number,
     std::chrono::time_point<std::chrono::high_resolution_clock> t0,
-    ChWheeledVehicleIrrApp &app, ChWheeledVehicle &vehicle,
+    ChWheeledVehicleVisualSystemIrrlicht &app, ChWheeledVehicle &vehicle,
     std::shared_ptr<chrono::vehicle::ChChassis> ego_chassis,
     DriverMode driver_mode, float &IG_dist, ChVector<> &IG_prev_pos,
     bool &IG_started_driving);
@@ -1010,8 +1010,8 @@ int main(int argc, char *argv[]) {
   // Create the driver system
   // ------------------------
 
-  ChWheeledVehicleIrrApp app(&vehicle, L"  ",
-                             irr::core::dimension2d<irr::u32>(1360, 420));
+  ChWheeledVehicleVisualSystemIrrlicht app(
+      &vehicle, L"  ", irr::core::dimension2d<irr::u32>(1360, 420));
   /*
   SPEEDOMETER: we want to use the irrlicht app to display the speedometer, but
   calling endscene would update the entire (massive) scenario. In order to do
@@ -2022,7 +2022,7 @@ void DummyButtonCallback_r_3() {
 }
 
 // load irr dashboard textures
-void IrrDashLoadTextures(ChWheeledVehicleIrrApp &app) {
+void IrrDashLoadTextures(ChWheeledVehicleVisualSystemIrrlicht &app) {
   texture_DASH = app.GetDevice()->getVideoDriver()->getTexture(
       (demo_data_path + "/miscellaneous/dash_4_4.jpg").c_str());
   texture_GEAR1 = app.GetDevice()->getVideoDriver()->getTexture(
@@ -2066,7 +2066,7 @@ void IrrDashLoadTextures(ChWheeledVehicleIrrApp &app) {
 void IrrDashUpdate(
     double sim_time, int step_number,
     std::chrono::time_point<std::chrono::high_resolution_clock> t0,
-    ChWheeledVehicleIrrApp &app, ChWheeledVehicle &vehicle,
+    ChWheeledVehicleVisualSystemIrrlicht &app, ChWheeledVehicle &vehicle,
     std::shared_ptr<chrono::vehicle::ChChassis> ego_chassis,
     DriverMode driver_mode, float &IG_dist, ChVector<> &IG_prev_pos,
     bool &IG_started_driving) {
