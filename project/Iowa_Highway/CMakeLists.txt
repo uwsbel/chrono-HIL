@@ -9,7 +9,7 @@
 
 set(DEMOS
 	proj_HIL_highway
-	proj_HIL_highway_parallel
+	#proj_HIL_highway_parallel
 )
 
 #--------------------------------------------------------------
@@ -93,6 +93,7 @@ foreach(PROGRAM ${DEMOS})
   source_group(""  FILES "${PROGRAM}.cpp")
 
   target_compile_definitions(${PROGRAM} PUBLIC "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\"") 
+  target_compile_definitions(${PROGRAM} PUBLIC "PROJECTS_DATA_DIR=\"${PROJECTS_DATA_DIR}\"") 
   target_compile_options(${PROGRAM} PUBLIC ${CHRONO_CXX_FLAGS})
   target_link_options(${PROGRAM} PUBLIC ${CH_LINKERFLAG_SHARED})
 
