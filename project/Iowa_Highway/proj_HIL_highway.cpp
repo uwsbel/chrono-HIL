@@ -720,13 +720,19 @@ int main(int argc, char *argv[]) {
 
   GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: "
            << CHRONO_VERSION << "\n\n";
-
   std::string vehicle_file =
       vehicle::GetDataFile("audi/json/audi_Vehicle.json");
   std::string powertrain_file =
       vehicle::GetDataFile("audi/json/audi_SimpleMapPowertrain.json");
   std::string tire_file =
       vehicle::GetDataFile("audi/json/audi_TMeasyTire.json");
+  /*
+    std::string vehicle_file =
+        vehicle::GetDataFile("sedan/vehicle/Sedan_Vehicle.json");
+    std::string powertrain_file =
+        vehicle::GetDataFile("sedan/powertrain/Sedan_SimpleMapPowertrain.json");
+    std::string tire_file =
+        vehicle::GetDataFile("sedan/tire/Sedan_TMeasyTire.json");*/
 
   // std::string path_file = demo_data_path +
   // "/Environments/Iowa/terrain/oval_highway_path.csv";
@@ -902,9 +908,8 @@ int main(int argc, char *argv[]) {
   std::shared_ptr<RigidTerrain::Patch> patch;
   switch (terrain_model) {
   case RigidTerrain::PatchType::BOX:
-    patch = terrain.AddPatch(
-        patch_mat, ChCoordsys(ChVector<>({0, 0, 0}), rot.Get_A_quaternion()),
-        terrainLength, terrainWidth, 2, false, 1, false);
+    patch = terrain.AddPatch(patch_mat, CSYSNORM, terrainLength, terrainWidth,
+                             2, false, 1, false);
     break;
   case RigidTerrain::PatchType::HEIGHT_MAP:
     patch = terrain.AddPatch(
@@ -1013,7 +1018,6 @@ int main(int argc, char *argv[]) {
   // Initialize output
   // -----------------
 
-#include "chrono_vehicle/ChWorldFrame.h"
   // Create the driver system
   // ------------------------
 
@@ -1022,6 +1026,7 @@ int main(int argc, char *argv[]) {
   ChWheeledVehicleVisualSystemIrrlicht app;
   app.SetWindowTitle("proj_HIL_highway");
   app.SetWindowSize(1360, 420);
+  app.Initialize();
   app.AttachVehicle(&vehicle);
   /*
   SPEEDOMETER: we want to use the irrlicht app to display the speedometer, but
@@ -1035,9 +1040,7 @@ int main(int argc, char *argv[]) {
   irr::scene::IMeshCache *cache =
       app.GetDevice()->getSceneManager()->getMeshCache();
   cache->clear();
-  app.GetDevice()->getSceneManager()->clear();
   app.GetVideoDriver()->removeAllTextures();
-
 #ifdef CHRONO_IRRKLANG
   GetLog() << "USING IRRKLANG"
            << "\n\n";
@@ -1184,8 +1187,6 @@ int main(int argc, char *argv[]) {
     manager->scene->SetFogColor(fog_color);
   }
 
-  std::cout << "sensor output test 3" << std::endl;
-
   // ------------------------------------------------
   // Create a camera and add it to the sensor manager
   // ------------------------------------------------
@@ -1243,6 +1244,8 @@ int main(int argc, char *argv[]) {
 
   IrrDashLoadTextures(app);
 
+  vehicle.EnableRealtime(false);
+
   while (app.GetDevice()->run()) {
     sim_time = vehicle.GetSystem()->GetChTime();
 
@@ -1259,8 +1262,13 @@ int main(int argc, char *argv[]) {
       driver_inputs.m_steering *= -1;
     }
 
-    // printf("Driver inputs: %f,%f,%f\n", driver_inputs.m_throttle,
-    // driver_inputs.m_braking,
+    std::cout << "step_number:" << step_number << std::endl;
+    std::cout << "vehicle COM: " << vehicle.GetCOMFrame().GetPos() << std::endl;
+    std::cout << "vehicle inertia: " << vehicle.GetInertia() << std::endl;
+    std::cout << "vehicle_speed: " << vehicle.GetSpeed();
+
+    // printf("Driver inputs: %f,%f,%f\n",
+    // driver_inputs.m_throttle, driver_inputs.m_braking,
     //        driver_inputs.m_steering);
     // driver_inputs.m_throttle = 0;
     // driver_inputs.m_steering *= -1;
@@ -1676,6 +1684,7 @@ void AddTrees(ChSystem *chsystem) {
       mesh_body->SetRot(Q_from_AngZ(CH_C_PI_2 * ChRandom()));
       mesh_body->AddVisualShape(trimesh_shape);
       mesh_body->SetBodyFixed(true);
+      mesh_body->SetCollide(false);
       chsystem->Add(mesh_body);
     }
   }
@@ -1700,6 +1709,7 @@ void AddTrees(ChSystem *chsystem) {
       mesh_body->SetRot(Q_from_AngZ(CH_C_PI_2 * ChRandom()));
       mesh_body->AddVisualShape(trimesh_shape);
       mesh_body->SetBodyFixed(true);
+      mesh_body->SetCollide(false);
       chsystem->Add(mesh_body);
     }
   }
@@ -1729,6 +1739,7 @@ void AddRoadway(ChSystem *chsystem) {
     mesh_body->SetPos(offsets[i]);
     mesh_body->AddVisualShape(trimesh_shape);
     mesh_body->SetBodyFixed(true);
+    mesh_body->SetCollide(false);
     chsystem->Add(mesh_body);
   }
 
@@ -1748,6 +1759,7 @@ void AddRoadway(ChSystem *chsystem) {
     mesh_body->SetRot(arrived_sign_rot);
     mesh_body->AddVisualShape(trimesh_shape);
     mesh_body->SetBodyFixed(true);
+    mesh_body->SetCollide(false);
     chsystem->Add(mesh_body);
   }
 }
@@ -1837,6 +1849,7 @@ void AddBuildings(ChSystem *chsystem) {
     mesh_body->SetRot(Q_from_AngZ(CH_C_2PI * ChRandom()));
     mesh_body->AddVisualShape(trimesh_shape);
     mesh_body->SetBodyFixed(true);
+    mesh_body->SetCollide(false);
     chsystem->Add(mesh_body);
   }
 }
@@ -1869,8 +1882,7 @@ void AddTerrain(ChSystem *chsystem) {
       1000, 1000);
   // gravel_tex->SetWeightTexture(
   //     demo_data_path +
-  //         "/Environments/Iowa/terrain/Terrain_Weightmap_Gravel_v3.png",
-  //     1000.0, 1000.0);
+  //     "/Environments/Iowa/terrain/Terrain_Weightmap_Gravel_v3.png");
   gravel_tex->SetSpecularColor({.0f, .0f, .0f});
   // gravel_tex->SetTextureScale({1000.0, 1000.0, 1.0});
   gravel_tex->SetRoughness(1.f);
@@ -1892,7 +1904,7 @@ void AddTerrain(ChSystem *chsystem) {
   // grass_tex_1->SetWeightTexture(
   //     demo_data_path +
   //     "/Environments/Iowa/terrain/Terrain_Weightmap_Grass_A_v3.png");
-  //  grass_tex_1->SetTextureScale({1000.0, 1000.0, 1.0});
+  //   grass_tex_1->SetTextureScale({1000.0, 1000.0, 1.0});
   grass_tex_1->SetSpecularColor({.0f, .0f, .0f});
   grass_tex_1->SetRoughness(1.f);
   grass_tex_1->SetUseSpecularWorkflow(false);
@@ -1924,6 +1936,7 @@ void AddTerrain(ChSystem *chsystem) {
   terrain_body->SetPos({0, 0, -.01});
   terrain_body->AddVisualShape(terrain_shape);
   terrain_body->SetBodyFixed(true);
+  terrain_body->SetCollide(false);
   chsystem->Add(terrain_body);
 }
 
