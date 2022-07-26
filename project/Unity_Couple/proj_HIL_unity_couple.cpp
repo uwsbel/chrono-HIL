@@ -305,6 +305,9 @@ int main(int argc, char *argv[]) {
     driver.SetInputMode(ChIrrGuiDriver::InputMode::DATAFILE);
   }
 
+  driver.SetJoystickConfigFile(
+      vehicle::GetDataFile("joystick/controller_G27.json"));
+
   driver.Initialize();
 
   // ---------------

@@ -791,6 +791,7 @@ int main(int argc, char *argv[]) {
   auto audi_shape = chrono_types::make_shared<ChTriangleMeshShape>();
   audi_shape->SetMesh(audi_mesh);
   audi_shape->SetName("Windowless Audi");
+  audi_shape->SetMutable(false);
   // audi_shape->SetStatic(true);
   vehicle.GetChassisBody()->AddVisualShape(audi_shape);
 
@@ -811,6 +812,7 @@ int main(int argc, char *argv[]) {
   auto rvw_mirror_shape = chrono_types::make_shared<ChTriangleMeshShape>();
   rvw_mirror_shape->SetMesh(mirror_mesh);
   rvw_mirror_shape->SetName("Windowless Audi");
+  rvw_mirror_shape->SetMutable(false);
   // rvw_mirror_shape->SetStatic(true);
   rvw_mirror_shape->SetScale({1, 1.8, 1.2});
   // rvw_mirror_shape->Pos = mirror_rearview_pos;
@@ -837,6 +839,7 @@ int main(int argc, char *argv[]) {
   // lwm_mirror_shape->Rot =
   //     mirror_wingleft_rot; // Q_from_AngY(-.08) * Q_from_AngZ(-.25);
   lwm_mirror_shape->GetMaterials().push_back(mirror_mat);
+  lwm_mirror_shape->SetMutable(false);
   vehicle.GetChassisBody()->AddVisualShape(
       lwm_mirror_shape, ChFrame<>(mirror_wingleft_pos, mirror_wingleft_rot));
 
@@ -857,6 +860,7 @@ int main(int argc, char *argv[]) {
   // rwm_mirror_shape->Rot =
   //     mirror_wingright_rot; // Q_from_AngY(-.08) * Q_from_AngZ(-.25);
   rwm_mirror_shape->GetMaterials().push_back(mirror_mat);
+  rwm_mirror_shape->SetMutable(false);
   vehicle.GetChassisBody()->AddVisualShape(
       rwm_mirror_shape, ChFrame<>(mirror_wingright_pos, mirror_wingright_rot));
 
@@ -980,6 +984,7 @@ int main(int argc, char *argv[]) {
 
   auto suv_trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
   suv_trimesh_shape->SetMesh(suv_mmesh);
+  suv_trimesh_shape->SetMutable(false);
 
   // full audi mesh
   std::string audi_mesh_name = "/vehicles/audi/Full_Audi.obj";
@@ -989,6 +994,7 @@ int main(int argc, char *argv[]) {
 
   auto audi_trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
   audi_trimesh_shape->SetMesh(audi_mmesh);
+  audi_trimesh_shape->SetMutable(false);
 
   for (int i = 0; i < num_dummy; i++) {
     std::string mesh_name;
@@ -1262,11 +1268,6 @@ int main(int argc, char *argv[]) {
       driver_inputs.m_steering *= -1;
     }
 
-    std::cout << "step_number:" << step_number << std::endl;
-    std::cout << "vehicle COM: " << vehicle.GetCOMFrame().GetPos() << std::endl;
-    std::cout << "vehicle inertia: " << vehicle.GetInertia() << std::endl;
-    std::cout << "vehicle_speed: " << vehicle.GetSpeed();
-
     // printf("Driver inputs: %f,%f,%f\n",
     // driver_inputs.m_throttle, driver_inputs.m_braking,
     //        driver_inputs.m_steering);
@@ -1282,8 +1283,6 @@ int main(int argc, char *argv[]) {
                sim_time,
                duration_cast<duration<double>>(wall_time - t0).count(),
                extra_time, ld_speed, ig_speed);
-        // std::cout << "Current Gear: " <<
-        // vehicle.GetPowertrain()->GetCurrentTransmissionGear() << std::endl;
       } else {
         auto ig_speed = vehicle.GetSpeed() * MS_TO_MPH;
         auto wall_time = high_resolution_clock::now();
@@ -1291,8 +1290,6 @@ int main(int argc, char *argv[]) {
             "Sim Time=%f, \tWall Time=%f, \tExtra Time=%f, \tIG_Speed mph=%f\n",
             sim_time, duration_cast<duration<double>>(wall_time - t0).count(),
             extra_time, ig_speed);
-        // std::cout << "Current Gear: " <<
-        // vehicle.GetPowertrain()->GetCurrentTransmissionGear() << std::endl;
       }
     }
 
@@ -1454,11 +1451,6 @@ int main(int argc, char *argv[]) {
       lead_PFdrivers[i]->Advance(step);
       lead_vehicles[i]->Advance(step);
     }
-
-    // std::cout << "sim_time: " << sim_time
-    //           << "  lead_speed: " <<
-    //           lead_vehicles[0]->GetChassis()->GetSpeed() * MS_TO_MPH <<
-    //           std::endl;
 
     if (step_number % 20 == 0) {
       IrrDashUpdate(sim_time, step_number, t0, app, vehicle, ego_chassis,
@@ -1676,6 +1668,7 @@ void AddTrees(ChSystem *chsystem) {
       // trimesh_shape->SetStatic(true);
       float scale = scale_nominal + scale_variation * (ChRandom() - .5);
       trimesh_shape->SetScale({scale, scale, scale});
+      trimesh_shape->SetMutable(false);
 
       auto mesh_body = chrono_types::make_shared<ChBody>();
       mesh_body->SetPos({i * x_step + x_start + x_variation * (ChRandom() - .5),
@@ -1701,6 +1694,7 @@ void AddTrees(ChSystem *chsystem) {
       // trimesh_shape->SetStatic(true);
       float scale = scale_nominal + scale_variation * (ChRandom() - .5);
       trimesh_shape->SetScale({scale, scale, scale});
+      trimesh_shape->SetMutable(false);
 
       auto mesh_body = chrono_types::make_shared<ChBody>();
       mesh_body->SetPos({i * x_step + x_start + x_variation * (ChRandom() - .5),
@@ -1734,7 +1728,7 @@ void AddRoadway(ChSystem *chsystem) {
     auto trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
     trimesh_shape->SetMesh(trimesh);
     trimesh_shape->SetName(environment_meshes[i]);
-    // trimesh_shape->SetStatic(true);
+    trimesh_shape->SetMutable(false);
     auto mesh_body = chrono_types::make_shared<ChBody>();
     mesh_body->SetPos(offsets[i]);
     mesh_body->AddVisualShape(trimesh_shape);
@@ -1753,6 +1747,7 @@ void AddRoadway(ChSystem *chsystem) {
     auto trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
     trimesh_shape->SetMesh(trimesh);
     trimesh_shape->SetName(meshname);
+    trimesh_shape->SetMutable(false);
     // trimesh_shape->SetStatic(true);
     auto mesh_body = chrono_types::make_shared<ChBody>();
     mesh_body->SetPos(arrived_sign_pos);
@@ -1842,6 +1837,7 @@ void AddBuildings(ChSystem *chsystem) {
     auto trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
     trimesh_shape->SetMesh(trimesh);
     trimesh_shape->SetName(environment_meshes[i]);
+    trimesh_shape->SetMutable(false);
     // trimesh_shape->SetStatic(true);
     trimesh_shape->SetScale({3, 3, 3});
     auto mesh_body = chrono_types::make_shared<ChBody>();
@@ -1865,6 +1861,7 @@ void AddTerrain(ChSystem *chsystem) {
   auto terrain_shape = chrono_types::make_shared<ChTriangleMeshShape>();
   terrain_shape->SetMesh(terrain_mesh);
   terrain_shape->SetName("terrain");
+  terrain_shape->SetMutable(false);
   // terrain_shape->SetStatic(true);
 
   auto gravel_tex = chrono_types::make_shared<ChVisualMaterial>();
@@ -1880,9 +1877,9 @@ void AddTerrain(ChSystem *chsystem) {
       demo_data_path +
           "/Environments/Iowa/terrain/Grass/GroundMudTireTracks001_NRM_500.jpg",
       1000, 1000);
-  // gravel_tex->SetWeightTexture(
-  //     demo_data_path +
-  //     "/Environments/Iowa/terrain/Terrain_Weightmap_Gravel_v3.png");
+  gravel_tex->SetWeightTexture(
+      demo_data_path +
+      "/Environments/Iowa/terrain/Terrain_Weightmap_Gravel_v3.png");
   gravel_tex->SetSpecularColor({.0f, .0f, .0f});
   // gravel_tex->SetTextureScale({1000.0, 1000.0, 1.0});
   gravel_tex->SetRoughness(1.f);
@@ -1901,10 +1898,10 @@ void AddTerrain(ChSystem *chsystem) {
       demo_data_path +
           "/Environments/Iowa/terrain/Grass/GroundGrassGreen001_NRM_500.jpg",
       1000, 1000);
-  // grass_tex_1->SetWeightTexture(
-  //     demo_data_path +
-  //     "/Environments/Iowa/terrain/Terrain_Weightmap_Grass_A_v3.png");
-  //   grass_tex_1->SetTextureScale({1000.0, 1000.0, 1.0});
+  grass_tex_1->SetWeightTexture(
+      demo_data_path +
+      "/Environments/Iowa/terrain/Terrain_Weightmap_Grass_A_v3.png");
+  // grass_tex_1->SetTextureScale({1000.0, 1000.0, 1.0});
   grass_tex_1->SetSpecularColor({.0f, .0f, .0f});
   grass_tex_1->SetRoughness(1.f);
   grass_tex_1->SetUseSpecularWorkflow(false);
@@ -1923,9 +1920,9 @@ void AddTerrain(ChSystem *chsystem) {
                                        "/Environments/Iowa/terrain/Grass/"
                                        "GroundGrassGreenPatchy002_NRM_500.jpg",
                                    1000, 1000);
-  // grass_tex_2->SetWeightTexture(
-  //     demo_data_path +
-  //     "/Environments/Iowa/terrain/Terrain_Weightmap_Grass_B_v3.png");
+  grass_tex_2->SetWeightTexture(
+      demo_data_path +
+      "/Environments/Iowa/terrain/Terrain_Weightmap_Grass_B_v3.png");
   grass_tex_2->SetSpecularColor({.0f, .0f, .0f});
   // grass_tex_2->SetTextureScale({1000.0, 1000.0, 1.0});
   grass_tex_2->SetRoughness(1.f);
