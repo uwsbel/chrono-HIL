@@ -142,7 +142,7 @@ bool use_fullscreen = false;
 // -----------------------------------------------------------------------------
 
 // Simulation step sizes
-double step_size = 2e-3;
+double step_size = 1e-3;
 
 // Simulation end time
 double t_end = 10000;
@@ -169,7 +169,7 @@ std::string demo_data_path = std::string(STRINGIFY(HIL_DATA_DIR));
 std::vector<double> followerParam;
 std::string scenario_parameters = "scenario_parameters.json";
 std::string simulation_parameters = "simulation_parameters.json";
-std::string lead_parameters = demo_data_path + "lead_parameters_1.json";
+std::string lead_parameters = demo_data_path + "lead_parameters_nolead.json";
 // cruise speed [mph]
 double cruise_speed = 45;
 
@@ -774,6 +774,7 @@ int main(int argc, char *argv[]) {
   for (auto &axle : vehicle.GetAxles()) {
     for (auto &wheel : axle->GetWheels()) {
       auto tire = ReadTireJSON(tire_file);
+      tire->SetStepsize(step_size / 10);
       vehicle.InitializeTire(tire, wheel, tire_vis_type);
     }
   }
@@ -813,12 +814,8 @@ int main(int argc, char *argv[]) {
   rvw_mirror_shape->SetMesh(mirror_mesh);
   rvw_mirror_shape->SetName("Windowless Audi");
   rvw_mirror_shape->SetMutable(false);
-  // rvw_mirror_shape->SetStatic(true);
   rvw_mirror_shape->SetScale({1, 1.8, 1.2});
-  // rvw_mirror_shape->Pos = mirror_rearview_pos;
-  // rvw_mirror_shape->Rot =
-  //     mirror_rearview_rot; // Q_from_AngY(-.08) * Q_from_AngZ(-.25);
-  rvw_mirror_shape->GetMaterials().push_back(mirror_mat);
+  rvw_mirror_shape->GetMaterials()[0] = mirror_mat;
   vehicle.GetChassisBody()->AddVisualShape(
       rvw_mirror_shape, ChFrame<>(mirror_rearview_pos, mirror_rearview_rot));
 
@@ -833,12 +830,7 @@ int main(int argc, char *argv[]) {
   auto lwm_mirror_shape = chrono_types::make_shared<ChTriangleMeshShape>();
   lwm_mirror_shape->SetMesh(lwm_mesh);
   lwm_mirror_shape->SetName("Windowless Audi");
-  // lwm_mirror_shape->SetStatic(true);
-  // lwm_mirror_shape->SetScale({1, .95, .95});
-  // lwm_mirror_shape->Pos = mirror_wingleft_pos;
-  // lwm_mirror_shape->Rot =
-  //     mirror_wingleft_rot; // Q_from_AngY(-.08) * Q_from_AngZ(-.25);
-  lwm_mirror_shape->GetMaterials().push_back(mirror_mat);
+  lwm_mirror_shape->GetMaterials()[0] = mirror_mat;
   lwm_mirror_shape->SetMutable(false);
   vehicle.GetChassisBody()->AddVisualShape(
       lwm_mirror_shape, ChFrame<>(mirror_wingleft_pos, mirror_wingleft_rot));
@@ -854,12 +846,8 @@ int main(int argc, char *argv[]) {
   auto rwm_mirror_shape = chrono_types::make_shared<ChTriangleMeshShape>();
   rwm_mirror_shape->SetMesh(rwm_mesh);
   rwm_mirror_shape->SetName("Windowless Audi");
-  // rwm_mirror_shape->SetStatic(true);
   rwm_mirror_shape->SetScale({1, .98, .98});
-  // rwm_mirror_shape->Pos = mirror_wingright_pos;
-  // rwm_mirror_shape->Rot =
-  //     mirror_wingright_rot; // Q_from_AngY(-.08) * Q_from_AngZ(-.25);
-  rwm_mirror_shape->GetMaterials().push_back(mirror_mat);
+  rwm_mirror_shape->GetMaterials()[0] = mirror_mat;
   rwm_mirror_shape->SetMutable(false);
   vehicle.GetChassisBody()->AddVisualShape(
       rwm_mirror_shape, ChFrame<>(mirror_wingright_pos, mirror_wingright_rot));
@@ -1665,7 +1653,6 @@ void AddTrees(ChSystem *chsystem) {
       trimesh_shape->SetMesh(
           tree_meshes[int(ChRandom() * tree_meshes.size() - .001)]);
       trimesh_shape->SetName("Tree");
-      // trimesh_shape->SetStatic(true);
       float scale = scale_nominal + scale_variation * (ChRandom() - .5);
       trimesh_shape->SetScale({scale, scale, scale});
       trimesh_shape->SetMutable(false);
@@ -1691,7 +1678,6 @@ void AddTrees(ChSystem *chsystem) {
       trimesh_shape->SetMesh(
           tree_meshes[int(ChRandom() * tree_meshes.size() - .001)]);
       trimesh_shape->SetName("Tree");
-      // trimesh_shape->SetStatic(true);
       float scale = scale_nominal + scale_variation * (ChRandom() - .5);
       trimesh_shape->SetScale({scale, scale, scale});
       trimesh_shape->SetMutable(false);
@@ -1721,7 +1707,7 @@ void AddRoadway(ChSystem *chsystem) {
        i++) { // auto file_name : environment_meshes) {
     // additional environment assets
     auto trimesh = chrono_types::make_shared<ChTriangleMeshConnected>();
-    trimesh->LoadWavefrontMesh(demo_data_path + environment_meshes[i], false,
+    trimesh->LoadWavefrontMesh(demo_data_path + environment_meshes[i], true,
                                true);
     trimesh->Transform(ChVector<>(0, 0, 0),
                        ChMatrix33<>(1)); // scale to a different size
@@ -1729,6 +1715,24 @@ void AddRoadway(ChSystem *chsystem) {
     trimesh_shape->SetMesh(trimesh);
     trimesh_shape->SetName(environment_meshes[i]);
     trimesh_shape->SetMutable(false);
+
+    if (i == 2) {
+      auto road_tex = chrono_types::make_shared<ChVisualMaterial>();
+      road_tex->SetKdTexture(
+          demo_data_path +
+          "/Environments/Iowa/terrain/T_Road002_Dashed_Dirt_Color2.png");
+      road_tex->SetRoughnessTexture(
+          demo_data_path +
+          "/Environments/Iowa/terrain/T_Road002_Dashed_Dirt_Roughness2.png");
+      road_tex->SetNormalMapTexture(
+          demo_data_path +
+          "/Environments/Iowa/terrain/T_Road002_Dashed_Dirt_Normal2.png");
+      road_tex->SetMetallicTexture(
+          demo_data_path +
+          "/Environments/Iowa/terrain/T_Road002_Dashed_Dirt_Metallic2.png");
+      trimesh_shape->GetMaterials()[0] = road_tex;
+    }
+
     auto mesh_body = chrono_types::make_shared<ChBody>();
     mesh_body->SetPos(offsets[i]);
     mesh_body->AddVisualShape(trimesh_shape);
@@ -1838,7 +1842,6 @@ void AddBuildings(ChSystem *chsystem) {
     trimesh_shape->SetMesh(trimesh);
     trimesh_shape->SetName(environment_meshes[i]);
     trimesh_shape->SetMutable(false);
-    // trimesh_shape->SetStatic(true);
     trimesh_shape->SetScale({3, 3, 3});
     auto mesh_body = chrono_types::make_shared<ChBody>();
     mesh_body->SetPos(offsets[i]);
@@ -1862,7 +1865,6 @@ void AddTerrain(ChSystem *chsystem) {
   terrain_shape->SetMesh(terrain_mesh);
   terrain_shape->SetName("terrain");
   terrain_shape->SetMutable(false);
-  // terrain_shape->SetStatic(true);
 
   auto gravel_tex = chrono_types::make_shared<ChVisualMaterial>();
   gravel_tex->SetKdTexture(
@@ -1884,7 +1886,7 @@ void AddTerrain(ChSystem *chsystem) {
   // gravel_tex->SetTextureScale({1000.0, 1000.0, 1.0});
   gravel_tex->SetRoughness(1.f);
   gravel_tex->SetUseSpecularWorkflow(false);
-  terrain_shape->GetMaterials().push_back(gravel_tex);
+  terrain_shape->GetMaterials()[0] = gravel_tex;
 
   auto grass_tex_1 = chrono_types::make_shared<ChVisualMaterial>();
   grass_tex_1->SetKdTexture(demo_data_path + "/Environments/Iowa/terrain/Grass/"
@@ -1905,7 +1907,7 @@ void AddTerrain(ChSystem *chsystem) {
   grass_tex_1->SetSpecularColor({.0f, .0f, .0f});
   grass_tex_1->SetRoughness(1.f);
   grass_tex_1->SetUseSpecularWorkflow(false);
-  terrain_shape->GetMaterials().push_back(grass_tex_1);
+  terrain_shape->AddMaterial(grass_tex_1);
 
   auto grass_tex_2 = chrono_types::make_shared<ChVisualMaterial>();
   grass_tex_2->SetKdTexture(demo_data_path +
@@ -1927,7 +1929,7 @@ void AddTerrain(ChSystem *chsystem) {
   // grass_tex_2->SetTextureScale({1000.0, 1000.0, 1.0});
   grass_tex_2->SetRoughness(1.f);
   grass_tex_2->SetUseSpecularWorkflow(false);
-  terrain_shape->GetMaterials().push_back(grass_tex_2);
+  terrain_shape->AddMaterial(grass_tex_2);
 
   auto terrain_body = chrono_types::make_shared<ChBody>();
   terrain_body->SetPos({0, 0, -.01});
