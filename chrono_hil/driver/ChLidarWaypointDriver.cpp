@@ -29,7 +29,7 @@
 #include <sstream>
 
 namespace chrono {
-namespace synchrono {
+namespace hil {
 
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
@@ -173,5 +173,5 @@ void ChLidarWaypointDriver::Advance(double step) {
                       m_braking + max_dt);
 }
 
-} // namespace synchrono
+} // namespace hil
 } // end namespace chrono

@@ -66,6 +66,7 @@ using namespace chrono::geometry;
 using namespace chrono::vehicle;
 using namespace chrono::sensor;
 using namespace chrono::synchrono;
+using namespace chrono::hil;
 
 // -----------------------------------------------------------------------------
 // rad to RPM conversion parameters

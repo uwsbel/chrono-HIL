@@ -34,65 +34,60 @@ using namespace chrono::vehicle;
 using namespace chrono::sensor;
 
 namespace chrono {
-namespace synchrono {
+namespace hil {
 
 class CH_VEHICLE_API ChLidarWaypointDriver : public ChDriver {
-  public:
-    /// Construct an interactive driver.
-    ChLidarWaypointDriver(ChVehicle& vehicle,
-                          std::shared_ptr<ChLidarSensor> lidar,
-                          std::shared_ptr<ChBezierCurve> path,
-                          const std::string& path_name,
-                          double target_speed,           ///< constant target speed
-                          double target_following_time,  ///< seconds of following time
-                          double target_min_distance,    ///< min following distance
-                          double current_distance,       ///< current distance to the vehicle in front
-                          bool isClosedPath              ///< Treat the path as a closed loop
-    );
+public:
+  /// Construct an interactive driver.
+  ChLidarWaypointDriver(
+      ChVehicle &vehicle, std::shared_ptr<ChLidarSensor> lidar,
+      std::shared_ptr<ChBezierCurve> path, const std::string &path_name,
+      double target_speed,          ///< constant target speed
+      double target_following_time, ///< seconds of following time
+      double target_min_distance,   ///< min following distance
+      double current_distance, ///< current distance to the vehicle in front
+      bool isClosedPath        ///< Treat the path as a closed loop
+  );
 
-    virtual ~ChLidarWaypointDriver() {}
+  virtual ~ChLidarWaypointDriver() {}
 
-    /// Update the state of this driver system at the specified time.
-    virtual void Synchronize(double time) override;
+  /// Update the state of this driver system at the specified time.
+  virtual void Synchronize(double time) override;
 
-    /// Advance the state of this driver system by the specified time step.
-    virtual void Advance(double step) override;
+  /// Advance the state of this driver system by the specified time step.
+  virtual void Advance(double step) override;
 
-    void SetCurrentDistance(double dist) {
-        if (m_current_time > last_dist_update_time + 1e-6) {
-            m_current_distance = dist;
-        } else {
-            m_current_distance = std::min(m_current_distance, dist);
-        }
-        next_dist_reset_time = m_current_time + 0.05;
-        last_dist_update_time = m_current_time;
+  void SetCurrentDistance(double dist) {
+    if (m_current_time > last_dist_update_time + 1e-6) {
+      m_current_distance = dist;
+    } else {
+      m_current_distance = std::min(m_current_distance, dist);
     }
+    next_dist_reset_time = m_current_time + 0.05;
+    last_dist_update_time = m_current_time;
+  }
 
-    /// Set gains for internal dynamics.
-    void SetGains(double lookahead,
-                  double p_steer,
-                  double i_steer,
-                  double d_steer,
-                  double p_acc,
-                  double i_acc,
-                  double d_acc);
+  /// Set gains for internal dynamics.
+  void SetGains(double lookahead, double p_steer, double i_steer,
+                double d_steer, double p_acc, double i_acc, double d_acc);
 
-  private:
-    void MinDistFromLidar();
+private:
+  void MinDistFromLidar();
 
-    std::shared_ptr<ChLidarSensor> m_lidar;
-    double m_current_distance;
-    double m_last_lidar_time = 0;
-    double next_dist_reset_time = 0;
-    double last_dist_update_time = 0;
-    double m_target_speed;
-    double m_current_time = 0;
-    std::shared_ptr<ChBezierCurve> m_path;
+  std::shared_ptr<ChLidarSensor> m_lidar;
+  double m_current_distance;
+  double m_last_lidar_time = 0;
+  double next_dist_reset_time = 0;
+  double last_dist_update_time = 0;
+  double m_target_speed;
+  double m_current_time = 0;
+  std::shared_ptr<ChBezierCurve> m_path;
 
-    std::shared_ptr<ChPathFollowerACCDriver> m_acc_driver;  ///< underlying acc driver
+  std::shared_ptr<ChPathFollowerACCDriver>
+      m_acc_driver; ///< underlying acc driver
 };
 
-}  // namespace synchrono
-}  // namespace chrono
+} // namespace hil
+} // namespace chrono
 
 #endif

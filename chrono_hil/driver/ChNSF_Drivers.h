@@ -40,91 +40,103 @@ using namespace chrono::sensor;
 #define M_TO_MILE 0.000621371
 #define MILE_TO_M 1609.34449789
 namespace chrono {
+namespace hil {
 
-// Driver for the leader vehicle, it adjusts its target speed according to a piecewise sinusoidal function
-// In the buffer-areas between pieces it keeps the target speed specified in target_speed
+// Driver for the leader vehicle, it adjusts its target speed according to a
+// piecewise sinusoidal function In the buffer-areas between pieces it keeps the
+// target speed specified in target_speed
 class CH_VEHICLE_API ChNSFLeaderDriver : public ChPathFollowerDriver {
-  public:
-    /// Construct an interactive driver.
-    ChNSFLeaderDriver(ChVehicle& vehicle,                         ///< associated vehicle
-                      const std::string& steering_filename,       ///< JSON file with steering controller specification
-                      const std::string& speed_filename,          ///< JSON file with speed controller specification
-                      std::shared_ptr<ChBezierCurve> path,        ///< Bezier curve with target path
-                      const std::string& path_name,               ///< name of the path curve
-                      double target_speed,                        ///< constant target speed
-                      std::vector<std::vector<double>> behavior,  ///< piecewise directives
-                      bool isClosedPath = false                   ///< Treat the path as a closed loop
-    );
+public:
+  /// Construct an interactive driver.
+  ChNSFLeaderDriver(
+      ChVehicle &vehicle,                   ///< associated vehicle
+      const std::string &steering_filename, ///< JSON file with steering
+                                            ///< controller specification
+      const std::string
+          &speed_filename, ///< JSON file with speed controller specification
+      std::shared_ptr<ChBezierCurve> path, ///< Bezier curve with target path
+      const std::string &path_name,        ///< name of the path curve
+      double target_speed,                 ///< constant target speed
+      std::vector<std::vector<double>> behavior, ///< piecewise directives
+      bool isClosedPath = false ///< Treat the path as a closed loop
+  );
 
-    virtual ~ChNSFLeaderDriver() {}
+  virtual ~ChNSFLeaderDriver() {}
 
-    void Synchronize(double time);
+  void Synchronize(double time);
 
-    void SetCruiseSpeed(double speed);
+  void SetCruiseSpeed(double speed);
 
-    double Get_Dist();
+  double Get_Dist();
 
-  private:
-    // starting pos to compare with to obtain traveled dist
-    ChVector<> previousPos;
-    // traveldistance
-    double dist;
-    // vector of vectors containing the instruction for target speed
-    std::vector<std::vector<double>> behavior_data;
-    // Cruise speed between sinusoidal stretches
-    double cruise_speed;
+private:
+  // starting pos to compare with to obtain traveled dist
+  ChVector<> previousPos;
+  // traveldistance
+  double dist;
+  // vector of vectors containing the instruction for target speed
+  std::vector<std::vector<double>> behavior_data;
+  // Cruise speed between sinusoidal stretches
+  double cruise_speed;
 };
 
 // Driver for the follower vehicle, it adjust its speed
 class CH_VEHICLE_API ChNSFFollowerDriver : public ChPathFollowerDriver {
-  public:
-    /// Construct an interactive driver.
-    ChNSFFollowerDriver(ChVehicle& vehicle,                       ///< associated vehicle
-                        const std::string& steering_filename,     ///< JSON file with steering controller specification
-                        const std::string& speed_filename,        ///< JSON file with speed controller specification
-                        std::shared_ptr<ChBezierCurve> path,      ///< Bezier curve with target path
-                        const std::string& path_name,             ///< name of the path curve
-                        double target_speed,                      ///< constant target speed
-                        std::shared_ptr<ChVehicle> lead_vehicle,  ///< followed_vehicle
-                        std::vector<double> params,               ///< JSON file with piecewise params
-                        bool isClosedPath);                       ///< Treat the path as a closed loop
+public:
+  /// Construct an interactive driver.
+  ChNSFFollowerDriver(
+      ChVehicle &vehicle,                   ///< associated vehicle
+      const std::string &steering_filename, ///< JSON file with steering
+                                            ///< controller specification
+      const std::string
+          &speed_filename, ///< JSON file with speed controller specification
+      std::shared_ptr<ChBezierCurve> path, ///< Bezier curve with target path
+      const std::string &path_name,        ///< name of the path curve
+      double target_speed,                 ///< constant target speed
+      std::shared_ptr<ChVehicle> lead_vehicle, ///< followed_vehicle
+      std::vector<double> params, ///< JSON file with piecewise params
+      bool isClosedPath);         ///< Treat the path as a closed loop
 
-    ChNSFFollowerDriver(ChVehicle& vehicle,                    ///< associated vehicle
-                        const std::string& steering_filename,  ///< JSON file with steering controller specification
-                        const std::string& speed_filename,     ///< JSON file with speed controller specification
-                        std::shared_ptr<ChBezierCurve> path,   ///< Bezier curve with target path
-                        const std::string& path_name,          ///< name of the path curve
-                        double target_speed,                   ///< constant target speed
-                        std::vector<double> params,            ///< JSON file with piecewise params
-                        bool isClosedPath);                    ///< Treat the path as a closed loop
+  ChNSFFollowerDriver(
+      ChVehicle &vehicle,                   ///< associated vehicle
+      const std::string &steering_filename, ///< JSON file with steering
+                                            ///< controller specification
+      const std::string
+          &speed_filename, ///< JSON file with speed controller specification
+      std::shared_ptr<ChBezierCurve> path, ///< Bezier curve with target path
+      const std::string &path_name,        ///< name of the path curve
+      double target_speed,                 ///< constant target speed
+      std::vector<double> params,          ///< JSON file with piecewise params
+      bool isClosedPath);                  ///< Treat the path as a closed loop
 
-    virtual ~ChNSFFollowerDriver() {}
+  virtual ~ChNSFFollowerDriver() {}
 
-    void Synchronize(double time, double step);
+  void Synchronize(double time, double step);
 
-    void SetCruiseSpeed(double speed);
+  void SetCruiseSpeed(double speed);
 
-    double Get_Dist();
+  double Get_Dist();
 
-    void Set_TheroSpeed(float target_thero_speed);
+  void Set_TheroSpeed(float target_thero_speed);
 
-  private:
-    // starting pos to compare with to obtain traveled dist
-    ChVector<> previousPos;
-    // traveldistance
-    double dist;
-    // theoretical speed
-    double thero_speed = 0;
-    // no lead indicator (if no lead, then PID should be set seperately than IDM)
-    bool m_no_lead = false;
-    // vector of vectors containing the instruction for target speed
-    std::vector<double> behavior_data;
-    // Cruise speed between sinusoidal stretches
-    double cruise_speed;
-    // leader vehicle to follow
-    std::shared_ptr<ChVehicle> leader;
+private:
+  // starting pos to compare with to obtain traveled dist
+  ChVector<> previousPos;
+  // traveldistance
+  double dist;
+  // theoretical speed
+  double thero_speed = 0;
+  // no lead indicator (if no lead, then PID should be set seperately than IDM)
+  bool m_no_lead = false;
+  // vector of vectors containing the instruction for target speed
+  std::vector<double> behavior_data;
+  // Cruise speed between sinusoidal stretches
+  double cruise_speed;
+  // leader vehicle to follow
+  std::shared_ptr<ChVehicle> leader;
 };
 
-}  // namespace chrono
+} // namespace hil
+} // namespace chrono
 
 #endif

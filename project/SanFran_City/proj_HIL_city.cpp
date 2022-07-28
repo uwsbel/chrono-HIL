@@ -83,6 +83,7 @@ using namespace chrono::irrlicht;
 using namespace chrono::synchrono;
 using namespace chrono::vehicle;
 using namespace chrono::sensor;
+using namespace chrono::hil;
 
 // =============================================================================
 

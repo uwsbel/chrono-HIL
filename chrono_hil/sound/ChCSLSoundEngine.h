@@ -33,6 +33,7 @@
 using namespace chrono::vehicle;
 
 namespace chrono {
+namespace hil {
 /// Sound effect tools for the CSL simulator
 ///
 class CH_VEHICLE_API ChCSLSoundEngine {
@@ -56,6 +57,7 @@ private:
   double last_time_played = 0;
   int last_threshold = 0;
 };
+} // end namespace hil
 } // end namespace chrono
 #endif
 #endif
