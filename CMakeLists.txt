@@ -136,6 +136,7 @@ add_subdirectory(project)
 add_subdirectory(chrono_hil)
 
 
+
 #--------------------------------------------------------------
 # === 4 (OPTIONAL) ===
 # 
@@ -147,5 +148,16 @@ add_subdirectory(chrono_hil)
 # (this can simply be ${CMAKE_BINARY_DIR}, like in this example)
 #--------------------------------------------------------------
 
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
+set(EXECUTABLE_OUTPUT_PATH bin)
 add_DLL_copy_command("${CHRONO_DLLS}")
+
+# Return now if not windows
+if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    return()
+endif()
+add_custom_command(
+    TARGET COPY_DLLS POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${EXECUTABLE_OUTPUT_PATH}/../chrono_hil/$<CONFIGURATION>/ChronoEngine_hil.dll"
+        "${EXECUTABLE_OUTPUT_PATH}/$<CONFIGURATION>/"
+)

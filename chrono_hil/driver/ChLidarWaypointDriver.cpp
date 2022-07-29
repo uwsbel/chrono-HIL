@@ -33,6 +33,7 @@ namespace hil {
 
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
+/*
 ChLidarWaypointDriver::ChLidarWaypointDriver(
     ChVehicle &vehicle, std::shared_ptr<ChLidarSensor> lidar,
     std::shared_ptr<ChBezierCurve> path, const std::string &path_name,
@@ -52,7 +53,7 @@ ChLidarWaypointDriver::ChLidarWaypointDriver(
   m_acc_driver->GetSteeringController().SetLookAheadDistance(8.0);
   m_acc_driver->Initialize();
   m_acc_driver->Reset();
-}
+}*/
 
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------

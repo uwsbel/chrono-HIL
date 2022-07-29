@@ -24,6 +24,7 @@
 
 #include <string>
 
+#include "../ChApiHil.h"
 #include "chrono_sensor/sensors/ChLidarSensor.h"
 #include "chrono_vehicle/ChApiVehicle.h"
 #include "chrono_vehicle/ChDriver.h"
@@ -45,7 +46,7 @@ namespace hil {
 // Driver for the leader vehicle, it adjusts its target speed according to a
 // piecewise sinusoidal function In the buffer-areas between pieces it keeps the
 // target speed specified in target_speed
-class CH_VEHICLE_API ChNSFLeaderDriver : public ChPathFollowerDriver {
+class CH_HIL_API ChNSFLeaderDriver : public ChPathFollowerDriver {
 public:
   /// Construct an interactive driver.
   ChNSFLeaderDriver(
@@ -57,11 +58,17 @@ public:
       std::shared_ptr<ChBezierCurve> path, ///< Bezier curve with target path
       const std::string &path_name,        ///< name of the path curve
       double target_speed,                 ///< constant target speed
-      std::vector<std::vector<double>> behavior, ///< piecewise directives
-      bool isClosedPath = false ///< Treat the path as a closed loop
-  );
+      std::vector<std::vector<double>>
+          behavior,      ///< JSON file with piecewise directives
+      bool isClosedPath) ///< Treat the path as a closed loop
+      : ChPathFollowerDriver(vehicle, steering_filename, speed_filename, path,
+                             path_name, target_speed, isClosedPath),
+        behavior_data(behavior), cruise_speed(target_speed) {
+    previousPos = vehicle.GetChassis()->GetPos();
+    dist = 0;
+  }
 
-  virtual ~ChNSFLeaderDriver() {}
+  ~ChNSFLeaderDriver() {}
 
   void Synchronize(double time);
 
@@ -81,7 +88,7 @@ private:
 };
 
 // Driver for the follower vehicle, it adjust its speed
-class CH_VEHICLE_API ChNSFFollowerDriver : public ChPathFollowerDriver {
+class CH_HIL_API ChNSFFollowerDriver : public ChPathFollowerDriver {
 public:
   /// Construct an interactive driver.
   ChNSFFollowerDriver(
@@ -95,7 +102,15 @@ public:
       double target_speed,                 ///< constant target speed
       std::shared_ptr<ChVehicle> lead_vehicle, ///< followed_vehicle
       std::vector<double> params, ///< JSON file with piecewise params
-      bool isClosedPath);         ///< Treat the path as a closed loop
+      bool isClosedPath)          ///< Treat the path as a closed loop
+      : ChPathFollowerDriver(vehicle, steering_filename, speed_filename, path,
+                             path_name, target_speed, isClosedPath),
+        behavior_data(params), cruise_speed(target_speed),
+        leader(lead_vehicle) {
+    previousPos = vehicle.GetChassis()->GetPos();
+    dist = 0;
+    m_no_lead = false;
+  }
 
   ChNSFFollowerDriver(
       ChVehicle &vehicle,                   ///< associated vehicle
@@ -107,9 +122,16 @@ public:
       const std::string &path_name,        ///< name of the path curve
       double target_speed,                 ///< constant target speed
       std::vector<double> params,          ///< JSON file with piecewise params
-      bool isClosedPath);                  ///< Treat the path as a closed loop
+      bool isClosedPath)                   ///< Treat the path as a closed loop
+      : ChPathFollowerDriver(vehicle, steering_filename, speed_filename, path,
+                             path_name, target_speed, isClosedPath),
+        behavior_data(params), cruise_speed(target_speed) {
+    previousPos = vehicle.GetChassis()->GetPos();
+    dist = 0;
+    m_no_lead = true;
+  }
 
-  virtual ~ChNSFFollowerDriver() {}
+  ~ChNSFFollowerDriver() {}
 
   void Synchronize(double time, double step);
 

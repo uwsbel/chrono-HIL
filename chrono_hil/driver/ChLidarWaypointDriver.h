@@ -24,6 +24,7 @@
 
 #include <string>
 
+#include "../ChApiHil.h"
 #include "chrono_sensor/sensors/ChLidarSensor.h"
 #include "chrono_vehicle/ChApiVehicle.h"
 #include "chrono_vehicle/ChDriver.h"
@@ -36,7 +37,7 @@ using namespace chrono::sensor;
 namespace chrono {
 namespace hil {
 
-class CH_VEHICLE_API ChLidarWaypointDriver : public ChDriver {
+class CH_HIL_API ChLidarWaypointDriver : public ChDriver {
 public:
   /// Construct an interactive driver.
   ChLidarWaypointDriver(
@@ -47,7 +48,18 @@ public:
       double target_min_distance,   ///< min following distance
       double current_distance, ///< current distance to the vehicle in front
       bool isClosedPath        ///< Treat the path as a closed loop
-  );
+      )
+      : ChDriver(vehicle), m_lidar(lidar), m_target_speed(target_speed),
+        m_path(path), m_current_distance(100.0) {
+    m_acc_driver = chrono_types::make_shared<ChPathFollowerACCDriver>(
+        vehicle, path, path_name, target_speed, target_following_time,
+        target_min_distance, current_distance, isClosedPath);
+    m_acc_driver->GetSpeedController().SetGains(0.5, 0, 0);
+    m_acc_driver->GetSteeringController().SetGains(0.5, 0, 0);
+    m_acc_driver->GetSteeringController().SetLookAheadDistance(8.0);
+    m_acc_driver->Initialize();
+    m_acc_driver->Reset();
+  }
 
   virtual ~ChLidarWaypointDriver() {}
 

@@ -7,4 +7,3 @@ if(ENABLE_PROJECTS)
   add_subdirectory(Unity_Couple)
   add_subdirectory(HMMWV_SCM)
 endif()
-

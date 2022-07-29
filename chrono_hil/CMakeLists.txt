@@ -39,7 +39,7 @@ set_target_properties(ChronoEngine_hil PROPERTIES
 include_directories(${CHRONO_INCLUDE_DIRS})
 
 
-target_compile_definitions(ChronoEngine_hil PRIVATE "CH_API_COMPILE_MODELS")
+target_compile_definitions(ChronoEngine_hil PRIVATE "CH_API_COMPILE_HIL")
 target_compile_definitions(ChronoEngine_hil PRIVATE "CH_IGNORE_DEPRECATED")
 
 target_link_libraries(ChronoEngine_hil ${LIBRARIES})
@@ -52,5 +52,7 @@ install(TARGETS ChronoEngine_hil
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/
         DESTINATION include/chrono_hil
         FILES_MATCHING PATTERN "*.h")
+install(FILES ChApiModels.h DESTINATION include/chrono_hil)
+
 
 

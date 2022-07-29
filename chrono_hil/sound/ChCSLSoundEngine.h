@@ -23,10 +23,12 @@
 #define CH_SOUND_ENGINE_H
 #include <string>
 
+#include "../ChApiHil.h"
 #include "chrono/physics/ChSystem.h"
 #include "chrono/utils/ChUtilsChaseCamera.h"
 #include "chrono_vehicle/ChApiVehicle.h"
 #include "chrono_vehicle/ChVehicle.h"
+
 #ifdef CHRONO_IRRKLANG
 #include "irrKlang.h"
 

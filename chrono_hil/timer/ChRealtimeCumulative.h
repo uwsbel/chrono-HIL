@@ -5,6 +5,7 @@
 
 #include <limits>
 
+#include "../ChApiHil.h"
 #include "chrono/core/ChTimer.h"
 
 namespace chrono {

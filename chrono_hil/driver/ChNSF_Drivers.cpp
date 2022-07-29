@@ -32,6 +32,7 @@ namespace hil {
 
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
+/*
 ChNSFLeaderDriver::ChNSFLeaderDriver(
     ChVehicle &vehicle, ///< associated vehicle
     const std::string &
@@ -49,7 +50,7 @@ ChNSFLeaderDriver::ChNSFLeaderDriver(
       behavior_data(behavior), cruise_speed(target_speed) {
   previousPos = vehicle.GetChassis()->GetPos();
   dist = 0;
-}
+}*/
 
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
@@ -86,7 +87,7 @@ void ChNSFLeaderDriver::Synchronize(double time) {
 double ChNSFLeaderDriver::Get_Dist() { return dist; }
 
 void ChNSFLeaderDriver::SetCruiseSpeed(double speed) { cruise_speed = speed; }
-
+/*
 ChNSFFollowerDriver::ChNSFFollowerDriver(
     ChVehicle &vehicle, ///< associated vehicle
     const std::string &
@@ -124,7 +125,7 @@ ChNSFFollowerDriver::ChNSFFollowerDriver(
   previousPos = vehicle.GetChassis()->GetPos();
   dist = 0;
   m_no_lead = true;
-}
+}*/
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 void ChNSFFollowerDriver::Synchronize(double time, double step) {

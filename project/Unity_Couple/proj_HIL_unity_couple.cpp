@@ -129,7 +129,7 @@ bool render = true; // Irrlicht rendering option
 // if the terrain mode is MESH
 // mesh_number = 0 -> customized long-distance curved highway
 // mesh_number = 1 -> chrono default test obj terrain
-int mesh_number = 0;
+int mesh_number = 1;
 
 // =============================================================================
 
