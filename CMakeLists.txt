@@ -134,6 +134,7 @@ endif()
 
 add_subdirectory(project)
 add_subdirectory(chrono_hil)
+add_subdirectory(test)
 
 
 
