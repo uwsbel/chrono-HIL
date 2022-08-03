@@ -269,6 +269,9 @@ double eta_dist = 3.6; // eta counter distance
 float start_sim_time;
 float start_wall_time;
 
+// use keyboard?
+bool keyboard_control = false;
+
 // Texture variables
 irr::video::ITexture *texture_DASH;
 irr::video::ITexture *texture_GEAR1;
@@ -662,6 +665,8 @@ void AddCommandLineOptions(ChCLI &cli) {
                              filename);
   cli.AddOption<std::string>("Simulation", "csv_comments",
                              "CSV output comments", csv_comments);
+  cli.AddOption<bool>("Simulation", "use_keyboard", "Use Keyboard for control",
+                      "false");
   cli.AddOption<bool>(
       "Simulation", "enable_realtime",
       "Use a cumulative realtimer to sync sim_time and wall_time every 0.01s",
@@ -680,6 +685,7 @@ int main(int argc, char *argv[]) {
   step_size = cli.GetAsType<double>("step_size");
   t_end = cli.GetAsType<double>("end_time");
   enable_realtime = cli.GetAsType<bool>("enable_realtime");
+  keyboard_control = cli.GetAsType<bool>("use_keyboard");
 
   std::cout << "enable_realtime: " << enable_realtime << std::endl;
 
@@ -1057,8 +1063,14 @@ int main(int argc, char *argv[]) {
   //                           ChIrrGuiDriver::JoystickAxes::AXIS_R,
   //                           ChIrrGuiDriver::JoystickAxes::AXIS_X,
   //                           ChIrrGuiDriver::JoystickAxes::NONE);
-  IGdriver->SetJoystickConfigFile(
-      vehicle::GetDataFile("joystick/controller_G27.json"));
+  if (keyboard_control) {
+    IGdriver->SetInputMode(ChIrrGuiDriver::InputMode::KEYBOARD);
+  } else {
+    IGdriver->SetInputMode(ChIrrGuiDriver::InputMode::JOYSTICK);
+    IGdriver->SetJoystickConfigFile(
+        vehicle::GetDataFile("joystick/controller_G27.json"));
+  }
+
   IGdriver->Initialize();
 
   std::string steering_controller_file_IG =
