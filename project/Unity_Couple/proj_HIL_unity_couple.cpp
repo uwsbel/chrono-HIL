@@ -9,13 +9,11 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
+// Authors: Jason Zhou
 // =============================================================================
-//
-// Main driver function for the Sedan full model.
-//
-// The vehicle reference frame has Z up, X towards the front of the vehicle, and
-// Y pointing to the left.
-//
+// This is a demo showing chrono-unity vehicle coupling using an UDP port
+// note: this demo requires boost library (if on Windows an extra external
+// library needs to be used)
 // =============================================================================
 
 #include "chrono/core/ChRealtimeStep.h"
@@ -295,9 +293,6 @@ int main(int argc, char *argv[]) {
   driver.SetThrottleDelta(render_step_size / throttle_time);
   driver.SetBrakingDelta(render_step_size / braking_time);
 
-  driver.SetJoystickConfigFile(
-      vehicle::GetDataFile("joystick/controller_G27.json"));
-
   // If in playback mode, attach the data file to the driver system and
   // force it to playback the driver inputs.
   if (driver_mode == PLAYBACK) {
@@ -305,8 +300,8 @@ int main(int argc, char *argv[]) {
     driver.SetInputMode(ChIrrGuiDriver::InputMode::DATAFILE);
   }
 
-  driver.SetJoystickConfigFile(
-      vehicle::GetDataFile("joystick/controller_G27.json"));
+  driver.SetJoystickConfigFile(std::string(STRINGIFY(HIL_DATA_DIR)) +
+                               std::string("/unity/controller_G27.json"));
 
   driver.Initialize();
 

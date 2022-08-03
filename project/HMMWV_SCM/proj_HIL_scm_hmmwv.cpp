@@ -9,7 +9,7 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Author: Radu Serban, Jason ZHou
+// Author: Radu Serban, Jason Zhou
 // =============================================================================
 // The global reference frame has Z up.
 // All units SI.
