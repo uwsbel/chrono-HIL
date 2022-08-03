@@ -2092,6 +2092,7 @@ void IrrDashUpdate(
     std::shared_ptr<chrono::vehicle::ChChassis> ego_chassis,
     DriverMode driver_mode, float &IG_dist, ChVector<> &IG_prev_pos,
     bool &IG_started_driving) {
+  app.GetDevice()->getVideoDriver()->beginScene();
   /// irrlicht::tools::drawSegment(app.GetVideoDriver(), v1, v2,
   /// video::SColor(255, 80, 0, 0), false);
   app.GetDevice()->getVideoDriver()->draw2DImage(
