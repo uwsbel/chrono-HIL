@@ -22,6 +22,12 @@ set(SOUND_FILES
 )
 source_group("sound" FILES ${SOUND_FILES})
 
+set(ROM_FILES
+    ROM/SimplifiedVehicle_2DOF.h
+    ROM/SimplifiedVehicle_2DOF.cpp
+)
+source_group("rom" FILES ${ROM_FILES})
+
 set(CXX_FLAGS ${CH_CXX_FLAGS})
 set(LIBRARIES ${CHRONO_LIBRARIES})
 
@@ -30,6 +36,7 @@ add_library(ChronoEngine_hil SHARED
             ${DRIVER_FILES}
             ${TIMER_FILES}
             ${SOUND_FILES}
+            ${ROM_FILES}
 )
 
 set_target_properties(ChronoEngine_hil PROPERTIES

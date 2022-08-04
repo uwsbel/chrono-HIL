@@ -9,13 +9,10 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Simone Benatti
+// Authors: Jason Zhou
 // =============================================================================
 //
-// Custom drivers for the NSF project.
-// Both are specialization of ChPathFollowerDriver
-// The leader will adjust its behavior depending on the traveled distance
-// The follower will adjust the speed to reach a target gap with the leader
+// 2DOF vehicle model class header file
 //
 // =============================================================================
 
@@ -36,7 +33,17 @@ public:
 
   ~SimplifiedVehicle_2DOF() {}
 
+  void Initialize();
+
+  void Step(float throt, float brake, float steer, float time_step);
+
+  float GetXPos() { return x; }
+  float GetYPos() { return y; }
+  float GetYaw() { return yaw; }
+
 private:
+  float g = 9.81; // gravitational pull
+
   // vehicle properties variables
   float a = 1.14;       // distance of c.g. from front axle (m)
   float b = 1.4;        // distance of c.g. from rear axle  (m)
@@ -56,14 +63,26 @@ private:
   float rr = 0.0125;    // Rolling resistance
 
   // vehicle state variables
-  float x = 0.0;        // x coordinate
-  float y = 0.0;        // y coordinate
-  float Vx = 0.0;       // lateral velocity
-  float Vy = 0.0;       // longitudinal velocity
+  float x = 0.0;        // x coordinate (expressed in global frame)
+  float y = 0.0;        // y coordinate (expressed in global frame)
+  float Vx = 0.0;       // longitudinal velocity (expressed in vehicle frame)
+  float Vy = 0.0;       // lateral velocity (expressed in vehicle frame)
   float yaw = 0.0;      // yaw rate
   float yaw_rate = 0.0; // yaw rate
   float wf = 0.0;       // front wheel angular velocity
   float wr = 0.0;       // rear wheel angular velocity
+
+  float Fzgf = 0.0; // weight on the front wheel (we assume an underlying
+                    // bicycle model with 2 wheels)
+  float Fzgr = 0.0; // weight on the rear wheel (we assume an underlying bicycle
+                    // model with 2 wheels)
+  float xtf = 0.0;  // front tire compression
+  float xtr = 0.0;  // rear tire compression
+
+  // vehicle control variables
+  float max_steer = 0.6525249; // vehicle steering angle, in rad
+  float max_torque = 300;
+  float max_brake = 300;
 };
 
 } // namespace hil
