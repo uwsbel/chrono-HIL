@@ -617,8 +617,8 @@ int main(int argc, char *argv[]) {
 
   auto patch = terrain.AddPatch(
       patch_mat,
-      ChCoordsys<>(ChVector<>({0, 0, -65.554}), rot.Get_A_quaternion()), 10000.0,
-      10000.0, 2, false, 1, false);
+      ChCoordsys<>(ChVector<>({0, 0, -65.554}), rot.Get_A_quaternion()),
+      10000.0, 10000.0, 2, false, 1, false);
   terrain.Initialize();
 
   std::shared_ptr<ChLidarSensor> lidar;
