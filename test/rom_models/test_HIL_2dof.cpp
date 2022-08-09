@@ -71,16 +71,16 @@ int main(int argc, char *argv[]) {
   vis->AddTypicalLights();
 
   // Simulation loop
-  double timestep = 0.01;
+  double timestep = 0.002;
   double sim_time = 0.0;
   ChRealtimeStepTimer realtime_timer;
   while (vis->Run()) {
     if (sim_time < 3) {
-      test_vehicle.Step(0.03, 0, 0.1, timestep);
+      test_vehicle.Step(0.03, 0, 0.2, timestep);
     } else if (sim_time < 5) {
       test_vehicle.Step(0, 0.05, 0, timestep);
     } else {
-      test_vehicle.Step(0.02, 0, -0.1, timestep);
+      test_vehicle.Step(0.02, 0, -0.2, timestep);
     }
 
     float x_pos = test_vehicle.GetXPos();

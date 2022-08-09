@@ -7,6 +7,8 @@ set(DRIVER_FILES
     driver/ChLidarWaypointDriver.cpp
     driver/ChNSF_Drivers.h
     driver/ChNSF_Drivers.cpp
+    driver/ChSDLInterface.h
+    driver/ChSDLInterface.cpp
     #driver/joystick.h
 )
 source_group("driver" FILES ${DRIVER_FILES})
@@ -39,17 +41,20 @@ add_library(ChronoEngine_hil SHARED
             ${ROM_FILES}
 )
 
+
+find_package(SDL2 REQUIRED)
+
 set_target_properties(ChronoEngine_hil PROPERTIES
                       COMPILE_FLAGS "${CXX_FLAGS}"
                       LINK_FLAGS "${CH_LINKERFLAG_SHARED}")
-                      
-include_directories(${CHRONO_INCLUDE_DIRS})
+                    
+include_directories(${CHRONO_INCLUDE_DIRS} ${SDL2_INCLUDE_DIRS})
 
 
 target_compile_definitions(ChronoEngine_hil PRIVATE "CH_API_COMPILE_HIL")
 target_compile_definitions(ChronoEngine_hil PRIVATE "CH_IGNORE_DEPRECATED")
 
-target_link_libraries(ChronoEngine_hil ${LIBRARIES})
+target_link_libraries(ChronoEngine_hil ${LIBRARIES} ${SDL2_LIBRARIES})
 
 install(TARGETS ChronoEngine_hil
         RUNTIME DESTINATION bin

@@ -47,81 +47,49 @@ void SimplifiedVehicle_2DOF::Step(float throt, float brake, float steer,
   float Rf = r0 - xtf;
   float Rr = r0 - xtr;
 
-  std::cout << "Vx:" << Vx << std::endl;
+  // slip ratio
+  float sf =
+      ((Rf * wf) - Vx * cos(steer_ang) + (Vy + a * yaw_rate) * sin(steer_ang)) /
+      (Vx * cos(steer_ang) + (Vy + a * yaw_rate) * sin(steer_ang));
 
-  if (Vx > 3) {
-    // slip ratio
-    float sf = ((Rf * wf) - Vx * cos(steer_ang) +
-                (Vy + a * yaw_rate) * sin(steer_ang)) /
-               (Vx * cos(steer_ang) + (Vy + a * yaw_rate) * sin(steer_ang));
+  float sr = (Rr * wr - Vx) / Vx;
 
-    float sr = (Rr * wr - Vx) / Vx;
+  std::cout << "sf:" << sf << "sr:" << sr << std::endl;
 
-    // ODE 1/5
-    float dVy = (-Vx * yaw_rate) +
-                (Cf * (Vy + a * yaw_rate) / Vx - steer_ang) / mt +
-                (Cr * (Vy - b * yaw_rate) / Vx) / mt;
-    // ODE 2/5
-    float dVx = (Vy * yaw_rate) + (sf * Cxf + sr * Cxr) / mt -
-                Cf * ((Vy + a * yaw_rate) / Vx - steer_ang) * steer_ang;
-    // ODE 3/5
-    float d_yaw_rate =
-        (1 / Jz) * ((a * Cf * ((Vy + a * yaw_rate) / Vx - steer_ang)) -
-                    b * Cr * ((Vy - b * yaw_rate) / Vx));
-    // ODE 4/5
-    float dy = Vx * sin(yaw) + Vy * cos(yaw);
-    // ODE 5/5
-    float dx = Vx * cos(yaw) - Vy * sin(yaw);
+  // ODE 1/5
+  float dVy = (-Vx * yaw_rate) +
+              (Cf * (Vy + a * yaw_rate) / Vx - steer_ang) / mt +
+              (Cr * (Vy - b * yaw_rate) / Vx) / mt;
+  // ODE 2/5
+  float dVx = (Vy * yaw_rate) + (sf * Cxf + sr * Cxr) / mt -
+              Cf * ((Vy + a * yaw_rate) / Vx - steer_ang) * steer_ang;
+  // ODE 3/5
+  float d_yaw_rate =
+      (1 / Jz) * ((a * Cf * ((Vy + a * yaw_rate) / Vx - steer_ang)) -
+                  b * Cr * ((Vy - b * yaw_rate) / Vx));
+  // ODE 4/5
+  float dy = Vx * sin(yaw) + Vy * cos(yaw);
+  // ODE 5/5
+  float dx = Vx * cos(yaw) - Vy * sin(yaw);
 
-    // integration
-    y = y + dy * time_step;
-    x = x + dx * time_step;
-    yaw_rate = yaw_rate + d_yaw_rate * time_step;
-    yaw = yaw + yaw_rate * time_step;
-    Vx = Vx + dVx * time_step;
-    Vy = Vy + dVy * time_step;
+  // integration
+  y = y + dy * time_step;
+  x = x + dx * time_step;
+  yaw_rate = yaw_rate + d_yaw_rate * time_step;
+  yaw = yaw + yaw_rate * time_step;
+  Vx = Vx + dVx * time_step;
+  Vy = Vy + dVy * time_step;
 
-    // update inputs
-    float dwf = throt_torque / Jw - brake_torque / Jw;
-    float dwr = throt_torque / Jw - brake_torque / Jw;
-    wf = wf + dwf * time_step;
-    wr = wr + dwr * time_step;
-    if (wf < 0) {
-      wf = 0;
-    }
-    if (wr < 0) {
-      wr = 0;
-    }
-  } else {
-    float Vy_glob = Vx * sin(yaw) + Vy * cos(yaw);
-    float Vx_glob = Vx * cos(yaw) + Vy * sin(yaw);
-    yaw_rate =
-        sqrt(Vx_glob * Vx_glob + Vy_glob * Vy_glob) / (a + b) * tan(steer_ang);
-
-    Vx = wf * Rf * cos(steer_ang);
-    Vy = wr * Rr * sin(steer_ang);
-
-    float dy = Vx * sin(yaw) + Vy * cos(yaw);
-    float dx = Vx * cos(yaw) - Vy * sin(yaw);
-
-    // integration
-    y = y + dy * time_step;
-    x = x + dx * time_step;
-    yaw = yaw + yaw_rate * time_step;
-
-    // update inputs
-    float dwf = throt_torque / Jw - brake_torque / Jw;
-    float dwr = throt_torque / Jw - brake_torque / Jw;
-
-    wf = wf + dwf * time_step;
-    wr = wr + dwr * time_step;
-
-    if (wf < 0) {
-      wf = 0;
-    }
-    if (wr < 0) {
-      wr = 0;
-    }
+  // update inputs
+  float dwf = throt_torque / Jw - brake_torque / Jw;
+  float dwr = throt_torque / Jw - brake_torque / Jw;
+  wf = wf + dwf * time_step;
+  wr = wr + dwr * time_step;
+  if (wf < 0) {
+    wf = 0;
+  }
+  if (wr < 0) {
+    wr = 0;
   }
 }
 

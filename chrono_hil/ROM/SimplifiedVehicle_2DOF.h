@@ -65,7 +65,7 @@ private:
   // vehicle state variables
   float x = 0.0;        // x coordinate (expressed in global frame)
   float y = 0.0;        // y coordinate (expressed in global frame)
-  float Vx = 0.0;       // longitudinal velocity (expressed in vehicle frame)
+  float Vx = 3.0;       // longitudinal velocity (expressed in vehicle frame)
   float Vy = 0.0;       // lateral velocity (expressed in vehicle frame)
   float yaw = 0.0;      // yaw rate
   float yaw_rate = 0.0; // yaw rate
