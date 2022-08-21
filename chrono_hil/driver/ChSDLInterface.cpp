@@ -96,9 +96,7 @@ void ChSDLInterface::SetJoystickConfigFile(std::string config_filename) {
 
 float ChSDLInterface::GetThrottle() {
   // NOTE: SDL_QuitRequested() has to be called to make program run properly
-  if (SDL_QuitRequested()) {
-    return 0;
-  }
+  SDL_JoystickUpdate();
   float sdl_raw = SDL_JoystickGetAxis(m_joystick, m_throttle_axis.axis);
   return (sdl_raw - m_throttle_axis.max) *
              (m_throttle_axis.scaled_max - m_throttle_axis.scaled_min) /
@@ -108,9 +106,7 @@ float ChSDLInterface::GetThrottle() {
 
 float ChSDLInterface::GetSteering() {
   // NOTE: SDL_QuitRequested() has to be called to make program run properly
-  if (SDL_QuitRequested()) {
-    return 0;
-  }
+  SDL_JoystickUpdate();
   float sdl_raw = SDL_JoystickGetAxis(m_joystick, m_steering_axis.axis);
   return (sdl_raw - m_steering_axis.max) *
              (m_steering_axis.scaled_max - m_steering_axis.scaled_min) /
@@ -120,14 +116,20 @@ float ChSDLInterface::GetSteering() {
 
 float ChSDLInterface::GetBraking() {
   // NOTE: SDL_QuitRequested() has to be called to make program run properly
-  if (SDL_QuitRequested()) {
-    return 0;
-  }
+  SDL_JoystickUpdate();
   float sdl_raw = SDL_JoystickGetAxis(m_joystick, m_braking_axis.axis);
   return (sdl_raw - m_braking_axis.max) *
              (m_braking_axis.scaled_max - m_braking_axis.scaled_min) /
              (m_braking_axis.max - m_braking_axis.min) +
          m_braking_axis.scaled_max;
+}
+
+int ChSDLInterface::Synchronize() {
+  if (SDL_QuitRequested()) {
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
 } // namespace hil

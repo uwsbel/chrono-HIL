@@ -4,6 +4,8 @@
 #include "chrono/physics/ChSystemNSC.h"
 
 #include "chrono_hil/ROM/SimplifiedVehicle_2DOF.h"
+#include "chrono_hil/driver/ChSDLInterface.h"
+
 #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 
 #include "chrono_vehicle/driver/ChIrrGuiDriver.h"
@@ -23,6 +25,8 @@ using namespace chrono::vehicle;
 int main(int argc, char *argv[]) {
   GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: "
            << CHRONO_VERSION << "\n\n";
+
+  vehicle::SetDataPath(CHRONO_DATA_DIR + std::string("vehicle/"));
 
   // Create a ChronoENGINE physical system
   ChSystemNSC sys;
@@ -70,18 +74,32 @@ int main(int argc, char *argv[]) {
   vis->AddCamera(ChVector<>(3.5, 2.5, -2.4));
   vis->AddTypicalLights();
 
+  ChSDLInterface SDLDriver;
+  // Set the time response for steering and throttle keyboard inputs.
+
+  SDLDriver.Initialize();
+
+  SDLDriver.SetJoystickConfigFile(
+      vehicle::GetDataFile("joystick/controller_G27.json"));
+
   // Simulation loop
   double timestep = 0.002;
   double sim_time = 0.0;
   ChRealtimeStepTimer realtime_timer;
   while (vis->Run()) {
-    if (sim_time < 3) {
-      test_vehicle.Step(0.03, 0, 0.2, timestep);
-    } else if (sim_time < 5) {
-      test_vehicle.Step(0, 0.05, 0, timestep);
-    } else {
-      test_vehicle.Step(0.02, 0, -0.2, timestep);
-    }
+
+    // Driver inputs
+    DriverInputs driver_inputs;
+    driver_inputs.m_throttle = SDLDriver.GetThrottle();
+    driver_inputs.m_steering = SDLDriver.GetSteering();
+    driver_inputs.m_braking = SDLDriver.GetBraking();
+
+    std::cout << "throttle: " << driver_inputs.m_throttle
+              << ", brake: " << driver_inputs.m_braking
+              << ", steer:" << driver_inputs.m_steering << std::endl;
+
+    test_vehicle.Step(driver_inputs.m_throttle, driver_inputs.m_braking,
+                      driver_inputs.m_steering, timestep);
 
     float x_pos = test_vehicle.GetXPos();
     float y_pos = test_vehicle.GetYPos();

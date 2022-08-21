@@ -69,8 +69,8 @@ private:
   float Vy = 0.0;       // lateral velocity (expressed in vehicle frame)
   float yaw = 0.0;      // yaw rate
   float yaw_rate = 0.0; // yaw rate
-  float wf = 0.0;       // front wheel angular velocity
-  float wr = 0.0;       // rear wheel angular velocity
+  float wf = Vx / r0;   // front wheel angular velocity
+  float wr = Vx / r0;   // rear wheel angular velocity
 
   float Fzgf = 0.0; // weight on the front wheel (we assume an underlying
                     // bicycle model with 2 wheels)

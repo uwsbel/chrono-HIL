@@ -62,6 +62,8 @@ public:
 
   float GetSteering();
 
+  int Synchronize();
+
 private:
   SDL_Joystick *m_joystick;
 
