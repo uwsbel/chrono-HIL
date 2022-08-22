@@ -102,13 +102,24 @@ struct Asset {
   int mutable_ind; // 0 for mutable false. 1 for mutable true
 };
 
+struct Camera {
+  ChVector<> pos;
+  ChVector<> rot;
+  bool attach_pos;
+  int resolution_x;
+  int resolution_y;
+  int supersampling;
+  int fps;
+  std::string name;
+};
+
 // variable initial declaration
 IG_vehicle my_ig_vehicle;
 Terrain my_terrain;
 std::vector<Asset> my_assets;
+std::vector<Camera> my_cameras;
 
 ChContactMethod contact_method = ChContactMethod::SMC;
-ChVector<> trackPoint(0.0, 0.0, 0.5);
 float step_size = 1e-3;
 
 void PrintErrorMsg(int num);
@@ -118,7 +129,84 @@ void ReadParameterFiles() {
   std::cout << "json: " << json_parameters << std::endl;
   vehicle::ReadFileJSON(json_parameters, d);
 
+  // ===================================
+  // Simulation parameters specification
+  // ===================================
+  if (d.HasMember("Simulation")) {
+    if (d["Simulation"].HasMember("step_size")) {
+      step_size = d["Simulation"]["step_size"].GetFloat();
+    }
+  }
+
+  // ===================================
+  // Camera specification
+  // ===================================
+  int camera_index = 0;
+  while (d.HasMember(
+      (std::string("Camera") + std::to_string(camera_index)).c_str())) {
+    Camera temp_camera;
+    std::string cameraname =
+        std::string("Camera") + std::to_string(camera_index);
+    if (d[cameraname.c_str()].HasMember("pos")) {
+      auto marr = d[cameraname.c_str()]["pos"].GetArray();
+      temp_camera.pos = ChVector<>(marr[0].GetFloat(), marr[1].GetFloat(),
+                                   marr[2].GetFloat());
+    } else {
+      temp_camera.pos = ChVector<>(0.0, 0.0, 0.0);
+    }
+
+    if (d[cameraname.c_str()].HasMember("rot")) {
+      auto marr = d[cameraname.c_str()]["rot"].GetArray();
+      temp_camera.rot = ChVector<>(marr[0].GetFloat(), marr[1].GetFloat(),
+                                   marr[2].GetFloat());
+    } else {
+      temp_camera.rot = ChVector<>(0.0, 0.0, 0.0);
+    }
+
+    if (d[cameraname.c_str()].HasMember("resolution_x")) {
+      temp_camera.resolution_x = d[cameraname.c_str()]["resolution_x"].GetInt();
+    } else {
+      temp_camera.resolution_x = 50;
+    }
+
+    if (d[cameraname.c_str()].HasMember("resolution_y")) {
+      temp_camera.resolution_y = d[cameraname.c_str()]["resolution_y"].GetInt();
+    } else {
+      temp_camera.resolution_y = 50;
+    }
+
+    if (d[cameraname.c_str()].HasMember("supersampling")) {
+      temp_camera.supersampling =
+          d[cameraname.c_str()]["supersampling"].GetInt();
+    } else {
+      temp_camera.supersampling = 50;
+    }
+
+    if (d[cameraname.c_str()].HasMember("fps")) {
+      temp_camera.fps = d[cameraname.c_str()]["fps"].GetInt();
+    } else {
+      temp_camera.fps = 50;
+    }
+
+    if (d[cameraname.c_str()].HasMember("attach_pos")) {
+      temp_camera.attach_pos = d[cameraname.c_str()]["attach_pos"].GetBool();
+    } else {
+      temp_camera.attach_pos = false;
+    }
+
+    if (d[cameraname.c_str()].HasMember("name")) {
+      temp_camera.name = d[cameraname.c_str()]["name"].GetString();
+    } else {
+      temp_camera.name = "Default Cam View";
+    }
+
+    my_cameras.push_back(temp_camera);
+    camera_index++;
+  }
+
+  // ===================================
   // IG_vehicle specification
+  // ===================================
   if (d.HasMember("IG_Vehicle")) {
     if (d["IG_Vehicle"].HasMember("vehicle_file")) {
       my_ig_vehicle.vehicle_file = d["IG_Vehicle"]["vehicle_file"].GetString();
@@ -163,7 +251,9 @@ void ReadParameterFiles() {
     PrintErrorMsg(0);
   }
 
+  // ===================================
   // Terrain specification
+  // ====================================
   if (d.HasMember("Terrain")) {
     if (d["Terrain"].HasMember("type")) {
       std::string type_string = d["Terrain"]["type"].GetString();
@@ -198,7 +288,9 @@ void ReadParameterFiles() {
     PrintErrorMsg(2);
   }
 
+  // ===================================
   // Assets specification
+  // ===================================
   int asset_index = 0;
   while (d.HasMember(
       (std::string("Asset") + std::to_string(asset_index)).c_str())) {
@@ -242,6 +334,7 @@ void ReadParameterFiles() {
     }
 
     my_assets.push_back(temp_asset);
+    asset_index++;
   }
 }
 
@@ -337,23 +430,47 @@ int main(int argc, char *argv[]) {
   // -------------------------------------------------------
   // Create a camera and add it to the sensor manager
   // -------------------------------------------------------
-  ChVector<> driver_eye(-6.5, 0.0, 2.5);
-  ChQuaternion<> driver_view_direction = Q_from_AngAxis(CH_C_PI / 7, {0, 1, 0});
-  auto cam = chrono_types::make_shared<ChCameraSensor>(
-      vehicle.GetChassisBody(), // body camera is attached to
-      50,                       // update rate in Hz
-      chrono::ChFrame<double>(driver_eye, driver_view_direction), // offset pose
-      1920,                                                       // image width
-      1080, // image height
-      1.608f,
-      1); // fov, lag, exposure
-  cam->SetName("Camera Sensor");
+  for (int i = 0; i < my_cameras.size(); i++) {
+    if (my_cameras[i].attach_pos == true) {
+      auto cam = chrono_types::make_shared<ChCameraSensor>(
+          vehicle.GetChassisBody(), // body camera is attached to
+          my_cameras[i].fps,        // update rate in Hz
+          chrono::ChFrame<double>(
+              my_cameras[i].pos,
+              Q_from_Euler123(my_cameras[i].rot)), // offset pose
+          my_cameras[i].resolution_x,              // image width
+          my_cameras[i].resolution_y,              // image height
+          1.608f,
+          1); // fov, lag, exposure
+      cam->SetName("Camera Sensor");
 
-  cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
-      1920, 1080, "Driver View", false));
+      cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
+          my_cameras[i].resolution_x, my_cameras[i].resolution_y,
+          my_cameras[i].name, false));
+      manager->AddSensor(cam);
+    } else {
+      auto temp_body = chrono_types::make_shared<ChBody>();
+      temp_body->SetPos(my_cameras[i].pos);
+      temp_body->SetBodyFixed(true);
+      vehicle.GetSystem()->AddBody(temp_body);
+      auto cam = chrono_types::make_shared<ChCameraSensor>(
+          temp_body,         // body camera is attached to
+          my_cameras[i].fps, // update rate in Hz
+          chrono::ChFrame<double>(
+              my_cameras[i].pos,
+              Q_from_Euler123(my_cameras[i].rot)), // offset pose
+          my_cameras[i].resolution_x,              // image width
+          my_cameras[i].resolution_y,              // image height
+          1.608f,
+          1); // fov, lag, exposure
+      cam->SetName("Camera Sensor");
 
-  // add sensor to the manager
-  manager->AddSensor(cam);
+      cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
+          my_cameras[i].resolution_x, my_cameras[i].resolution_y,
+          my_cameras[i].name, false));
+      manager->AddSensor(cam);
+    }
+  }
 
   ChSDLInterface SDLDriver;
   // Set the time response for steering and throttle keyboard inputs.
