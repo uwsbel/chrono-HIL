@@ -1272,7 +1272,6 @@ int main(int argc, char *argv[]) {
       driver_inputs = PFdriver->GetInputs();
     else {
       driver_inputs = IGdriver->GetInputs();
-      driver_inputs.m_steering *= -1;
     }
 
     // printf("Driver inputs: %f,%f,%f\n",
