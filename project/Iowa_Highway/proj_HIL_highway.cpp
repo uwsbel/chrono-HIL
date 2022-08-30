@@ -56,7 +56,7 @@
 #include <sstream>
 
 #ifdef CHRONO_IRRKLANG
-#include "extras/ChCSLSoundEngine.h"
+#include "chrono_hil/sound/ChCSLSoundEngine.h"
 #endif
 
 #include "chrono_vehicle/utils/ChUtilsJSON.h"
@@ -252,6 +252,9 @@ std::vector<std::vector<std::vector<double>>> leaderParam;
 std::string csv_comments;
 std::string filename;
 
+// Joystick file
+std::string joystick_filename;
+
 // distance variable
 float IG_dist = 0;
 ChVector<> IG_prev_pos;
@@ -357,6 +360,10 @@ void ReadParameterFiles() {
       if (fog_params.HasMember("Distance")) {
         fog_distance = fog_params["Distance"].GetFloat();
       }
+    }
+
+    if (d.HasMember("Joystick")) {
+      joystick_filename = demo_data_path + d["Joystick"].GetString();
     }
 
     if (d.HasMember("Mirrors")) {
@@ -665,6 +672,10 @@ void AddCommandLineOptions(ChCLI &cli) {
                              filename);
   cli.AddOption<std::string>("Simulation", "csv_comments",
                              "CSV output comments", csv_comments);
+  cli.AddOption<int>("Simulation", "image_width", "x resolution",
+                     std::to_string(image_width));
+  cli.AddOption<int>("Simulation", "image_height", "y resolution",
+                     std::to_string(image_height));
   cli.AddOption<bool>("Simulation", "use_keyboard", "Use Keyboard for control",
                       "false");
   cli.AddOption<bool>(
@@ -686,6 +697,10 @@ int main(int argc, char *argv[]) {
   t_end = cli.GetAsType<double>("end_time");
   enable_realtime = cli.GetAsType<bool>("enable_realtime");
   keyboard_control = cli.GetAsType<bool>("use_keyboard");
+
+  // parse image resolution
+  image_height = cli.GetAsType<int>("image_height");
+  image_width = cli.GetAsType<int>("image_width");
 
   std::cout << "enable_realtime: " << enable_realtime << std::endl;
 
@@ -731,8 +746,7 @@ int main(int argc, char *argv[]) {
       vehicle::GetDataFile("audi/json/audi_Vehicle.json");
   std::string powertrain_file =
       vehicle::GetDataFile("audi/json/audi_SimpleMapPowertrain.json");
-  std::string tire_file =
-      vehicle::GetDataFile("audi/json/audi_TMeasyTire.json");
+  std::string tire_file = vehicle::GetDataFile("audi/json/audi_Pac02Tire.json");
   /*
     std::string vehicle_file =
         vehicle::GetDataFile("sedan/vehicle/Sedan_Vehicle.json");
@@ -781,7 +795,7 @@ int main(int argc, char *argv[]) {
   for (auto &axle : vehicle.GetAxles()) {
     for (auto &wheel : axle->GetWheels()) {
       auto tire = ReadTireJSON(tire_file);
-      tire->SetStepsize(step_size / 10);
+      tire->SetStepsize(step_size / 20);
       vehicle.InitializeTire(tire, wheel, tire_vis_type);
     }
   }
@@ -1055,20 +1069,12 @@ int main(int argc, char *argv[]) {
   IGdriver->SetButtonCallback(r_1, &CustomButtonCallback);
   IGdriver->SetButtonCallback(r_3, &DummyButtonCallback_r_3);
 
-  // for (int a = 0; a < 23; a++) {
-  //    IGdriver->SetButtonCallback(a, &dummyButtonCallback_test);
-  //}
-
-  // IGdriver->SetJoystickAxes(ChIrrGuiDriver::JoystickAxes::AXIS_Z,
-  //                           ChIrrGuiDriver::JoystickAxes::AXIS_R,
-  //                           ChIrrGuiDriver::JoystickAxes::AXIS_X,
-  //                           ChIrrGuiDriver::JoystickAxes::NONE);
   if (keyboard_control) {
     IGdriver->SetInputMode(ChIrrGuiDriver::InputMode::KEYBOARD);
   } else {
     IGdriver->SetInputMode(ChIrrGuiDriver::InputMode::JOYSTICK);
-    IGdriver->SetJoystickConfigFile(
-        vehicle::GetDataFile("joystick/controller_G27.json"));
+    std::cout << "joystick config: " << joystick_filename << std::endl;
+    IGdriver->SetJoystickConfigFile(joystick_filename);
   }
 
   IGdriver->Initialize();

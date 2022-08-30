@@ -21,6 +21,8 @@
 
 #include "chrono/utils/ChUtilsInputOutput.h"
 
+#include "chrono_thirdparty/cxxopts/ChCLI.h"
+
 #include "chrono_vehicle/ChDriver.h"
 #include "chrono_vehicle/ChVehicleModelData.h"
 #include "chrono_vehicle/driver/ChIrrGuiDriver.h"
@@ -95,6 +97,23 @@ const std::string img_dir = out_dir + "/IMG";
 // Visualization output
 bool img_output = false;
 
+// Irrlicht Rendering Window Size
+int image_width = 1920;
+int image_height = 1080;
+
+// Joystick Configuration File
+std::string joystick_filename;
+// =============================================================================
+void AddCommandLineOptions(ChCLI &cli) {
+  cli.AddOption<std::string>("Simulation", "joystick_filename",
+                             "Joystick config JSON file", joystick_filename);
+  cli.AddOption<int>("Simulation", "image_width", "x resolution",
+                     std::to_string(image_width));
+  cli.AddOption<int>("Simulation", "image_height", "y resolution",
+                     std::to_string(image_height));
+}
+// =============================================================================
+
 // =============================================================================
 
 void CreateLuggedGeometry(
@@ -144,6 +163,18 @@ int main(int argc, char *argv[]) {
            << CHRONO_VERSION << "\n\n";
 
   vehicle::SetDataPath(CHRONO_DATA_DIR + std::string("vehicle/"));
+
+  ChCLI cli(argv[0]);
+  AddCommandLineOptions(cli);
+
+  if (!cli.Parse(argc, argv, true))
+    return 0;
+
+  // parse from cli
+  image_width = cli.GetAsType<int>("image_width");
+  image_height = cli.GetAsType<int>("image_height");
+  joystick_filename = std::string(STRINGIFY(HIL_DATA_DIR)) +
+                      cli.GetAsType<std::string>("joystick_filename");
 
   // --------------------
   // Create HMMWV vehicle
@@ -226,7 +257,7 @@ int main(int argc, char *argv[]) {
   auto vis = chrono_types::make_shared<ChWheeledVehicleVisualSystemIrrlicht>();
   vis->SetWindowTitle("HMMWV Deformable Soil Demo");
   vis->SetChaseCamera(trackPoint, 6.0, 0.5);
-  vis->SetWindowSize(1920, 1080);
+  vis->SetWindowSize(image_width, image_height);
   vis->Initialize();
   vis->AddTypicalLights();
   vis->AddSkyBox();
@@ -234,8 +265,7 @@ int main(int argc, char *argv[]) {
   vis->AttachVehicle(&my_hmmwv.GetVehicle());
 
   auto driver = chrono_types::make_shared<ChIrrGuiDriver>(*vis);
-  driver->SetJoystickConfigFile(
-      vehicle::GetDataFile("joystick/controller_G27.json"));
+  driver->SetJoystickConfigFile(joystick_filename);
   driver->Initialize();
 
   // -----------------

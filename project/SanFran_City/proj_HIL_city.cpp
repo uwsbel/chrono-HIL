@@ -130,7 +130,7 @@ bool load_roads_only = false;
 
 // Resolution of the CSL 3-monitor setup
 const int FS_WIDTH = 3840;
-const int FS_HEIGHT = 1080;
+const int FS_HEIGHT = 1080 * 2;
 
 std::string demo_data_path = std::string(STRINGIFY(HIL_DATA_DIR));
 
@@ -628,7 +628,7 @@ int main(int argc, char *argv[]) {
   if (node_id == leader) {
     // add a sensor manager
     manager = chrono_types::make_shared<ChSensorManager>(vehicle.GetSystem());
-    manager->SetRayRecursions(11);
+    // manager->SetRayRecursions(11);
     Background b;
     b.mode = BackgroundMode::ENVIRONMENT_MAP; // GRADIENT
     b.color_zenith = {.5f, .6f, .7f};
@@ -702,18 +702,23 @@ int main(int argc, char *argv[]) {
       lidar->SetName("Lidar Sensor 1");
       lidar->SetLag(0.01);
       lidar->SetCollectionWindow(.05);
+      // lidar->PushFilter(chrono_types::make_shared<ChFilterDIAccess>());
       lidar->PushFilter(chrono_types::make_shared<ChFilterPCfromDepth>());
-      lidar->PushFilter(chrono_types::make_shared<ChFilterLidarNoiseXYZI>(
-          0.01f, 0.001f, 0.001f, 0.01f));
+      // lidar->PushFilter(chrono_types::make_shared<ChFilterLidarNoiseXYZI>(
+      //     0.01f, 0.001f, 0.001f, 0.01f));
+      lidar->PushFilter(chrono_types::make_shared<ChFilterXYZIAccess>());
       lidar->PushFilter(chrono_types::make_shared<ChFilterVisualizePointCloud>(
           640, 480, 2, "Lidar Point Cloud"));
-      lidar->PushFilter(chrono_types::make_shared<ChFilterXYZIAccess>());
+
       if (save)
         lidar->PushFilter(chrono_types::make_shared<ChFilterSavePtCloud>(
             "DEMO_OUTPUT/lidar/"));
       manager->AddSensor(lidar);
+      std::cout << "passed camera creation" << std::endl;
     }
   }
+
+  manager->SetVerbose(true);
 
   // Create the vehicle Irrlicht interface
   std::string driver_file = "driver_inputs.txt";

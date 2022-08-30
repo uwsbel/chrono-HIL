@@ -20,7 +20,7 @@ source_group("timer" FILES ${TIMER_FILES})
 
 set(SOUND_FILES
     sound/ChCSLSoundEngine.h
-    sound/ChCSLSoundEngine.cpp
+    #sound/ChCSLSoundEngine.cpp
 )
 source_group("sound" FILES ${SOUND_FILES})
 

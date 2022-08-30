@@ -9,7 +9,7 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Simone Benatti
+// Authors: Simone Benatti, Jason Zhou
 // =============================================================================
 //
 // Interactive driver for a vehicle. This class implements the
@@ -21,6 +21,7 @@
 
 #ifndef CH_SOUND_ENGINE_H
 #define CH_SOUND_ENGINE_H
+#ifdef CHRONO_IRRKLANG
 #include <string>
 
 #include "../ChApiHil.h"
@@ -29,7 +30,6 @@
 #include "chrono_vehicle/ChApiVehicle.h"
 #include "chrono_vehicle/ChVehicle.h"
 
-#ifdef CHRONO_IRRKLANG
 #include "irrKlang.h"
 
 using namespace chrono::vehicle;
@@ -38,16 +38,60 @@ namespace chrono {
 namespace hil {
 /// Sound effect tools for the CSL simulator
 ///
-class CH_VEHICLE_API ChCSLSoundEngine {
+class CH_HIL_API ChCSLSoundEngine {
 public:
   /// Construct the sound reproduction engine
-  ChCSLSoundEngine(ChVehicle *vehicle); ///< associated vehicle
-  //);
+  ChCSLSoundEngine(ChVehicle *vehicle) {
+    thisvehicle = vehicle;
+    sound_engine = irrklang::createIrrKlangDevice();
+    car_sound = sound_engine->play2D((std::string(STRINGIFY(HIL_DATA_DIR)) +
+                                      "/Environments/Iowa/Sounds/audi_dr.ogg")
+                                         .c_str(),
+                                     true, false, true);
+    car_sound->setIsPaused(true);
+  }
 
-  ~ChCSLSoundEngine();
+  ~ChCSLSoundEngine() { delete sound_engine; };
 
   /// Updates sound engine
-  void Synchronize(double time);
+  void Synchronize(double time) {
+    // update every 0.01 sec
+    if (time - last_time_played > 0.2) {
+      last_time_played = time;
+      int cur_gear = thisvehicle->GetPowertrain()->GetCurrentTransmissionGear();
+      double rpm =
+          thisvehicle->GetPowertrain()->GetMotorSpeed() * 60 / CH_C_2PI;
+      if (cur_gear == 1) {
+        double soundspeed = rpm / (10000.); // denominator: to guess
+        if (soundspeed < 0.1)
+          soundspeed = 0.1;
+        if (car_sound->getIsPaused())
+          car_sound->setIsPaused(false);
+        car_sound->setPlaybackSpeed((irrklang::ik_f32)soundspeed);
+      } else if (cur_gear == 2) {
+        double soundspeed = rpm / (8000.); // denominator: to guess
+        if (soundspeed < 0.1)
+          soundspeed = 0.1;
+        if (car_sound->getIsPaused())
+          car_sound->setIsPaused(false);
+        car_sound->setPlaybackSpeed((irrklang::ik_f32)soundspeed);
+      } else if (cur_gear == 3) {
+        double soundspeed = rpm / (8000.); // denominator: to guess
+        if (soundspeed < 0.1)
+          soundspeed = 0.1;
+        if (car_sound->getIsPaused())
+          car_sound->setIsPaused(false);
+        car_sound->setPlaybackSpeed((irrklang::ik_f32)soundspeed);
+      } else {
+        double soundspeed = rpm / (6000.); // denominator: to guess
+        if (soundspeed < 0.1)
+          soundspeed = 0.1;
+        if (car_sound->getIsPaused())
+          car_sound->setIsPaused(false);
+        car_sound->setPlaybackSpeed((irrklang::ik_f32)soundspeed);
+      }
+    }
+  }
 
 private:
   ChVehicle *thisvehicle;

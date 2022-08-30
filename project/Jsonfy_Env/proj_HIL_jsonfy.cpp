@@ -38,8 +38,14 @@
 #include <time.h>
 
 #include "chrono_sensor/ChSensorManager.h"
+#include "chrono_sensor/filters/ChFilterAccess.h"
+#include "chrono_sensor/filters/ChFilterCameraNoise.h"
+#include "chrono_sensor/filters/ChFilterGrayscale.h"
+#include "chrono_sensor/filters/ChFilterImageOps.h"
+#include "chrono_sensor/filters/ChFilterSave.h"
 #include "chrono_sensor/filters/ChFilterVisualize.h"
 #include "chrono_sensor/sensors/ChCameraSensor.h"
+#include "chrono_sensor/sensors/ChSegmentationCamera.h"
 #include "chrono_thirdparty/cxxopts/ChCLI.h"
 #include "chrono_thirdparty/filesystem/path.h"
 #include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
@@ -59,10 +65,6 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
-
-#ifdef CHRONO_IRRKLANG
-#include "extras/ChCSLSoundEngine.h"
-#endif
 
 #include "chrono_vehicle/utils/ChUtilsJSON.h"
 
@@ -179,7 +181,7 @@ void ReadParameterFiles() {
       temp_camera.supersampling =
           d[cameraname.c_str()]["supersampling"].GetInt();
     } else {
-      temp_camera.supersampling = 50;
+      temp_camera.supersampling = 1;
     }
 
     if (d[cameraname.c_str()].HasMember("fps")) {
@@ -441,12 +443,14 @@ int main(int argc, char *argv[]) {
           my_cameras[i].resolution_x,              // image width
           my_cameras[i].resolution_y,              // image height
           1.608f,
-          1); // fov, lag, exposure
+          my_cameras[i].supersampling); // fov, lag, exposure
       cam->SetName("Camera Sensor");
 
       cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
           my_cameras[i].resolution_x, my_cameras[i].resolution_y,
           my_cameras[i].name, false));
+      // Provide the host access to the RGBA8 buffer
+      cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
       manager->AddSensor(cam);
     } else {
       auto temp_body = chrono_types::make_shared<ChBody>();
@@ -462,15 +466,18 @@ int main(int argc, char *argv[]) {
           my_cameras[i].resolution_x,              // image width
           my_cameras[i].resolution_y,              // image height
           1.608f,
-          1); // fov, lag, exposure
+          my_cameras[i].supersampling); // fov, lag, exposure
       cam->SetName("Camera Sensor");
 
       cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
           my_cameras[i].resolution_x, my_cameras[i].resolution_y,
           my_cameras[i].name, false));
+      cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
       manager->AddSensor(cam);
     }
   }
+
+  manager->Update();
 
   ChSDLInterface SDLDriver;
   // Set the time response for steering and throttle keyboard inputs.

@@ -36,6 +36,8 @@
 
 #include "chrono_hil/driver/ChSDLInterface.h"
 
+#include "chrono_thirdparty/cxxopts/ChCLI.h"
+
 using namespace chrono;
 using namespace chrono::irrlicht;
 using namespace chrono::vehicle;
@@ -114,6 +116,21 @@ double debug_step_size = 1.0 / 1; // FPS = 1
 // POV-Ray output
 bool povray_output = false;
 
+// Irrlicht Rendering Window Size
+int image_width = 1920;
+int image_height = 1080;
+
+// Joystick Configuration File
+std::string joystick_filename;
+// =============================================================================
+void AddCommandLineOptions(ChCLI &cli) {
+  cli.AddOption<std::string>("Simulation", "joystick_filename",
+                             "Joystick config JSON file", joystick_filename);
+  cli.AddOption<int>("Simulation", "image_width", "x resolution",
+                     std::to_string(image_width));
+  cli.AddOption<int>("Simulation", "image_height", "y resolution",
+                     std::to_string(image_height));
+}
 // =============================================================================
 
 int main(int argc, char *argv[]) {
@@ -121,6 +138,18 @@ int main(int argc, char *argv[]) {
            << CHRONO_VERSION << "\n\n";
 
   vehicle::SetDataPath(CHRONO_DATA_DIR + std::string("vehicle/"));
+
+  ChCLI cli(argv[0]);
+  AddCommandLineOptions(cli);
+
+  if (!cli.Parse(argc, argv, true))
+    return 0;
+
+  // parse from cli
+  image_width = cli.GetAsType<int>("image_width");
+  image_height = cli.GetAsType<int>("image_height");
+  joystick_filename = std::string(STRINGIFY(HIL_DATA_DIR)) +
+                      cli.GetAsType<std::string>("joystick_filename");
 
   // --------------
   // Create systems
@@ -200,6 +229,7 @@ int main(int argc, char *argv[]) {
   // Create the vehicle Irrlicht interface
   auto vis = chrono_types::make_shared<ChWheeledVehicleVisualSystemIrrlicht>();
   vis->SetWindowTitle("HMMWV Demo");
+  vis->SetWindowSize(image_width, image_height);
   vis->SetChaseCamera(trackPoint, 6.0, 0.5);
   vis->Initialize();
   vis->AddTypicalLights();
@@ -246,8 +276,7 @@ int main(int argc, char *argv[]) {
 
   SDLDriver.Initialize();
 
-  SDLDriver.SetJoystickConfigFile(
-      vehicle::GetDataFile("joystick/controller_G27.json"));
+  SDLDriver.SetJoystickConfigFile(joystick_filename);
 
   // ---------------
   // Simulation loop
