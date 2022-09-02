@@ -38,11 +38,23 @@
 
 #include "chrono_thirdparty/cxxopts/ChCLI.h"
 
+#include "chrono_sensor/ChSensorManager.h"
+#include "chrono_sensor/filters/ChFilterAccess.h"
+#include "chrono_sensor/filters/ChFilterCameraNoise.h"
+#include "chrono_sensor/filters/ChFilterGrayscale.h"
+#include "chrono_sensor/filters/ChFilterImageOps.h"
+#include "chrono_sensor/filters/ChFilterSave.h"
+#include "chrono_sensor/filters/ChFilterVisualize.h"
+#include "chrono_sensor/sensors/ChSegmentationCamera.h"
+
+#include "chrono/physics/ChBody.h"
+
 using namespace chrono;
 using namespace chrono::irrlicht;
 using namespace chrono::vehicle;
 using namespace chrono::vehicle::hmmwv;
 using namespace chrono::hil;
+using namespace chrono::sensor;
 
 // =============================================================================
 
@@ -169,6 +181,11 @@ int main(int argc, char *argv[]) {
   my_hmmwv.SetTireStepSize(tire_step_size);
   my_hmmwv.Initialize();
 
+  auto attached_body = std::make_shared<ChBody>();
+  my_hmmwv.GetSystem()->AddBody(attached_body);
+  attached_body->Setcollide(false);
+  attached_body->SetBodyFixed(true);
+
   if (tire_model == TireModelType::RIGID_MESH)
     tire_vis_type = VisualizationType::MESH;
 
@@ -191,8 +208,8 @@ int main(int argc, char *argv[]) {
   switch (terrain_model) {
   case RigidTerrain::PatchType::BOX:
     patch = terrain.AddPatch(patch_mat, CSYSNORM, terrainLength, terrainWidth);
-    patch->SetTexture(vehicle::GetDataFile("terrain/textures/tile4.jpg"), 200,
-                      200);
+    patch->SetTexture(vehicle::GetDataFile("terrain/textures/tile4.jpg"), 20,
+                      20);
     break;
   case RigidTerrain::PatchType::HEIGHT_MAP:
     patch = terrain.AddPatch(
@@ -226,16 +243,34 @@ int main(int argc, char *argv[]) {
         trimesh_shape, ChFrame<>(VNULL, Q_from_AngZ(CH_C_PI_2)));
   }
 
-  // Create the vehicle Irrlicht interface
-  auto vis = chrono_types::make_shared<ChWheeledVehicleVisualSystemIrrlicht>();
-  vis->SetWindowTitle("HMMWV Demo");
-  vis->SetWindowSize(image_width, image_height);
-  vis->SetChaseCamera(trackPoint, 6.0, 0.5);
-  vis->Initialize();
-  vis->AddTypicalLights();
-  vis->AddSkyBox();
-  vis->AddLogo();
-  vis->AttachVehicle(&my_hmmwv.GetVehicle());
+  // Create the camera sensor
+  auto manager =
+      chrono_types::make_shared<ChSensorManager>(my_hmmwv.GetSystem());
+  float intensity = 1.2;
+  manager->scene->AddPointLight({0, 0, 1e8}, {intensity, intensity, intensity},
+                                1e12);
+  manager->scene->SetAmbientLight({.1, .1, .1});
+  manager->scene->SetSceneEpsilon(1e-3);
+  manager->scene->EnableDynamicOrigin(true);
+  manager->scene->SetOriginOffsetThreshold(500.f);
+
+  auto cam = chrono_types::make_shared<ChCameraSensor>(
+      attached_body, // body camera is attached to
+      40.0,          // update rate in Hz
+      chrono::ChFrame<double>(
+          ChVector<>(-17.0, 0.0, 4.0),
+          Q_from_Euler123(ChVector<>(0.0, 0.15, 0.0))), // offset pose
+      image_width,                                      // image width
+      image_height,                                     // image height
+      1.608f,
+      1); // fov, lag, exposure
+  cam->SetName("Camera Sensor");
+
+  cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
+      image_width, image_height, "hwwmv", false));
+  // Provide the host access to the RGBA8 buffer
+  cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+  manager->AddSensor(cam);
 
   // -----------------
   // Initialize output
@@ -297,16 +332,23 @@ int main(int argc, char *argv[]) {
   int step_number = 0;
   int render_frame = 0;
 
-  if (contact_vis) {
-    vis->SetSymbolScale(1e-4);
-    vis->EnableContactDrawing(ContactsDrawMode::CONTACT_FORCES);
-  }
-
   my_hmmwv.GetVehicle().EnableRealtime(true);
   utils::ChRunningAverage RTF_filter(50);
 
-  while (vis->Run()) {
+  while (true) {
     double time = my_hmmwv.GetSystem()->GetChTime();
+
+    ChVector<> pos = my_hmmwv.GetChassis()->GetPos();
+    ChQuaternion<> rot = my_hmmwv.GetChassis()->GetRot();
+
+    auto euler_rot = Q_to_Euler123(rot);
+    euler_rot.y() = 0.0;
+    auto y_0_rot = Q_from_Euler123(euler_rot);
+
+    attached_body->SetPos(pos);
+    attached_body->SetRot(y_0_rot);
+
+    manager->Update();
 
     // End simulation
     if (time >= t_end)
@@ -314,9 +356,6 @@ int main(int argc, char *argv[]) {
 
     // Render scene and output POV-Ray data
     if (step_number % render_steps == 0) {
-      vis->BeginScene();
-      vis->Render();
-      vis->EndScene();
 
       if (povray_output) {
         char filename[100];
@@ -357,15 +396,17 @@ int main(int argc, char *argv[]) {
     // Update modules (process inputs from other modules)
     terrain.Synchronize(time);
     my_hmmwv.Synchronize(time, driver_inputs, terrain);
-    vis->Synchronize(std::string("Input mode: JOYSTICK"), driver_inputs);
 
     // Advance simulation for one timestep for all modules
     terrain.Advance(step_size);
     my_hmmwv.Advance(step_size);
-    vis->Advance(step_size);
 
     // Increment frame number
     step_number++;
+
+    if (SDLDriver.Synchronize() == 1) {
+      return 0;
+    }
   }
 
   return 0;
