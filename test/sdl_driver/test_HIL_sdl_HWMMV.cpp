@@ -49,22 +49,26 @@
 
 #include "chrono/physics/ChBody.h"
 
+#include "chrono/assets/ChTriangleMeshShape.h"
+#include "chrono/utils/ChUtilsGeometry.h"
+#include "chrono/utils/ChUtilsInputOutput.h"
+
+#include <chrono>
+
 using namespace chrono;
 using namespace chrono::irrlicht;
 using namespace chrono::vehicle;
 using namespace chrono::vehicle::hmmwv;
 using namespace chrono::hil;
 using namespace chrono::sensor;
+using namespace chrono::geometry;
+using namespace chrono::collision;
 
 // =============================================================================
 
 // Initial vehicle location and orientation
 ChVector<> initLoc(-70, -70, 1.6);
 ChQuaternion<> initRot(1, 0, 0, 0);
-// ChQuaternion<> initRot(0.866025, 0, 0, 0.5);
-// ChQuaternion<> initRot(0.7071068, 0, 0, 0.7071068);
-// ChQuaternion<> initRot(0.25882, 0, 0, 0.965926);
-// ChQuaternion<> initRot(0, 0, 0, 1);
 
 enum class DriverMode { DEFAULT, RECORD, PLAYBACK };
 
@@ -103,35 +107,27 @@ double terrainWidth = 150.0;  // size in Y direction
 ChContactMethod contact_method = ChContactMethod::SMC;
 
 // Simulation step sizes
-double step_size = 1e-3;
+double step_size = 1.5e-3;
 double tire_step_size = 1e-4;
 
 // Simulation end time
 double t_end = 1000;
 
-// Time interval between two render frames
-double render_step_size = 1.0 / 50; // FPS = 50
-
-// Output directories
-const std::string out_dir = GetChronoOutputPath() + "HMMWV";
-const std::string pov_dir = out_dir + "/POVRAY";
-
-// Debug logging
-bool debug_output = false;
-double debug_step_size = 1.0 / 1; // FPS = 1
-
-// POV-Ray output
-bool povray_output = false;
-
 // Irrlicht Rendering Window Size
 int image_width = 1920;
 int image_height = 1080;
+int refresh_rate = 30;
+int supersample = 1;
 
 // Joystick Configuration File
 std::string joystick_filename;
 
 // =============================================================================
 void AddObstacle1(RigidTerrain &terrain,
+                  std::shared_ptr<RigidTerrain::Patch> patch);
+void AddObstacle2(RigidTerrain &terrain,
+                  std::shared_ptr<RigidTerrain::Patch> patch);
+void AddObstacle3(RigidTerrain &terrain,
                   std::shared_ptr<RigidTerrain::Patch> patch);
 // =============================================================================
 void AddCommandLineOptions(ChCLI &cli) {
@@ -141,6 +137,11 @@ void AddCommandLineOptions(ChCLI &cli) {
                      std::to_string(image_width));
   cli.AddOption<int>("Simulation", "image_height", "y resolution",
                      std::to_string(image_height));
+  cli.AddOption<int>("Simulation", "refresh_rate",
+                     "Chrono Sensor Refresh Rate - e.g.25Hz",
+                     std::to_string(refresh_rate));
+  cli.AddOption<int>("Simulation", "supersample", "supersample factor",
+                     std::to_string(supersample));
 }
 // =============================================================================
 
@@ -161,6 +162,8 @@ int main(int argc, char *argv[]) {
   image_height = cli.GetAsType<int>("image_height");
   joystick_filename = std::string(STRINGIFY(HIL_DATA_DIR)) +
                       cli.GetAsType<std::string>("joystick_filename");
+  refresh_rate = cli.GetAsType<int>("refresh_rate");
+  supersample = cli.GetAsType<int>("supersample");
 
   // --------------
   // Create systems
@@ -205,7 +208,7 @@ int main(int argc, char *argv[]) {
 
   std::shared_ptr<RigidTerrain::Patch> patch;
   patch = terrain.AddPatch(patch_mat, CSYSNORM, terrainLength, terrainWidth);
-  patch->SetTexture(vehicle::GetDataFile("terrain/textures/tile4.jpg"), 20, 20);
+  patch->SetTexture(vehicle::GetDataFile("terrain/textures/tile4.jpg"), 10, 10);
   patch->SetColor(ChColor(0.8f, 0.8f, 0.5f));
 
   terrain.Initialize();
@@ -234,6 +237,8 @@ int main(int argc, char *argv[]) {
 
   // Add obstacles
   AddObstacle1(terrain, patch);
+  AddObstacle2(terrain, patch);
+  AddObstacle3(terrain, patch);
 
   // Create the camera sensor
   auto manager =
@@ -248,14 +253,14 @@ int main(int argc, char *argv[]) {
 
   auto cam = chrono_types::make_shared<ChCameraSensor>(
       attached_body, // body camera is attached to
-      40.0,          // update rate in Hz
+      refresh_rate,  // update rate in Hz
       chrono::ChFrame<double>(
           ChVector<>(-17.0, 0.0, 4.0),
           Q_from_Euler123(ChVector<>(0.0, 0.15, 0.0))), // offset pose
       image_width,                                      // image width
       image_height,                                     // image height
       1.608f,
-      1); // fov, lag, exposure
+      supersample); // fov, lag, exposure
   cam->SetName("Camera Sensor");
 
   cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
@@ -263,35 +268,6 @@ int main(int argc, char *argv[]) {
   // Provide the host access to the RGBA8 buffer
   cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
   manager->AddSensor(cam);
-
-  // Initialize output
-  // -----------------
-
-  if (!filesystem::create_directory(filesystem::path(out_dir))) {
-    std::cout << "Error creating directory " << out_dir << std::endl;
-    return 1;
-  }
-  if (povray_output) {
-    if (!filesystem::create_directory(filesystem::path(pov_dir))) {
-      std::cout << "Error creating directory " << pov_dir << std::endl;
-      return 1;
-    }
-    terrain.ExportMeshPovray(out_dir);
-  }
-
-  // Initialize output file for driver inputs
-  std::string driver_file = out_dir + "/driver_inputs.txt";
-  utils::CSV_writer driver_csv(" ");
-
-  // Set up vehicle output
-  my_hmmwv.GetVehicle().SetChassisOutput(true);
-  my_hmmwv.GetVehicle().SetSuspensionOutput(0, true);
-  my_hmmwv.GetVehicle().SetSteeringOutput(0, true);
-  my_hmmwv.GetVehicle().SetOutput(ChVehicleOutput::ASCII, out_dir, "output",
-                                  0.1);
-
-  // Generate JSON information with available output channels
-  my_hmmwv.GetVehicle().ExportComponentList(out_dir + "/component_list.json");
 
   // ------------------------
   // Create the driver system
@@ -310,21 +286,13 @@ int main(int argc, char *argv[]) {
 
   my_hmmwv.GetVehicle().LogSubsystemTypes();
 
-  if (debug_output) {
-    GetLog() << "\n\n============ System Configuration ============\n";
-    my_hmmwv.LogHardpointLocations();
-  }
-
-  // Number of simulation steps between miscellaneous events
-  int render_steps = (int)std::ceil(render_step_size / step_size);
-  int debug_steps = (int)std::ceil(debug_step_size / step_size);
-
   // Initialize simulation frame counters
   int step_number = 0;
-  int render_frame = 0;
 
-  my_hmmwv.GetVehicle().EnableRealtime(true);
-  utils::ChRunningAverage RTF_filter(50);
+  my_hmmwv.GetVehicle().EnableRealtime(false);
+
+  float last_lag = 0.0;
+  auto start = std::chrono::high_resolution_clock::now();
 
   while (true) {
     double time = my_hmmwv.GetSystem()->GetChTime();
@@ -340,40 +308,6 @@ int main(int argc, char *argv[]) {
     attached_body->SetRot(y_0_rot);
 
     manager->Update();
-
-    // End simulation
-    if (time >= t_end)
-      break;
-
-    // Render scene and output POV-Ray data
-    if (step_number % render_steps == 0) {
-
-      if (povray_output) {
-        char filename[100];
-        sprintf(filename, "%s/data_%03d.dat", pov_dir.c_str(),
-                render_frame + 1);
-        utils::WriteVisualizationAssets(my_hmmwv.GetSystem(), filename);
-      }
-
-      render_frame++;
-    }
-
-    // Debug logging
-    if (debug_output && step_number % debug_steps == 0) {
-      GetLog() << "\n\n============ System Information ============\n";
-      GetLog() << "Time = " << time << "\n\n";
-      my_hmmwv.DebugLog(OUT_SPRINGS | OUT_SHOCKS | OUT_CONSTRAINTS);
-
-      auto marker_driver =
-          my_hmmwv.GetChassis()->GetMarkers()[0]->GetAbsCoord().pos;
-      auto marker_com =
-          my_hmmwv.GetChassis()->GetMarkers()[1]->GetAbsCoord().pos;
-      GetLog() << "Markers\n";
-      std::cout << "  Driver loc:      " << marker_driver.x() << " "
-                << marker_driver.y() << " " << marker_driver.z() << std::endl;
-      std::cout << "  Chassis COM loc: " << marker_com.x() << " "
-                << marker_com.y() << " " << marker_com.z() << std::endl;
-    }
 
     // Driver inputs
     DriverInputs driver_inputs;
@@ -391,6 +325,20 @@ int main(int argc, char *argv[]) {
     // Advance simulation for one timestep for all modules
     terrain.Advance(step_size);
     my_hmmwv.Advance(step_size);
+
+    if (step_number == 0) {
+      auto end = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> diff = end - start;
+      last_lag = diff.count();
+    }
+
+    if (step_number % 1000 == 0 && step_number != 0) {
+      auto end = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> diff = end - start;
+      std::cout << "RTF: " << (diff.count() - last_lag) / (1000 * step_size)
+                << std::endl;
+      last_lag = diff.count();
+    }
 
     // Increment frame number
     step_number++;
@@ -492,4 +440,65 @@ void AddObstacle1(RigidTerrain &terrain,
     patch->GetGroundBody()->GetVisualModel()->AddShape(
         trimesh_shape, ChFrame<>(ob_pos, Q_from_AngZ(CH_C_PI_2)));
   }
+}
+
+void AddObstacle2(RigidTerrain &terrain,
+                  std::shared_ptr<RigidTerrain::Patch> patch) {
+  for (int i = 0; i < 8; i++) {
+    ChVector<> ob_pos(50 - 15 * i, 0.0, 0.0);
+    auto trimesh = geometry::ChTriangleMeshConnected::CreateFromWavefrontFile(
+        STRINGIFY(HIL_DATA_DIR) +
+            std::string("/Environments/HWMMV_test/cone/cone.obj"),
+        true, true);
+    auto trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+    trimesh_shape->SetMesh(trimesh);
+    trimesh_shape->SetName("cone");
+    trimesh_shape->SetMutable(false);
+    patch->GetGroundBody()->GetVisualModel()->AddShape(
+        trimesh_shape, ChFrame<>(ob_pos, Q_from_AngZ(CH_C_PI_2)));
+  }
+}
+
+void AddObstacle3(RigidTerrain &terrain,
+                  std::shared_ptr<RigidTerrain::Patch> patch) {
+  ChVector<> ob_pos(20, 60, 0.0);
+
+  auto trimesh = geometry::ChTriangleMeshConnected::CreateFromWavefrontFile(
+      STRINGIFY(HIL_DATA_DIR) +
+          std::string("/Environments/HWMMV_test/hill/hill_obs.obj"),
+      true, true);
+  auto trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+  trimesh_shape->SetMesh(trimesh);
+  trimesh_shape->SetName("hill");
+  trimesh_shape->SetMutable(false);
+  trimesh_shape->SetTexture(
+      vehicle::GetDataFile("terrain/textures/concrete.jpg"));
+  patch->GetGroundBody()->GetVisualModel()->AddShape(
+      trimesh_shape, ChFrame<>(ob_pos, Q_from_AngZ(CH_C_PI_2)));
+
+  auto patch1_mat = chrono_types::make_shared<ChMaterialSurfaceSMC>();
+  patch1_mat->SetFriction(0.98f);
+  patch1_mat->SetRestitution(0.002f);
+  auto patch1 = terrain.AddPatch(
+      patch1_mat, ChCoordsys<>(ob_pos, Q_from_AngZ(CH_C_PI_2)),
+      STRINGIFY(HIL_DATA_DIR) +
+          std::string("/Environments/HWMMV_test/hill/hill_obs.obj"));
+
+  patch1->GetGroundBody()->GetCollisionModel()->ClearModel();
+
+  std::string lugged_file(
+      STRINGIFY(HIL_DATA_DIR) +
+      std::string("/Environments/HWMMV_test/hill/hill_obs.obj"));
+  geometry::ChTriangleMeshConnected lugged_mesh;
+  ChConvexDecompositionHACDv2 lugged_convex;
+  utils::LoadConvexMesh(lugged_file, lugged_mesh, lugged_convex);
+  int num_hulls = lugged_convex.GetHullCount();
+
+  for (int ihull = 0; ihull < num_hulls; ihull++) {
+    std::vector<ChVector<>> convexhull;
+    lugged_convex.GetConvexHullResult(ihull, convexhull);
+    patch1->GetGroundBody()->GetCollisionModel()->AddConvexHull(
+        patch1_mat, convexhull, VNULL, QUNIT);
+  }
+  patch1->GetGroundBody()->GetCollisionModel()->BuildModel();
 }
