@@ -59,7 +59,7 @@ using namespace chrono::sensor;
 // =============================================================================
 
 // Initial vehicle location and orientation
-ChVector<> initLoc(0, 0, 1.6);
+ChVector<> initLoc(-70, -70, 1.6);
 ChQuaternion<> initRot(1, 0, 0, 0);
 // ChQuaternion<> initRot(0.866025, 0, 0, 0.5);
 // ChQuaternion<> initRot(0.7071068, 0, 0, 0.7071068);
@@ -95,21 +95,16 @@ bool use_tierod_bodies = true;
 TireModelType tire_model = TireModelType::TMEASY;
 
 // Rigid terrain
-RigidTerrain::PatchType terrain_model = RigidTerrain::PatchType::BOX;
 double terrainHeight = 0;     // terrain height (FLAT terrain only)
-double terrainLength = 200.0; // size in X direction
-double terrainWidth = 200.0;  // size in Y direction
-
-// Point on chassis tracked by the camera
-ChVector<> trackPoint(0.0, 0.0, 1.75);
+double terrainLength = 150.0; // size in X direction
+double terrainWidth = 150.0;  // size in Y direction
 
 // Contact method
 ChContactMethod contact_method = ChContactMethod::SMC;
-bool contact_vis = false;
 
 // Simulation step sizes
-double step_size = 3e-3;
-double tire_step_size = 1e-3;
+double step_size = 1e-3;
+double tire_step_size = 1e-4;
 
 // Simulation end time
 double t_end = 1000;
@@ -134,6 +129,10 @@ int image_height = 1080;
 
 // Joystick Configuration File
 std::string joystick_filename;
+
+// =============================================================================
+void AddObstacle1(RigidTerrain &terrain,
+                  std::shared_ptr<RigidTerrain::Patch> patch);
 // =============================================================================
 void AddCommandLineOptions(ChCLI &cli) {
   cli.AddOption<std::string>("Simulation", "joystick_filename",
@@ -183,7 +182,7 @@ int main(int argc, char *argv[]) {
 
   auto attached_body = std::make_shared<ChBody>();
   my_hmmwv.GetSystem()->AddBody(attached_body);
-  attached_body->Setcollide(false);
+  attached_body->SetCollide(false);
   attached_body->SetBodyFixed(true);
 
   if (tire_model == TireModelType::RIGID_MESH)
@@ -205,26 +204,8 @@ int main(int argc, char *argv[]) {
   auto patch_mat = minfo.CreateMaterial(contact_method);
 
   std::shared_ptr<RigidTerrain::Patch> patch;
-  switch (terrain_model) {
-  case RigidTerrain::PatchType::BOX:
-    patch = terrain.AddPatch(patch_mat, CSYSNORM, terrainLength, terrainWidth);
-    patch->SetTexture(vehicle::GetDataFile("terrain/textures/tile4.jpg"), 20,
-                      20);
-    break;
-  case RigidTerrain::PatchType::HEIGHT_MAP:
-    patch = terrain.AddPatch(
-        patch_mat, CSYSNORM,
-        vehicle::GetDataFile("terrain/height_maps/test64.bmp"), 128, 128, 0, 4);
-    patch->SetTexture(vehicle::GetDataFile("terrain/textures/grass.jpg"), 16,
-                      16);
-    break;
-  case RigidTerrain::PatchType::MESH:
-    patch = terrain.AddPatch(patch_mat, CSYSNORM,
-                             vehicle::GetDataFile("terrain/meshes/test.obj"));
-    patch->SetTexture(vehicle::GetDataFile("terrain/textures/grass.jpg"), 100,
-                      100);
-    break;
-  }
+  patch = terrain.AddPatch(patch_mat, CSYSNORM, terrainLength, terrainWidth);
+  patch->SetTexture(vehicle::GetDataFile("terrain/textures/tile4.jpg"), 20, 20);
   patch->SetColor(ChColor(0.8f, 0.8f, 0.5f));
 
   terrain.Initialize();
@@ -233,15 +214,26 @@ int main(int argc, char *argv[]) {
   // Note: this must be done after initializing the terrain (so that its visual
   // model is created).
   if (patch->GetGroundBody()->GetVisualModel()) {
-    auto trimesh = geometry::ChTriangleMeshConnected::CreateFromWavefrontFile(
-        CHRONO_DATA_DIR + std::string("models/trees/Tree.obj"), true, true);
-    auto trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
-    trimesh_shape->SetMesh(trimesh);
-    trimesh_shape->SetName("Trees");
-    trimesh_shape->SetMutable(false);
-    patch->GetGroundBody()->GetVisualModel()->AddShape(
-        trimesh_shape, ChFrame<>(VNULL, Q_from_AngZ(CH_C_PI_2)));
+    for (int i = 0; i < 8; i++) {
+      for (int j = 0; j < 2; j++) {
+        auto trimesh =
+            geometry::ChTriangleMeshConnected::CreateFromWavefrontFile(
+                STRINGIFY(HIL_DATA_DIR) +
+                    std::string("/Environments/HWMMV_test/trees/tree_01.obj"),
+                true, true);
+        auto trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+        trimesh_shape->SetMesh(trimesh);
+        trimesh_shape->SetName("Trees");
+        trimesh_shape->SetMutable(false);
+        ChVector<> tree_pos(-70.0 + i * 20.0, -25 + j * 75.0, 0.0);
+        patch->GetGroundBody()->GetVisualModel()->AddShape(
+            trimesh_shape, ChFrame<>(tree_pos, Q_from_AngZ(CH_C_PI_2)));
+      }
+    }
   }
+
+  // Add obstacles
+  AddObstacle1(terrain, patch);
 
   // Create the camera sensor
   auto manager =
@@ -272,7 +264,6 @@ int main(int argc, char *argv[]) {
   cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
   manager->AddSensor(cam);
 
-  // -----------------
   // Initialize output
   // -----------------
 
@@ -389,9 +380,9 @@ int main(int argc, char *argv[]) {
     driver_inputs.m_throttle = SDLDriver.GetThrottle();
     driver_inputs.m_steering = SDLDriver.GetSteering();
     driver_inputs.m_braking = SDLDriver.GetBraking();
-    std::cout << "throttle: " << driver_inputs.m_throttle
-              << ", brake: " << driver_inputs.m_braking
-              << ", steer:" << driver_inputs.m_steering << std::endl;
+    // std::cout << "throttle: " << driver_inputs.m_throttle
+    //           << ", brake: " << driver_inputs.m_braking
+    //           << ", steer:" << driver_inputs.m_steering << std::endl;
 
     // Update modules (process inputs from other modules)
     terrain.Synchronize(time);
@@ -410,4 +401,95 @@ int main(int argc, char *argv[]) {
   }
 
   return 0;
+}
+
+void AddObstacle1(RigidTerrain &terrain,
+                  std::shared_ptr<RigidTerrain::Patch> patch) {
+
+  for (int i = 0; i < 12; i++) {
+    ChVector<> ob_pos(-50 + 5 * i, -60, -0.85);
+    auto patch1_mat = chrono_types::make_shared<ChMaterialSurfaceSMC>();
+    patch1_mat->SetFriction(0.98f);
+    patch1_mat->SetRestitution(0.002f);
+    auto patch1 = terrain.AddPatch(
+        patch1_mat, ChCoordsys<>(ob_pos, Q_from_AngZ(CH_C_PI_2)),
+        STRINGIFY(HIL_DATA_DIR) +
+            std::string("/Environments/HWMMV_test/cyl_bump/cyl_bump.obj"));
+
+    patch1->GetGroundBody()->GetCollisionModel()->ClearModel();
+    patch1->GetGroundBody()->GetCollisionModel()->AddCylinder(
+        patch1_mat, 1, 1, 5, ChVector<>(0, 0, 0), Q_from_AngZ(CH_C_PI_2));
+    patch1->GetGroundBody()->GetCollisionModel()->BuildModel();
+
+    auto trimesh = geometry::ChTriangleMeshConnected::CreateFromWavefrontFile(
+        STRINGIFY(HIL_DATA_DIR) +
+            std::string("/Environments/HWMMV_test/cyl_bump/cyl_bump.obj"),
+        true, true);
+    auto trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+    trimesh_shape->SetMesh(trimesh);
+    trimesh_shape->SetName("cyl_bump");
+    trimesh_shape->SetMutable(false);
+    trimesh_shape->SetTexture(
+        vehicle::GetDataFile("terrain/textures/concrete.jpg"));
+    patch->GetGroundBody()->GetVisualModel()->AddShape(
+        trimesh_shape, ChFrame<>(ob_pos, Q_from_AngZ(CH_C_PI_2)));
+  }
+
+  for (int i = 0; i < 5; i++) {
+    ChVector<> ob_pos(15 + 8 * i, -57.2, -0.85);
+    auto patch1_mat = chrono_types::make_shared<ChMaterialSurfaceSMC>();
+    patch1_mat->SetFriction(0.98f);
+    patch1_mat->SetRestitution(0.002f);
+    auto patch1 = terrain.AddPatch(
+        patch1_mat, ChCoordsys<>(ob_pos, Q_from_AngZ(CH_C_PI_2)),
+        STRINGIFY(HIL_DATA_DIR) +
+            std::string("/Environments/HWMMV_test/cyl_bump/cyl_bump.obj"));
+
+    patch1->GetGroundBody()->GetCollisionModel()->ClearModel();
+    patch1->GetGroundBody()->GetCollisionModel()->AddCylinder(
+        patch1_mat, 1, 1, 2.5, ChVector<>(0, 0, 0), Q_from_AngZ(CH_C_PI_2));
+    patch1->GetGroundBody()->GetCollisionModel()->BuildModel();
+
+    auto trimesh = geometry::ChTriangleMeshConnected::CreateFromWavefrontFile(
+        STRINGIFY(HIL_DATA_DIR) +
+            std::string("/Environments/HWMMV_test/cyl_bump/cyl_bump_half.obj"),
+        true, true);
+    auto trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+    trimesh_shape->SetMesh(trimesh);
+    trimesh_shape->SetName("cyl_bump");
+    trimesh_shape->SetMutable(false);
+    trimesh_shape->SetTexture(
+        vehicle::GetDataFile("terrain/textures/concrete.jpg"));
+    patch->GetGroundBody()->GetVisualModel()->AddShape(
+        trimesh_shape, ChFrame<>(ob_pos, Q_from_AngZ(CH_C_PI_2)));
+  }
+
+  for (int i = 0; i < 5; i++) {
+    ChVector<> ob_pos(19 + 8 * i, -62.8, -0.85);
+    auto patch1_mat = chrono_types::make_shared<ChMaterialSurfaceSMC>();
+    patch1_mat->SetFriction(0.98f);
+    patch1_mat->SetRestitution(0.002f);
+    auto patch1 = terrain.AddPatch(
+        patch1_mat, ChCoordsys<>(ob_pos, Q_from_AngZ(CH_C_PI_2)),
+        STRINGIFY(HIL_DATA_DIR) +
+            std::string("/Environments/HWMMV_test/cyl_bump/cyl_bump.obj"));
+
+    patch1->GetGroundBody()->GetCollisionModel()->ClearModel();
+    patch1->GetGroundBody()->GetCollisionModel()->AddCylinder(
+        patch1_mat, 1, 1, 2.5, ChVector<>(0, 0, 0), Q_from_AngZ(CH_C_PI_2));
+    patch1->GetGroundBody()->GetCollisionModel()->BuildModel();
+
+    auto trimesh = geometry::ChTriangleMeshConnected::CreateFromWavefrontFile(
+        STRINGIFY(HIL_DATA_DIR) +
+            std::string("/Environments/HWMMV_test/cyl_bump/cyl_bump_half.obj"),
+        true, true);
+    auto trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+    trimesh_shape->SetMesh(trimesh);
+    trimesh_shape->SetName("cyl_bump");
+    trimesh_shape->SetMutable(false);
+    trimesh_shape->SetTexture(
+        vehicle::GetDataFile("terrain/textures/concrete.jpg"));
+    patch->GetGroundBody()->GetVisualModel()->AddShape(
+        trimesh_shape, ChFrame<>(ob_pos, Q_from_AngZ(CH_C_PI_2)));
+  }
 }
