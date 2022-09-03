@@ -301,6 +301,7 @@ int main(int argc, char *argv[]) {
     ChQuaternion<> rot = my_hmmwv.GetChassis()->GetRot();
 
     auto euler_rot = Q_to_Euler123(rot);
+    euler_rot.x() = 0.0;
     euler_rot.y() = 0.0;
     auto y_0_rot = Q_from_Euler123(euler_rot);
 
