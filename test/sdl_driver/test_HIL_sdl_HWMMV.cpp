@@ -47,6 +47,13 @@
 #include "chrono_sensor/filters/ChFilterVisualize.h"
 #include "chrono_sensor/sensors/ChSegmentationCamera.h"
 
+#include "chrono_synchrono/SynChronoManager.h"
+#include "chrono_synchrono/SynConfig.h"
+#include "chrono_synchrono/agent/SynWheeledVehicleAgent.h"
+#include "chrono_synchrono/communication/dds/SynDDSCommunicator.h"
+#include "chrono_synchrono/utils/SynDataLoader.h"
+#include "chrono_synchrono/utils/SynLog.h"
+
 #include "chrono/physics/ChBody.h"
 
 #include "chrono/assets/ChTriangleMeshShape.h"
@@ -63,6 +70,7 @@ using namespace chrono::hil;
 using namespace chrono::sensor;
 using namespace chrono::geometry;
 using namespace chrono::collision;
+using namespace chrono::synchrono;
 
 // =============================================================================
 
@@ -122,6 +130,9 @@ int supersample = 1;
 // Joystick Configuration File
 std::string joystick_filename;
 
+// Synchrono heartbeat
+double heartbeat = 1e-2; // 100 Hz
+
 // =============================================================================
 void AddObstacle1(RigidTerrain &terrain,
                   std::shared_ptr<RigidTerrain::Patch> patch);
@@ -142,6 +153,12 @@ void AddCommandLineOptions(ChCLI &cli) {
                      std::to_string(refresh_rate));
   cli.AddOption<int>("Simulation", "supersample", "supersample factor",
                      std::to_string(supersample));
+
+  // DDS Specific
+  cli.AddOption<int>("DDS", "d,node_id", "ID for this Node", "1");
+  cli.AddOption<int>("DDS", "n,num_nodes", "Number of Nodes", "2");
+  cli.AddOption<double>("Simulation", "b,heartbeat", "Heartbeat",
+                        std::to_string(heartbeat));
 }
 // =============================================================================
 
@@ -164,6 +181,32 @@ int main(int argc, char *argv[]) {
                       cli.GetAsType<std::string>("joystick_filename");
   refresh_rate = cli.GetAsType<int>("refresh_rate");
   supersample = cli.GetAsType<int>("supersample");
+
+  heartbeat = cli.GetAsType<double>("heartbeat");
+
+  const int node_id = cli.GetAsType<int>("node_id");
+  const int num_nodes = cli.GetAsType<int>("num_nodes");
+
+  // -----------------------
+  // Create SynChronoManager
+  // -----------------------
+  auto communicator = chrono_types::make_shared<SynDDSCommunicator>(node_id);
+  SynChronoManager syn_manager(node_id, num_nodes, communicator);
+
+  // Change SynChronoManager settings
+  syn_manager.SetHeartbeat(heartbeat);
+
+  if (node_id == 1) {
+    initLoc = ChVector<>(-70.0, -70.0, 1.6);
+    initRot = ChQuaternion<>(1, 0, 0, 0);
+  } else if (node_id == 2) {
+    initLoc = ChVector<>(70.0, 70.0, 1.6);
+    initRot = Q_from_AngZ(CH_C_PI);
+  }
+
+  std::string zombie_file =
+      CHRONO_DATA_DIR + std::string("synchrono/vehicle/HMMWV.json");
+  std::cout << "vehicle zombie file: " << zombie_file << std::endl;
 
   // --------------
   // Create systems
@@ -294,7 +337,13 @@ int main(int argc, char *argv[]) {
   float last_lag = 0.0;
   auto start = std::chrono::high_resolution_clock::now();
 
-  while (true) {
+  // Add vehicle as an agent and initialize SynChronoManager
+  auto agent = chrono_types::make_shared<SynWheeledVehicleAgent>(
+      &(my_hmmwv.GetVehicle()), zombie_file);
+  syn_manager.AddAgent(agent);
+  syn_manager.Initialize(my_hmmwv.GetSystem());
+
+  while (syn_manager.IsOk()) {
     double time = my_hmmwv.GetSystem()->GetChTime();
 
     ChVector<> pos = my_hmmwv.GetChassis()->GetPos();
@@ -320,6 +369,7 @@ int main(int argc, char *argv[]) {
     //           << ", steer:" << driver_inputs.m_steering << std::endl;
 
     // Update modules (process inputs from other modules)
+    syn_manager.Synchronize(time);
     terrain.Synchronize(time);
     my_hmmwv.Synchronize(time, driver_inputs, terrain);
 
@@ -345,10 +395,10 @@ int main(int argc, char *argv[]) {
     step_number++;
 
     if (SDLDriver.Synchronize() == 1) {
-      return 0;
+      break;
     }
   }
-
+  syn_manager.QuitSimulation();
   return 0;
 }
 
