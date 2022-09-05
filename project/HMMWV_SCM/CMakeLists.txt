@@ -28,23 +28,6 @@ if(NOT Chrono_FOUND)
   return()
 endif()
 
-#---------------
-# Find DDS
-#---------------
-string(FIND "${CHRONO_LIBRARIES}" "fastcdr" matchres)
-if(NOT ${matchres} EQUAL -1)
-	message(STATUS "Using Fast DDS...")
-	add_compile_definitions(USE_FAST_DDS=1)
-	set(FAST_DDS_INSTALL_DIR "" CACHE PATH "Path to FastDDS install dir")
-	set(fastcdr_DIR "${FAST_DDS_INSTALL_DIR}/lib/cmake/fastcdr" CACHE FILEPATH "Path to the FastCDR cmake config file" FORCE)
-	set(fastrtps_DIR "${FAST_DDS_INSTALL_DIR}/share/fastrtps/cmake" CACHE FILEPATH "Path to the FastDDS cmake config file" FORCE)
-	set(foonathan_memory_DIR "${FAST_DDS_INSTALL_DIR}/lib/foonathan_memory/cmake" CACHE FILEPATH "Path to the foonathan memory cmake config file" FORCE)
-	if (NOT EXISTS ${foonathan_memory_DIR})
-		set(foonathan_memory_DIR "${FAST_DDS_INSTALL_DIR}/lib64/foonathan_memory/cmake" CACHE PATH "Path to the foonathan memory cmake config file" FORCE)
-	endif()
-	find_package(fastcdr REQUIRED)
-	find_package(fastrtps REQUIRED)
-endif()
 
 #--------------------------------------------------------------
 # Include paths and libraries
