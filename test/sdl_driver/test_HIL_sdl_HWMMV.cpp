@@ -27,6 +27,8 @@
 #include "chrono_vehicle/driver/ChIrrGuiDriver.h"
 #include "chrono_vehicle/output/ChVehicleOutputASCII.h"
 #include "chrono_vehicle/terrain/RigidTerrain.h"
+#include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
 
 #include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
 
@@ -60,6 +62,8 @@
 #include "chrono/utils/ChUtilsGeometry.h"
 #include "chrono/utils/ChUtilsInputOutput.h"
 
+#include "chrono_vehicle/utils/ChUtilsJSON.h"
+
 #include <chrono>
 
 using namespace chrono;
@@ -85,7 +89,7 @@ using namespace eprosima::fastrtps::rtps;
 // =============================================================================
 
 // Initial vehicle location and orientation
-ChVector<> initLoc(-70, -70, 1.6);
+ChVector<> initLoc(-70, -70, 1.4);
 ChQuaternion<> initRot(1, 0, 0, 0);
 
 enum class DriverMode { DEFAULT, RECORD, PLAYBACK };
@@ -115,6 +119,12 @@ bool use_tierod_bodies = true;
 // Type of tire model (RIGID, RIGID_MESH, TMEASY, PACEJKA, LUGRE, FIALA, PAC89,
 // PAC02)
 TireModelType tire_model = TireModelType::TMEASY;
+
+// Type of vehicle
+enum VehicleType {
+  HMMWV,
+  SUV,
+};
 
 // Rigid terrain
 double terrainHeight = 0;     // terrain height (FLAT terrain only)
@@ -150,6 +160,9 @@ void AddObstacle2(RigidTerrain &terrain,
                   std::shared_ptr<RigidTerrain::Patch> patch);
 void AddObstacle3(RigidTerrain &terrain,
                   std::shared_ptr<RigidTerrain::Patch> patch);
+void GetVehicleModelFiles(VehicleType type, std::string &vehicle,
+                          std::string &powertrain, std::string &tire,
+                          std::string &zombie);
 // =============================================================================
 void AddCommandLineOptions(ChCLI &cli) {
   cli.AddOption<std::string>("Simulation", "joystick_filename",
@@ -171,6 +184,10 @@ void AddCommandLineOptions(ChCLI &cli) {
                         std::to_string(heartbeat));
   cli.AddOption<std::vector<std::string>>(
       "DDS", "ip", "IP Addresses for initialPeersList", "127.0.0.1");
+  // Other options
+  cli.AddOption<int>("Demo", "v,vehicle",
+                     "Vehicle Options [0-4]: HMMWV,MAN, Sedan, UAZ, CityBus, ",
+                     "0");
 }
 // =============================================================================
 
@@ -228,51 +245,60 @@ int main(int argc, char *argv[]) {
   syn_manager.SetHeartbeat(heartbeat);
 
   if (node_id == 1) {
-    initLoc = ChVector<>(-70.0, -70.0, 1.6);
+    initLoc = ChVector<>(-70.0, -70.0, 1.0);
     initRot = ChQuaternion<>(1, 0, 0, 0);
   } else if (node_id == 2) {
-    initLoc = ChVector<>(70.0, 70.0, 1.6);
+    initLoc = ChVector<>(70.0, 70.0, 1.0);
     initRot = Q_from_AngZ(CH_C_PI);
   }
 
-  std::string zombie_file =
-      CHRONO_DATA_DIR + std::string("synchrono/vehicle/HMMWV.json");
-  std::cout << "vehicle zombie file: " << zombie_file << std::endl;
+  std::string vehicle_filename, powertrain_filename, tire_filename,
+      zombie_filename;
+  GetVehicleModelFiles((VehicleType)cli.GetAsType<int>("vehicle"),
+                       vehicle_filename, powertrain_filename, tire_filename,
+                       zombie_filename);
 
   // --------------
   // Create systems
   // --------------
 
-  // Create the HMMWV vehicle, set parameters, and initialize
-  HMMWV_Full my_hmmwv;
-  my_hmmwv.SetContactMethod(contact_method);
-  my_hmmwv.SetChassisCollisionType(chassis_collision_type);
-  my_hmmwv.SetChassisFixed(false);
-  my_hmmwv.SetInitPosition(ChCoordsys<>(initLoc, initRot));
-  my_hmmwv.SetPowertrainType(powertrain_model);
-  my_hmmwv.SetDriveType(drive_type);
-  my_hmmwv.UseTierodBodies(use_tierod_bodies);
-  my_hmmwv.SetSteeringType(steering_type);
-  my_hmmwv.SetTireType(tire_model);
-  my_hmmwv.SetTireStepSize(tire_step_size);
-  my_hmmwv.Initialize();
+  // Create the vehicle, set parameters, and initialize
+  WheeledVehicle vehicle(vehicle_filename, contact_method);
+  vehicle.Initialize(ChCoordsys<>(initLoc, initRot));
+  vehicle.GetChassis()->SetFixed(false);
+  vehicle.SetChassisVisualizationType(chassis_vis_type);
+  vehicle.SetSuspensionVisualizationType(suspension_vis_type);
+  vehicle.SetSteeringVisualizationType(steering_vis_type);
+  vehicle.SetWheelVisualizationType(wheel_vis_type);
+
+  // Create and initialize the powertrain system
+  auto powertrain = ReadPowertrainJSON(powertrain_filename);
+  vehicle.InitializePowertrain(powertrain);
+
+  // Create and initialize the tires
+  for (auto &axle : vehicle.GetAxles()) {
+    for (auto &wheel : axle->GetWheels()) {
+      auto tire = ReadTireJSON(tire_filename);
+      vehicle.InitializeTire(tire, wheel, tire_vis_type);
+    }
+  }
 
   auto attached_body = std::make_shared<ChBody>();
-  my_hmmwv.GetSystem()->AddBody(attached_body);
+  vehicle.GetSystem()->AddBody(attached_body);
   attached_body->SetCollide(false);
   attached_body->SetBodyFixed(true);
 
   if (tire_model == TireModelType::RIGID_MESH)
     tire_vis_type = VisualizationType::MESH;
 
-  my_hmmwv.SetChassisVisualizationType(chassis_vis_type);
-  my_hmmwv.SetSuspensionVisualizationType(suspension_vis_type);
-  my_hmmwv.SetSteeringVisualizationType(steering_vis_type);
-  my_hmmwv.SetWheelVisualizationType(wheel_vis_type);
-  my_hmmwv.SetTireVisualizationType(tire_vis_type);
+  vehicle.SetChassisVisualizationType(chassis_vis_type);
+  vehicle.SetSuspensionVisualizationType(suspension_vis_type);
+  vehicle.SetSteeringVisualizationType(steering_vis_type);
+  vehicle.SetWheelVisualizationType(wheel_vis_type);
+  vehicle.SetTireVisualizationType(tire_vis_type);
 
   // Create the terrain
-  RigidTerrain terrain(my_hmmwv.GetSystem());
+  RigidTerrain terrain(vehicle.GetSystem());
 
   MaterialInfo minfo;
   minfo.mu = 0.9f;
@@ -316,7 +342,7 @@ int main(int argc, char *argv[]) {
 
   // Create the camera sensor
   auto manager =
-      chrono_types::make_shared<ChSensorManager>(my_hmmwv.GetSystem());
+      chrono_types::make_shared<ChSensorManager>(vehicle.GetSystem());
   float intensity = 1.2;
   manager->scene->AddPointLight({0, 0, 1e8}, {intensity, intensity, intensity},
                                 1e12);
@@ -324,6 +350,8 @@ int main(int argc, char *argv[]) {
   manager->scene->SetSceneEpsilon(1e-3);
   manager->scene->EnableDynamicOrigin(true);
   manager->scene->SetOriginOffsetThreshold(500.f);
+
+  std::cout << "test point 1" << std::endl;
 
   auto cam = chrono_types::make_shared<ChCameraSensor>(
       attached_body, // body camera is attached to
@@ -343,6 +371,8 @@ int main(int argc, char *argv[]) {
   cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
   manager->AddSensor(cam);
 
+  std::cout << "test point 2" << std::endl;
+
   // ------------------------
   // Create the driver system
   // ------------------------
@@ -358,27 +388,27 @@ int main(int argc, char *argv[]) {
   // Simulation loop
   // ---------------
 
-  my_hmmwv.GetVehicle().LogSubsystemTypes();
-
   // Initialize simulation frame counters
   int step_number = 0;
 
-  my_hmmwv.GetVehicle().EnableRealtime(false);
+  vehicle.EnableRealtime(false);
+
+  std::cout << "test point 3" << std::endl;
 
   float last_lag = 0.0;
   auto start = std::chrono::high_resolution_clock::now();
 
   // Add vehicle as an agent and initialize SynChronoManager
   auto agent = chrono_types::make_shared<SynWheeledVehicleAgent>(
-      &(my_hmmwv.GetVehicle()), zombie_file);
+      &vehicle, zombie_filename);
   syn_manager.AddAgent(agent);
-  syn_manager.Initialize(my_hmmwv.GetSystem());
+  syn_manager.Initialize(vehicle.GetSystem());
 
   while (syn_manager.IsOk()) {
-    double time = my_hmmwv.GetSystem()->GetChTime();
+    double time = vehicle.GetSystem()->GetChTime();
 
-    ChVector<> pos = my_hmmwv.GetChassis()->GetPos();
-    ChQuaternion<> rot = my_hmmwv.GetChassis()->GetRot();
+    ChVector<> pos = vehicle.GetChassis()->GetPos();
+    ChQuaternion<> rot = vehicle.GetChassis()->GetRot();
 
     auto euler_rot = Q_to_Euler123(rot);
     euler_rot.x() = 0.0;
@@ -402,12 +432,11 @@ int main(int argc, char *argv[]) {
     // Update modules (process inputs from other modules)
     syn_manager.Synchronize(time);
     terrain.Synchronize(time);
-    my_hmmwv.Synchronize(time, driver_inputs, terrain);
+    vehicle.Synchronize(time, driver_inputs, terrain);
 
     // Advance simulation for one timestep for all modules
     terrain.Advance(step_size);
-    my_hmmwv.Advance(step_size);
-
+    vehicle.Advance(step_size);
     if (step_number == 0) {
       auto end = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> diff = end - start;
@@ -583,4 +612,31 @@ void AddObstacle3(RigidTerrain &terrain,
         patch1_mat, convexhull, VNULL, QUNIT);
   }
   patch1->GetGroundBody()->GetCollisionModel()->BuildModel();
+}
+
+void GetVehicleModelFiles(VehicleType type, std::string &vehicle,
+                          std::string &powertrain, std::string &tire,
+                          std::string &zombie) {
+  switch (type) {
+  case VehicleType::HMMWV:
+    vehicle = CHRONO_DATA_DIR +
+              std::string("vehicle/hmmwv/vehicle/HMMWV_Vehicle.json");
+    powertrain =
+        CHRONO_DATA_DIR +
+        std::string("vehicle/hmmwv/powertrain/HMMWV_ShaftsPowertrain.json");
+    tire = CHRONO_DATA_DIR +
+           std::string("vehicle/hmmwv/tire/HMMWV_TMeasyTire.json");
+    zombie = CHRONO_DATA_DIR + std::string("synchrono/vehicle/HMMWV.json");
+    break;
+  case VehicleType::SUV:
+    vehicle = CHRONO_DATA_DIR +
+              std::string("vehicle/Nissan_Patrol/json/suv_Vehicle.json");
+    powertrain =
+        CHRONO_DATA_DIR +
+        std::string("vehicle/Nissan_Patrol/json/suv_ShaftsPowertrain.json");
+    tire = CHRONO_DATA_DIR +
+           std::string("vehicle/Nissan_Patrol/json/suv_TMeasyTire.json");
+    zombie = CHRONO_DATA_DIR + std::string("synchrono/vehicle/suv.json");
+    break;
+  }
 }
