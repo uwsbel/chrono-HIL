@@ -37,6 +37,7 @@
 #include "chrono_thirdparty/filesystem/path.h"
 
 #include "chrono_hil/driver/ChSDLInterface.h"
+#include "chrono_hil/timer/ChRealtimeCumulative.h"
 
 #include "chrono_thirdparty/cxxopts/ChCLI.h"
 
@@ -77,7 +78,9 @@ using namespace chrono::collision;
 using namespace chrono::synchrono;
 
 // =============================================================================
-
+#define MS_TO_MPH 2.23694
+#define MPH_TO_MS 0.44704
+// =============================================================================
 // Quality of Service
 #include <fastdds/dds/domain/qos/DomainParticipantQos.hpp>
 #include <fastdds/rtps/transport/UDPv4TransportDescriptor.h>
@@ -188,6 +191,7 @@ void AddCommandLineOptions(ChCLI &cli) {
   cli.AddOption<int>("Demo", "v,vehicle",
                      "Vehicle Options [0-4]: HMMWV,MAN, Sedan, UAZ, CityBus, ",
                      "0");
+  cli.AddOption<float>("Demo", "c,cam_dis", "Camera Distance", "17.0");
 }
 // =============================================================================
 
@@ -217,6 +221,7 @@ int main(int argc, char *argv[]) {
   const int num_nodes = cli.GetAsType<int>("num_nodes");
   const std::vector<std::string> ip_list =
       cli.GetAsType<std::vector<std::string>>("ip");
+  const float cam_dis = cli.GetAsType<float>("cam_dis");
 
   // -----------------------
   // Create SynChronoManager
@@ -351,13 +356,11 @@ int main(int argc, char *argv[]) {
   manager->scene->EnableDynamicOrigin(true);
   manager->scene->SetOriginOffsetThreshold(500.f);
 
-  std::cout << "test point 1" << std::endl;
-
   auto cam = chrono_types::make_shared<ChCameraSensor>(
       attached_body, // body camera is attached to
       refresh_rate,  // update rate in Hz
       chrono::ChFrame<double>(
-          ChVector<>(-17.0, 0.0, 4.0),
+          ChVector<>(-cam_dis, 0.0, 4.0),
           Q_from_Euler123(ChVector<>(0.0, 0.15, 0.0))), // offset pose
       image_width,                                      // image width
       image_height,                                     // image height
@@ -370,8 +373,6 @@ int main(int argc, char *argv[]) {
   // Provide the host access to the RGBA8 buffer
   cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
   manager->AddSensor(cam);
-
-  std::cout << "test point 2" << std::endl;
 
   // ------------------------
   // Create the driver system
@@ -393,8 +394,6 @@ int main(int argc, char *argv[]) {
 
   vehicle.EnableRealtime(false);
 
-  std::cout << "test point 3" << std::endl;
-
   float last_lag = 0.0;
   auto start = std::chrono::high_resolution_clock::now();
 
@@ -403,6 +402,11 @@ int main(int argc, char *argv[]) {
       &vehicle, zombie_filename);
   syn_manager.AddAgent(agent);
   syn_manager.Initialize(vehicle.GetSystem());
+
+  ChRealtimeCumulative realtime_timer;
+
+  // initialize output to store user input values
+  utils::CSV_writer csv(" ");
 
   while (syn_manager.IsOk()) {
     double time = vehicle.GetSystem()->GetChTime();
@@ -425,6 +429,8 @@ int main(int argc, char *argv[]) {
     driver_inputs.m_throttle = SDLDriver.GetThrottle();
     driver_inputs.m_steering = SDLDriver.GetSteering();
     driver_inputs.m_braking = SDLDriver.GetBraking();
+    csv << driver_inputs.m_throttle << "," << driver_inputs.m_steering << ","
+        << driver_inputs.m_braking << std::endl;
     // std::cout << "throttle: " << driver_inputs.m_throttle
     //           << ", brake: " << driver_inputs.m_braking
     //           << ", steer:" << driver_inputs.m_steering << std::endl;
@@ -437,27 +443,36 @@ int main(int argc, char *argv[]) {
     // Advance simulation for one timestep for all modules
     terrain.Advance(step_size);
     vehicle.Advance(step_size);
+
     if (step_number == 0) {
       auto end = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> diff = end - start;
       last_lag = diff.count();
+
+      realtime_timer.Reset();
     }
 
     if (step_number % 1000 == 0 && step_number != 0) {
       auto end = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> diff = end - start;
       std::cout << "RTF: " << (diff.count() - last_lag) / (1000 * step_size)
-                << std::endl;
+                << ", Vehicle Speed: " << vehicle.GetSpeed() * MS_TO_MPH
+                << " mph" << std::endl;
       last_lag = diff.count();
     }
 
     // Increment frame number
     step_number++;
 
+    if (step_number % 10 == 0) {
+      realtime_timer.Spin(time);
+    }
+
     if (SDLDriver.Synchronize() == 1) {
       break;
     }
   }
+  csv.write_to_file("driver_input.csv");
   syn_manager.QuitSimulation();
   return 0;
 }
@@ -636,7 +651,9 @@ void GetVehicleModelFiles(VehicleType type, std::string &vehicle,
         std::string("vehicle/Nissan_Patrol/json/suv_ShaftsPowertrain.json");
     tire = CHRONO_DATA_DIR +
            std::string("vehicle/Nissan_Patrol/json/suv_TMeasyTire.json");
-    zombie = CHRONO_DATA_DIR + std::string("synchrono/vehicle/suv.json");
+    zombie = CHRONO_DATA_DIR + std::string("/vehicle/suv/json/suv.json");
+
+    std::cout << "zombie: " << zombie << std::endl;
     break;
   }
 }
