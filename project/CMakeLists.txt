@@ -7,4 +7,10 @@ if(ENABLE_PROJECTS)
   add_subdirectory(Unity_Couple)
   add_subdirectory(HMMWV_SCM)
   add_subdirectory(Jsonfy_Env)
+
+  #---------------
+  string(FIND "${CHRONO_LIBRARIES}" "fastcdr" matchres)
+  if(NOT ${matchres} EQUAL -1)
+    add_subdirectory(HMMWV_MHIL)
+  endif()
 endif()

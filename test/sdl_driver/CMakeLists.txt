@@ -9,7 +9,6 @@
 
 set(DEMOS
 	test_HIL_sdlprofiler
-	test_HIL_sdl_HWMMV
 )
 
 #--------------------------------------------------------------
