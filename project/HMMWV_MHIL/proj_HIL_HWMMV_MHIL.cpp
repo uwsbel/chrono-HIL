@@ -9,11 +9,14 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Radu Serban, Justin Madsen, Jason Zhou
+// Authors: Jason Zhou
 // =============================================================================
 //
-// This test reuses 95% of the code from demo_VEH_HWMMV
-// This test implements an independent steering wheel input using SDL library
+// This project uses FastDDS support in Synchrono to enable
+// multiple-human-in-the-loop simulation
+//
+// The max number of players allowed in this simulation is 2
+// The project simulates a simplified vehicle testing field.
 //
 // =============================================================================
 

@@ -57,8 +57,8 @@
 
 #include "chrono_thirdparty/cxxopts/ChCLI.h"
 
-// #include "extras/driver/ChCSLDriver.h"
 #include "chrono_hil/driver/ChLidarWaypointDriver.h"
+#include "chrono_hil/driver/ChSDLInterface.h"
 
 // =============================================================================
 
@@ -131,6 +131,8 @@ bool load_roads_only = false;
 // Resolution of the CSL 3-monitor setup
 const int FS_WIDTH = 3840;
 const int FS_HEIGHT = 1080 * 2;
+
+std::string joystick_filename;
 
 std::string demo_data_path = std::string(STRINGIFY(HIL_DATA_DIR));
 
@@ -415,39 +417,6 @@ void VehicleProcessMessageCallback(
     std::shared_ptr<SynWheeledVehicleAgent> agent,
     std::shared_ptr<ChLidarWaypointDriver> driver);
 
-class IrrAppWrapper {
-public:
-  IrrAppWrapper(
-      std::shared_ptr<ChWheeledVehicleVisualSystemIrrlicht> app = nullptr)
-      : app(app) {}
-
-  void Synchronize(const std::string &msg, const DriverInputs &driver_inputs) {
-    if (app)
-      app->Synchronize(msg, driver_inputs);
-  }
-
-  void Advance(double step) {
-    if (app)
-      app->Advance(step);
-  }
-
-  void Render() {
-    if (app) {
-      // app->BeginScene(true, true, ChColor(255, 140, 161, 192));
-      app->BeginScene();
-      app->Render();
-      app->EndScene();
-    }
-  }
-
-  void Set(std::shared_ptr<ChWheeledVehicleVisualSystemIrrlicht> app) {
-    this->app = app;
-  }
-  bool IsOk() { return app ? app->GetDevice()->run() : true; }
-
-  std::shared_ptr<ChWheeledVehicleVisualSystemIrrlicht> app;
-};
-
 // =============================================================================
 
 int main(int argc, char *argv[]) {
@@ -461,9 +430,12 @@ int main(int argc, char *argv[]) {
   if (!cli.Parse(argc, argv, true))
     return 0;
 
-    // -----------------------
-    // Create SynChronoManager
-    // -----------------------
+  joystick_filename = std::string(STRINGIFY(HIL_DATA_DIR)) +
+                      cli.GetAsType<std::string>("joystick_filename");
+
+  // -----------------------
+  // Create SynChronoManager
+  // -----------------------
 #ifdef USE_FAST_DDS
   int node_id, num_nodes;
   std::shared_ptr<SynCommunicator> communicator;
@@ -661,26 +633,6 @@ int main(int argc, char *argv[]) {
           chrono_types::make_shared<ChFilterSave>("DEMO_OUTPUT/driver_cam/"));
     manager->AddSensor(driver_cam);
 
-    /*
-          // third person camera, for any vehicle
-          camera = chrono_types::make_shared<ChCameraSensor>(
-              vehicle.GetChassisBody(), // body camera is attached to
-              30.f,                     // update rate in Hz
-              chrono::ChFrame<double>({-2.0 * cam_distance, 0, .45 *
-       cam_distance}, Q_from_AngAxis(0, {0, 1, 0})), // offset pose 1280, //
-       image width 720,                                                   //
-       image height 3.14 / 4,                                              //
-       fov 1);
-
-          camera->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
-              1280, 720, "Camera 1, Super Sampled", false));
-          if (save)
-            camera->PushFilter(
-                chrono_types::make_shared<ChFilterSave>("DEMO_OUTPUT/cam_third/"));
-
-          manager->AddSensor(camera);
-          */
-
     if (!no_sensing) {
       lidar = chrono_types::make_shared<ChLidarSensor>(
           vehicle.GetChassisBody(), // body lidar is attached to
@@ -724,48 +676,18 @@ int main(int argc, char *argv[]) {
   std::string driver_file = "driver_inputs.txt";
   utils::CSV_writer driver_csv(" ");
 
-  IrrAppWrapper app;
   std::shared_ptr<ChDriver> driver;
-
-  auto vis = chrono_types::make_shared<ChWheeledVehicleVisualSystemIrrlicht>();
+  ChSDLInterface SDLDriver;
 
   if (node_id == leader && replay_inputs) {
     auto data_driver =
         chrono_types::make_shared<ChDataDriver>(vehicle, driver_file, true);
     data_driver->Initialize();
     driver = data_driver;
-  } else if (node_id == leader && cli.GetAsType<bool>("irr")) {
-    vis->SetWindowTitle("San Francisco City Demo");
-    vis->SetChaseCamera(trackPoint, 6.0, 0.5);
-    vis->Initialize();
-    vis->AddTypicalLights();
-    vis->AddSkyBox();
-    vis->AddLogo();
-    vis->AttachVehicle(&vehicle);
-
+  } else if (node_id == leader) {
     // Create the interactive driver system
-    auto irr_driver = chrono_types::make_shared<ChIrrGuiDriver>(*vis);
-
-    // optionally force the gui driver to use keyboard rather than joystick
-    if (cli.GetAsType<bool>("keyboard"))
-      irr_driver->SetInputMode(ChIrrGuiDriver::InputMode::KEYBOARD);
-
-    // Set the time response for steering and throttle keyboard inputs.
-    double steering_time = 1.0; // time to go from 0 to +1 (or from 0 to -1)
-    double throttle_time = 1.0; // time to go from 0 to +1
-    double braking_time = 0.3;  // time to go from 0 to +1
-    irr_driver->SetSteeringDelta(render_step_size / steering_time);
-    irr_driver->SetThrottleDelta(render_step_size / throttle_time);
-    irr_driver->SetBrakingDelta(render_step_size / braking_time);
-    irr_driver->Initialize();
-
-    app.Set(vis);
-
-    driver = irr_driver;
-    // } else if (node_id == leader && cli.GetAsType<bool>("console")) {
-    //     // Use custom CSL driver instead of irr driver
-    //     auto csl_driver = chrono_types::make_shared<ChCSLDriver>(vehicle);
-    //     driver = csl_driver;
+    SDLDriver.Initialize();
+    SDLDriver.SetJoystickConfigFile(joystick_filename);
   } else {
     auto path =
         ChBezierCurve::read(GetChronoDataFile(demo_config[node_id].path_file));
@@ -810,12 +732,21 @@ int main(int argc, char *argv[]) {
   float orbit_rate = .25;
   double time = 0;
 
-  while (app.IsOk() && syn_manager.IsOk() && time < end_time) {
+  while (syn_manager.IsOk() && time < end_time) {
 
     time = vehicle.GetSystem()->GetChTime();
 
     // Get driver inputs
-    DriverInputs driver_inputs = driver->GetInputs();
+    DriverInputs driver_inputs;
+
+    if (node_id == leader && !replay_inputs) {
+      // Create the interactive driver system
+      driver_inputs.m_throttle = SDLDriver.GetThrottle();
+      driver_inputs.m_steering = SDLDriver.GetSteering();
+      driver_inputs.m_braking = SDLDriver.GetBraking();
+    } else {
+      driver->GetInputs();
+    }
 
     if (node_id == leader && record_inputs) {
       driver_csv << time << driver_inputs.m_steering << driver_inputs.m_throttle
@@ -824,19 +755,24 @@ int main(int argc, char *argv[]) {
 
     // Update modules (process inputs from other modules)
     syn_manager.Synchronize(time); // Synchronize between nodes
-    driver->Synchronize(time);
+    if (node_id != leader)
+      driver->Synchronize(time);
     vehicle.Synchronize(time, driver_inputs, terrain);
     terrain.Synchronize(time);
-    app.Synchronize("", driver_inputs);
 
     // Advance simulation for one timestep for all modules
-    driver->Advance(step_size);
+    if (node_id != leader)
+      driver->Advance(step_size);
     vehicle.Advance(step_size);
     terrain.Advance(step_size);
-    app.Advance(step_size);
 
     if (node_id == leader) {
       manager->Update();
+    }
+
+    if (node_id == leader) {
+      if (SDLDriver.Synchronize() == 1)
+        break;
     }
 
     // Increment frame number
@@ -926,6 +862,9 @@ void AddCommandLineOptions(ChCLI &cli) {
   cli.AddOption<int>(
       "Demo", "v,vehicle",
       "Vehicle Options [0-4]: Sedan, Audi, SUV, Van, Truck, CityBus", "1");
+
+  cli.AddOption<std::string>("Simulation", "joystick_filename",
+                             "Joystick config JSON file", joystick_filename);
 }
 
 void GetVehicleModelFiles(VehicleType type, std::string &vehicle,
