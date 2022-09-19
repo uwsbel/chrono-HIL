@@ -115,9 +115,6 @@ double end_time = 1000;
 // How often SynChrono state messages are interchanged
 double heartbeat = 1e-2; // 100[Hz]
 
-// Time interval between two render frames
-double render_step_size = 1.0 / 50; // FPS = 50
-
 unsigned int leader;
 bool save = false;
 bool use_fullscreen = false;
@@ -128,10 +125,9 @@ ChVector<> simulation_center = {826.734, -37.97, -64.8};
 double loading_radius = 1000;
 bool load_roads_only = false;
 
-// Resolution of the CSL 3-monitor setup
-const int FS_WIDTH = 5760;
-const int FS_HEIGHT = 1080;
-
+float resolution_x = 1920;
+float resolution_y = 1080;
+int supersample = 1;
 std::string joystick_filename;
 
 std::string demo_data_path = std::string(STRINGIFY(HIL_DATA_DIR));
@@ -430,12 +426,9 @@ int main(int argc, char *argv[]) {
   if (!cli.Parse(argc, argv, true))
     return 0;
 
-  joystick_filename = std::string(STRINGIFY(HIL_DATA_DIR)) +
-                      cli.GetAsType<std::string>("joystick_filename");
-
-  // -----------------------
-  // Create SynChronoManager
-  // -----------------------
+    // -----------------------
+    // Create SynChronoManager
+    // -----------------------
 #ifdef USE_FAST_DDS
   int node_id, num_nodes;
   std::shared_ptr<SynCommunicator> communicator;
@@ -500,6 +493,11 @@ int main(int argc, char *argv[]) {
   bool replay_inputs = cli.GetAsType<bool>("replay");
   loading_radius = cli.GetAsType<double>("load_radius");
   load_roads_only = cli.GetAsType<bool>("roads_only");
+  joystick_filename = std::string(STRINGIFY(HIL_DATA_DIR)) +
+                      cli.GetAsType<std::string>("joystick_filename");
+  resolution_x = cli.GetAsType<float>("resolution_x");
+  resolution_y = cli.GetAsType<float>("resolution_y");
+  supersample = cli.GetAsType<int>("supersample_rate");
 
   // Change SynChronoManager settings
   syn_manager.SetHeartbeat(heartbeat);
@@ -611,23 +609,23 @@ int main(int argc, char *argv[]) {
     manager->scene->AddPointLight({0, 0, 10000},
                                   {brightness, brightness, brightness}, 100000);
 
-    const int image_width = use_fullscreen ? FS_WIDTH : FS_WIDTH / 2;
-    const int image_height = use_fullscreen ? FS_HEIGHT : FS_HEIGHT / 2;
+    const int image_width = resolution_x;
+    const int image_height = resolution_y;
 
     // camera at driver's eye location for Audi
     auto driver_cam = chrono_types::make_shared<ChCameraSensor>(
         vehicle.GetChassisBody(), // body camera is attached to
-        30.f,                     // update rate in Hz
+        25,                       // update rate in Hz
         chrono::ChFrame<double>({0.54, .381, 1.04},
                                 Q_from_AngAxis(0, {0, 1, 0})), // offset pose
         image_width,                                           // image width
         image_height,                                          // image height
         3.14 / 1.5,                                            // fov
-        1);
+        supersample);
 
     driver_cam->SetName("DriverCam");
     driver_cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
-        image_width, image_height, "Camera 1, Super Sampled", use_fullscreen));
+        image_width, image_height, "Camera1", use_fullscreen));
     if (save)
       driver_cam->PushFilter(
           chrono_types::make_shared<ChFilterSave>("DEMO_OUTPUT/driver_cam/"));
@@ -718,8 +716,6 @@ int main(int argc, char *argv[]) {
   // ---------------
   // Simulation loop
   // ---------------
-  // Number of simulation steps between miscellaneous events
-  int render_steps = (int)std::ceil(render_step_size / step_size);
 
   // Initialize simulation frame counters
   int step_number = 0;
@@ -817,6 +813,12 @@ void AddCommandLineOptions(ChCLI &cli) {
                         std::to_string(end_time));
   cli.AddOption<double>("Simulation", "b,heartbeat", "Heartbeat",
                         std::to_string(heartbeat));
+  cli.AddOption<float>("Simulation", "x,resolution_x", "Resolution x",
+                       std::to_string(resolution_x));
+  cli.AddOption<float>("Simulation", "y,resolution_y", "Resolution y",
+                       std::to_string(resolution_y));
+  cli.AddOption<int>("Simulation", "r,supersample_rate", "Supersample Rate",
+                     std::to_string(supersample));
   cli.AddOption<bool>("Simulation", "save", "save", std::to_string(save));
   // cli.AddOption<bool>("Simulation", "console", "Use console for rank 0",
   // "false");
