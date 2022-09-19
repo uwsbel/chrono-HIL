@@ -129,8 +129,8 @@ double loading_radius = 1000;
 bool load_roads_only = false;
 
 // Resolution of the CSL 3-monitor setup
-const int FS_WIDTH = 3840;
-const int FS_HEIGHT = 1080 * 2;
+const int FS_WIDTH = 5760;
+const int FS_HEIGHT = 1080;
 
 std::string joystick_filename;
 
