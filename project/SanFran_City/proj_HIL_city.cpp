@@ -104,7 +104,7 @@ enum VehicleType { SEDAN, AUDI, SUV, VAN, TRUCK, CITYBUS };
 ChVector<> trackPoint(0.0, 0.0, 1.75);
 
 // Contact method
-ChContactMethod contact_method = ChContactMethod::NSC;
+ChContactMethod contact_method = ChContactMethod::SMC;
 
 // Simulation step sizes
 double step_size = 2e-3;
@@ -668,7 +668,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  manager->SetVerbose(true);
+  manager->SetVerbose(false);
 
   // Create the vehicle Irrlicht interface
   std::string driver_file = "driver_inputs.txt";
@@ -952,11 +952,10 @@ void AddSceneMeshes(ChSystem *chsystem, RigidTerrain *terrain) {
   if (infile.good()) {
     int mesh_count = 0;
     int mesh_limit = mesh_offset + num_meshes;
+
     while (std::getline(infile, line) && mesh_count < mesh_limit) {
 
       auto mesh_body = chrono_types::make_shared<ChBody>();
-      mesh_body->SetBodyFixed(true);
-      mesh_body->SetCollide(false);
 
       if (mesh_count < mesh_offset) {
         mesh_count++;
@@ -1010,6 +1009,8 @@ void AddSceneMeshes(ChSystem *chsystem, RigidTerrain *terrain) {
               trimesh_shape->SetMutable(false);
 
               mesh_body->AddVisualShape(trimesh_shape);
+              mesh_body->SetBodyFixed(true);
+              mesh_body->SetCollide(false);
               mesh_body->SetPos(pos);
               mesh_body->SetRot(rot);
 
