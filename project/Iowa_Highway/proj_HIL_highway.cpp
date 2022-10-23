@@ -170,7 +170,7 @@ std::string demo_data_path = std::string(STRINGIFY(HIL_DATA_DIR));
 std::vector<double> followerParam;
 std::string scenario_parameters = "scenario_parameters.json";
 std::string simulation_parameters = "simulation_parameters.json";
-std::string lead_parameters = demo_data_path + "lead_parameters_nolead.json";
+std::string lead_parameters = "lead_parameters_nolead.json";
 // cruise speed [mph]
 double cruise_speed = 45;
 
