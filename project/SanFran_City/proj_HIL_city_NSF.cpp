@@ -106,7 +106,7 @@ double step_size = 1e-3;
 double end_time = 1000;
 
 // How often SynChrono state messages are interchanged
-double heartbeat = 1e-2; // 100[Hz]
+double heartbeat = 5e-3; // 100[Hz]
 
 bool use_fullscreen = false;
 
@@ -142,20 +142,20 @@ std::vector<PathVehicleSetup> demo_config = {
     {HMMWV,
      {925.434, -150.87, -65.2},
      Q_from_AngZ(3.14 / 2),
-     "/paths/2.txt",
+     "/paths/3.txt",
      8.0,
      0.1}, // ego vehicle
 
     {SEDAN,
      {925.434, -53.47, -65.2},
      Q_from_AngZ(3.14 / 2),
-     "/paths/2.txt",
+     "/paths/3.txt",
      8.0,
      0.1},
     {HMMWV,
      {925.434, 0.47, -65.2},
      Q_from_AngZ(3.14 / 2),
-     "/paths/2.txt",
+     "/paths/3.txt",
      audi_tight_lookahead,
      audi_pgain},
     /*
