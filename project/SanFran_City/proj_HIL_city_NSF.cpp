@@ -22,19 +22,17 @@
 #include "chrono_vehicle/ChConfigVehicle.h"
 #include "chrono_vehicle/ChVehicleModelData.h"
 #include "chrono_vehicle/ChWorldFrame.h"
-#include "chrono_vehicle/driver/ChIrrGuiDriver.h"
 #include "chrono_vehicle/terrain/RigidTerrain.h"
 #include "chrono_vehicle/utils/ChUtilsJSON.h"
 
-#include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
 #include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
 
 #include "chrono_synchrono/SynChronoManager.h"
 #include "chrono_synchrono/SynConfig.h"
 #include "chrono_synchrono/agent/SynWheeledVehicleAgent.h"
-#ifdef USE_FAST_DDS
+
 #include "chrono_synchrono/communication/dds/SynDDSCommunicator.h"
-#endif
+
 #include "chrono_synchrono/communication/mpi/SynMPICommunicator.h"
 #include "chrono_synchrono/controller/SynControllerFunctions.h"
 #include "chrono_synchrono/controller/driver/SynMultiPathDriver.h"
@@ -60,26 +58,19 @@
 #include "chrono_hil/driver/ChLidarWaypointDriver.h"
 #include "chrono_hil/driver/ChSDLInterface.h"
 
-// =============================================================================
-
-#ifdef USE_FAST_DDS
-
-// FastDDS
-#undef ALIVE
+// Quality of Service
 #include <fastdds/dds/domain/qos/DomainParticipantQos.hpp>
 #include <fastdds/rtps/transport/UDPv4TransportDescriptor.h>
+#include <fastdds/rtps/transport/UDPv6TransportDescriptor.h>
 
 using namespace eprosima::fastdds::dds;
 using namespace eprosima::fastdds::rtps;
 using namespace eprosima::fastrtps::rtps;
 
-#endif
-
 // =============================================================================
 
 using namespace chrono;
 using namespace chrono::geometry;
-using namespace chrono::irrlicht;
 using namespace chrono::synchrono;
 using namespace chrono::vehicle;
 using namespace chrono::sensor;
@@ -115,19 +106,18 @@ double end_time = 1000;
 // How often SynChrono state messages are interchanged
 double heartbeat = 1e-2; // 100[Hz]
 
-unsigned int leader;
-bool save = false;
 bool use_fullscreen = false;
 
 ChVector<> simulation_center = {826.734, -37.97, -64.8};
 
 double loading_radius = 1000;
-bool load_roads_only = false;
 
 float resolution_x = 1920;
 float resolution_y = 1080;
 int supersample = 1;
 std::string joystick_filename;
+bool use_data_driver = false;
+bool render = false;
 
 std::string demo_data_path = std::string(STRINGIFY(HIL_DATA_DIR));
 
@@ -147,26 +137,19 @@ double audi_pgain = .5;
 
 // starting locations and paths
 std::vector<PathVehicleSetup> demo_config = {
-    // {SUV, {917.234, 60.63, -64.8}, Q_from_AngZ(-3.14 / 2), "/paths/3.txt",
-    // audi_tight_lookahead, audi_pgain},
     {AUDI,
-     {925.434, -150.87, -64.8},
+     {925.434, -150.87, -65.2},
      Q_from_AngZ(3.14 / 2),
      "/paths/2.txt",
      8.0,
      0.1}, // ego vehicle
-    // {AUDI, {925.434, -164.87, -64.8}, Q_from_AngZ(3.14 / 2),
-    // "/paths/2.txt", 8.0, 0.1},  // ego vehicle
 
-    // {AUDI, {925.434, -140.87, -64.8}, Q_from_AngZ(3.14 / 2),
-    // "/paths/2.txt", 10.0, 0.1},  // ego vehicle
-
-    {SUV,
-     {925.434, -53.47, -64.8},
+    {AUDI,
+     {925.434, -53.47, -65.2},
      Q_from_AngZ(3.14 / 2),
      "/paths/2.txt",
-     suv_lookahead,
-     suv_pgain},
+     8.0,
+     0.1},
     {AUDI,
      {925.434, 0.47, -64.8},
      Q_from_AngZ(3.14 / 2),
@@ -406,6 +389,10 @@ void GetVehicleModelFiles(VehicleType type, std::string &vehicle,
                           double &cam_distance);
 
 void AddSceneMeshes(ChSystem *chsystem, RigidTerrain *terrain);
+void VehicleProcessMessageCallback(
+    std::shared_ptr<SynMessage> message, WheeledVehicle &vehicle,
+    std::shared_ptr<SynWheeledVehicleAgent> agent,
+    std::shared_ptr<ChLidarWaypointDriver> driver);
 
 // =============================================================================
 
@@ -420,54 +407,36 @@ int main(int argc, char *argv[]) {
   if (!cli.Parse(argc, argv, true))
     return 0;
 
-    // -----------------------
-    // Create SynChronoManager
-    // -----------------------
-#ifdef USE_FAST_DDS
-  int node_id, num_nodes;
-  std::shared_ptr<SynCommunicator> communicator;
-  if (cli.GetAsType<bool>("dds")) {
-    node_id = cli.GetAsType<int>("node_id");
-    num_nodes = cli.GetAsType<int>("num_nodes");
+  const int node_id = cli.GetAsType<int>("node_id");
+  const int num_nodes = cli.GetAsType<int>("num_nodes");
+  const std::vector<std::string> ip_list =
+      cli.GetAsType<std::vector<std::string>>("ip");
 
-    // Set up the qos
-    DomainParticipantQos qos;
-    qos.name("/syn/node/" + AgentKey(node_id, 0).GetKeyString());
+  // -----------------------
+  // Create SynChronoManager
+  // -----------------------
 
-    // Use UDP by default
-    auto udp_transport = chrono_types::make_shared<UDPv4TransportDescriptor>();
-    udp_transport->maxInitialPeersRange = num_nodes;
-    qos.transport().user_transports.push_back(udp_transport);
-    qos.transport().use_builtin_transports = false;
+  // Use UDP4
+  DomainParticipantQos qos;
+  qos.name("/syn/node/" + std::to_string(node_id) + ".0");
+  qos.transport().user_transports.push_back(
+      std::make_shared<UDPv4TransportDescriptor>());
 
-    // Set up the initial peers list
-    std::vector<std::string> ip_list = {"10.8.0.2", "127.0.0.1"};
-    for (auto &ip : ip_list) {
-      Locator_t peer;
-      IPLocator::setIPv4(peer, ip);
-      peer.port = 0;
-      qos.wire_protocol().builtin.initialPeersList.push_back(peer);
-    }
+  qos.transport().use_builtin_transports = false;
+  qos.wire_protocol().builtin.avoid_builtin_multicast = false;
 
-    auto dds_communicator =
-        chrono_types::make_shared<SynDDSCommunicator>(node_id);
-    communicator = dds_communicator;
-  } else {
-    auto mpi_communicator =
-        chrono_types::make_shared<SynMPICommunicator>(argc, argv);
-
-    node_id = mpi_communicator->GetRank();
-    num_nodes = mpi_communicator->GetNumRanks();
-    communicator = mpi_communicator;
+  // Set the initialPeersList
+  for (const auto &ip : ip_list) {
+    Locator_t locator;
+    locator.kind = LOCATOR_KIND_UDPv4;
+    IPLocator::setIPv4(locator, ip);
+    qos.wire_protocol().builtin.initialPeersList.push_back(locator);
   }
+  auto communicator = chrono_types::make_shared<SynDDSCommunicator>(qos);
   SynChronoManager syn_manager(node_id, num_nodes, communicator);
-#else
-  auto communicator = chrono_types::make_shared<SynMPICommunicator>(argc, argv);
 
-  int node_id = communicator->GetRank();
-  int num_nodes = communicator->GetNumRanks();
-  SynChronoManager syn_manager(node_id, num_nodes, communicator);
-#endif
+  // Change SynChronoManager settings
+  syn_manager.SetHeartbeat(heartbeat);
 
   // all the demo data will be in user-specified location
   SetChronoDataPath(demo_data_path);
@@ -478,28 +447,20 @@ int main(int argc, char *argv[]) {
   step_size = cli.GetAsType<double>("step_size");
   end_time = cli.GetAsType<double>("end_time");
   heartbeat = cli.GetAsType<double>("heartbeat");
-  leader = cli.GetAsType<unsigned int>("leader");
-  save = cli.GetAsType<bool>("save");
   use_fullscreen = cli.GetAsType<bool>("fullscreen");
-  VehicleType rank0_vehicle = (VehicleType)cli.GetAsType<int>("vehicle");
   bool record_inputs = cli.GetAsType<bool>("record");
   bool replay_inputs = cli.GetAsType<bool>("replay");
   loading_radius = cli.GetAsType<double>("load_radius");
-  load_roads_only = cli.GetAsType<bool>("roads_only");
   joystick_filename = std::string(STRINGIFY(HIL_DATA_DIR)) +
                       cli.GetAsType<std::string>("joystick_filename");
   resolution_x = cli.GetAsType<float>("resolution_x");
   resolution_y = cli.GetAsType<float>("resolution_y");
   supersample = cli.GetAsType<int>("supersample_rate");
+  render = cli.GetAsType<bool>("render");
+  use_data_driver = cli.GetAsType<bool>("data_driver");
 
   // Change SynChronoManager settings
   syn_manager.SetHeartbeat(heartbeat);
-
-  // Copyright
-  LogCopyright(node_id == leader);
-
-  // Sanity check
-  assert(leader < num_nodes);
 
   // --------------
   // Create systems
@@ -513,15 +474,9 @@ int main(int argc, char *argv[]) {
       zombie_filename;
   ChVector<> lidar_pos;
 
-  if (node_id == leader) {
-    GetVehicleModelFiles(rank0_vehicle, vehicle_filename, powertrain_filename,
-                         tire_filename, zombie_filename, lidar_pos,
-                         cam_distance);
-  } else {
-    GetVehicleModelFiles(demo_config[node_id].vehicle_type, vehicle_filename,
-                         powertrain_filename, tire_filename, zombie_filename,
-                         lidar_pos, cam_distance);
-  }
+  GetVehicleModelFiles(demo_config[node_id].vehicle_type, vehicle_filename,
+                       powertrain_filename, tire_filename, zombie_filename,
+                       lidar_pos, cam_distance);
 
   // Create the vehicle, set parameters, and initialize
   WheeledVehicle vehicle(vehicle_filename, contact_method);
@@ -588,10 +543,9 @@ int main(int argc, char *argv[]) {
   std::shared_ptr<ChCameraSensor> camera;
   std::shared_ptr<ChSensorManager> manager;
 
-  if (node_id == leader) {
+  if (render) {
     // add a sensor manager
     manager = chrono_types::make_shared<ChSensorManager>(vehicle.GetSystem());
-    // manager->SetRayRecursions(11);
     Background b;
     b.mode = BackgroundMode::ENVIRONMENT_MAP; // GRADIENT
     b.color_zenith = {.5f, .6f, .7f};
@@ -619,27 +573,16 @@ int main(int argc, char *argv[]) {
     driver_cam->SetName("DriverCam");
     driver_cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
         image_width, image_height, "Camera1", use_fullscreen));
-    // if (save)
-    //   driver_cam->PushFilter(
-    //       chrono_types::make_shared<ChFilterSave>("DEMO_OUTPUT/driver_cam/"));
     manager->AddSensor(driver_cam);
   }
 
-  manager->SetVerbose(false);
-
-  // Create the vehicle Irrlicht interface
   std::string driver_file = "driver_inputs.txt";
   utils::CSV_writer driver_csv(" ");
 
   std::shared_ptr<ChDriver> driver;
   ChSDLInterface SDLDriver;
 
-  if (node_id == leader && replay_inputs) {
-    auto data_driver =
-        chrono_types::make_shared<ChDataDriver>(vehicle, driver_file, true);
-    data_driver->Initialize();
-    driver = data_driver;
-  } else if (node_id == leader) {
+  if (!use_data_driver) {
     // Create the interactive driver system
     SDLDriver.Initialize();
     SDLDriver.SetJoystickConfigFile(joystick_filename);
@@ -652,14 +595,30 @@ int main(int argc, char *argv[]) {
     double following_distance = 10;
     double current_distance = 100;
 
-    auto path_driver = chrono_types::make_shared<ChLidarWaypointDriver>(
-        vehicle, lidar, path, "NSF", target_speed, following_time,
-        following_distance, current_distance, isPathClosed);
-    path_driver->SetGains(demo_config[node_id].lookahead, 0.5, 0.0, 0.0,
-                          demo_config[node_id].speed_gain_p, 0.01, 0.0);
-    path_driver->Initialize();
+    // auto path_driver = chrono_types::make_shared<ChPathFollowerDriver>(
+    //     vehicle, path, "NSF", target_speed, true);
+    /*
+        auto path_driver = chrono_types::make_shared<ChLidarWaypointDriver>(
+            vehicle, lidar, path, "NSF", target_speed, following_time,
+            following_distance, current_distance, isPathClosed);
+        path_driver->SetGains(demo_config[node_id].lookahead, 0.5, 0.0, 0.0,
+                              demo_config[node_id].speed_gain_p, 0.01, 0.0);
+        path_driver->Initialize();
 
-    driver = path_driver;
+        auto callback =
+            std::bind(&VehicleProcessMessageCallback, std::placeholders::_1,
+                      std::ref(vehicle), agent, path_driver);
+        agent->SetProcessMessageCallback(callback);
+        */
+
+    auto acc_driver = chrono_types::make_shared<ChPathFollowerACCDriver>(
+        vehicle, path, "Highway", target_speed, 1.2, 10, current_distance,
+        isPathClosed);
+    acc_driver->GetSpeedController().SetGains(0.4, 0.0, 0.0);
+    acc_driver->GetSteeringController().SetGains(0.4, 0.1, 0.2);
+    acc_driver->GetSteeringController().SetLookAheadDistance(5);
+
+    driver = acc_driver;
   }
 
   // ---------------
@@ -677,14 +636,14 @@ int main(int argc, char *argv[]) {
   float orbit_rate = .25;
   double time = 0;
 
-  while (syn_manager.IsOk() && time < end_time) {
+  while (syn_manager.IsOk()) {
 
     time = vehicle.GetSystem()->GetChTime();
 
     // Get driver inputs
     DriverInputs driver_inputs;
 
-    if (node_id == leader && !replay_inputs) {
+    if (!use_data_driver) {
       if (step_number % 50 == 0) {
         // Create the interactive driver system
         driver_inputs.m_throttle = SDLDriver.GetThrottle();
@@ -693,32 +652,27 @@ int main(int argc, char *argv[]) {
       }
 
     } else {
-      driver->GetInputs();
-    }
-
-    if (node_id == leader && record_inputs) {
-      driver_csv << time << driver_inputs.m_steering << driver_inputs.m_throttle
-                 << driver_inputs.m_braking << std::endl;
+      driver_inputs = driver->GetInputs();
     }
 
     // Update modules (process inputs from other modules)
     syn_manager.Synchronize(time); // Synchronize between nodes
-    if (node_id != leader)
+    if (use_data_driver)
       driver->Synchronize(time);
     vehicle.Synchronize(time, driver_inputs, terrain);
     terrain.Synchronize(time);
 
     // Advance simulation for one timestep for all modules
-    if (node_id != leader)
+    if (use_data_driver)
       driver->Advance(step_size);
     vehicle.Advance(step_size);
     terrain.Advance(step_size);
 
-    if (node_id == leader) {
+    if (render) {
       manager->Update();
     }
 
-    if (node_id == leader) {
+    if (!use_data_driver) {
       if (SDLDriver.Synchronize() == 1)
         break;
     }
@@ -727,7 +681,7 @@ int main(int argc, char *argv[]) {
     step_number++;
 
     // Log clock time
-    if (step_number % 500 == 0 && node_id == leader) {
+    if (step_number % 500 == 0) {
       std::chrono::high_resolution_clock::time_point end =
           std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> wall_time =
@@ -738,9 +692,6 @@ int main(int argc, char *argv[]) {
       last_time = time;
       start = std::chrono::high_resolution_clock::now();
     }
-  }
-  if (node_id == leader && record_inputs) {
-    driver_csv.write_to_file(driver_file);
   }
 
   // Properly shuts down other ranks when one rank ends early
@@ -771,24 +722,12 @@ void AddCommandLineOptions(ChCLI &cli) {
                        std::to_string(resolution_y));
   cli.AddOption<int>("Simulation", "r,supersample_rate", "Supersample Rate",
                      std::to_string(supersample));
-  cli.AddOption<bool>("Simulation", "save", "save", std::to_string(save));
-  // cli.AddOption<bool>("Simulation", "console", "Use console for rank 0",
-  // "false");
-  cli.AddOption<unsigned int>("Simulation", "l,leader", "The leader rank/node",
-                              "0");
-
+  cli.AddOption<bool>("Simulation", "render", "Render rank",
+                      std::to_string(render));
   // mesh loading options
   cli.AddOption<double>("Simulation", "load_radius",
                         "Radius around simulation center to load meshes",
                         std::to_string(loading_radius));
-  cli.AddOption<bool>("Simulation", "roads_only", "only load road meshes",
-                      std::to_string(load_roads_only));
-
-  // Irrlicht options
-  cli.AddOption<bool>("Irrlicht", "i,irr", "Use irrlicht on rank 0", "false");
-  cli.AddOption<bool>("Keyboard", "k,keyboard",
-                      "Force irrlicht driver into keyboard control on rank 0",
-                      "false");
 
   // options for human driver
   cli.AddOption<bool>("Simulation", "fullscreen",
@@ -799,21 +738,16 @@ void AddCommandLineOptions(ChCLI &cli) {
   cli.AddOption<bool>("Simulation", "replay",
                       "Replay human driver inputs from file", "false");
 
-// SynChrono/DDS options
-#ifdef USE_FAST_DDS
-  cli.AddOption<bool>("DDS", "dds", "Use DDS as the communication mechanism",
-                      "false");
+  // DDS Specific
   cli.AddOption<int>("DDS", "d,node_id", "ID for this Node", "1");
   cli.AddOption<int>("DDS", "n,num_nodes", "Number of Nodes", "2");
-#endif
-
-  // Other options
-  cli.AddOption<int>(
-      "Demo", "v,vehicle",
-      "Vehicle Options [0-4]: Sedan, Audi, SUV, Van, Truck, CityBus", "1");
+  cli.AddOption<std::vector<std::string>>(
+      "DDS", "ip", "IP Addresses for initialPeersList", "127.0.0.1");
 
   cli.AddOption<std::string>("Simulation", "joystick_filename",
                              "Joystick config JSON file", joystick_filename);
+  cli.AddOption<bool>("Simulation", "data_driver", "whether to use data driver",
+                      std::to_string(use_data_driver));
 }
 
 void GetVehicleModelFiles(VehicleType type, std::string &vehicle,
@@ -915,8 +849,6 @@ void AddSceneMeshes(ChSystem *chsystem, RigidTerrain *terrain) {
         while (std::getline(ss, col, ',')) {
           result.push_back(col);
         }
-        // std::cout << "Name: " << result[0] << ", mesh: " << result[1] <<
-        // std::endl;
         std::string mesh_name = result[0];
         std::string mesh_obj = base_path + result[1] + ".obj";
 
@@ -925,7 +857,7 @@ void AddSceneMeshes(ChSystem *chsystem, RigidTerrain *terrain) {
             std::string::npos) { // exlude items with
                                  // emission on
 
-          if (!load_roads_only || mesh_name.find("Road") != std::string::npos) {
+          if (true || mesh_name.find("Road") != std::string::npos) {
             ChVector<double> pos = {std::stod(result[2]), std::stod(result[3]),
                                     std::stod(result[4])};
 
@@ -967,5 +899,40 @@ void AddSceneMeshes(ChSystem *chsystem, RigidTerrain *terrain) {
     }
     std::cout << "Total meshes: " << meshes_added
               << " | Unique meshes: " << mesh_map.size() << std::endl;
+  }
+}
+
+void VehicleProcessMessageCallback(
+    std::shared_ptr<SynMessage> message, WheeledVehicle &vehicle,
+    std::shared_ptr<SynWheeledVehicleAgent> agent,
+    std::shared_ptr<ChLidarWaypointDriver> driver) {
+  if (auto vehicle_message =
+          std::dynamic_pointer_cast<SynWheeledVehicleStateMessage>(message)) {
+    // The IsInsideBox function will determine whether the a passsed point is
+    // inside a box defined by a front position, back position and the width of
+    // the box. Rotation of the vectors are taken into account. The positions
+    // must be in the same reference, i.e. local OR global, not both.
+
+    // First calculate the box
+    // We'll do everything in the local frame
+    double width = 4;
+    double x_min = 0;
+    double x_max = 100;
+    double offset_for_chassis_size = 10;
+
+    double max_angle = vehicle.GetMaxSteeringAngle();
+    double curr_steering = driver->GetSteering();
+
+    ChQuaternion<> q = Q_from_AngZ(max_angle * curr_steering);
+
+    // Get the zombies position relative to this vehicle
+    auto zombie_pos =
+        vehicle_message->chassis.GetFrame().GetPos() - vehicle.GetPos();
+    zombie_pos = q.RotateBack(vehicle.GetRot().RotateBack(zombie_pos));
+
+    if (zombie_pos.x() < x_max && zombie_pos.x() > x_min &&
+        abs(zombie_pos.y()) < width / 2) {
+      driver->SetCurrentDistance(zombie_pos.Length() - offset_for_chassis_size);
+    }
   }
 }
