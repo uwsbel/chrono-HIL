@@ -151,7 +151,7 @@ std::vector<PathVehicleSetup> demo_config = {
      8.0,
      0.1},
     {AUDI,
-     {925.434, 0.47, -64.8},
+     {925.434, 0.47, -65.2},
      Q_from_AngZ(3.14 / 2),
      "/paths/2.txt",
      audi_tight_lookahead,
