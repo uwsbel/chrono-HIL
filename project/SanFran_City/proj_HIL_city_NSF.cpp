@@ -394,6 +394,11 @@ void GetVehicleModelFiles(VehicleType type, std::string &vehicle,
 
 void AddSceneMeshes(ChSystem *chsystem, RigidTerrain *terrain);
 
+void VehicleProcessMessageCallback(
+    std::shared_ptr<SynMessage> message, WheeledVehicle &vehicle,
+    std::shared_ptr<SynWheeledVehicleAgent> agent,
+    std::shared_ptr<ChLidarWaypointDriver> driver);
+
 // =============================================================================
 
 int main(int argc, char *argv[]) {
@@ -594,20 +599,26 @@ int main(int argc, char *argv[]) {
   } else {
     auto path =
         ChBezierCurve::read(GetChronoDataFile(demo_config[node_id].path_file));
-    double target_speed = 8;
-    bool isPathClosed = false;
+    double target_speed = 11.2;
+    bool isPathClosed = true;
     double following_time = 4.0;
     double following_distance = 10;
     double current_distance = 100;
 
-    auto acc_driver = chrono_types::make_shared<ChPathFollowerACCDriver>(
-        vehicle, path, "Highway", target_speed, following_time,
+    auto path_driver = chrono_types::make_shared<ChLidarWaypointDriver>(
+        vehicle, lidar, path, "NSF", target_speed, following_time,
         following_distance, current_distance, isPathClosed);
-    acc_driver->GetSpeedController().SetGains(0.4, 0.0, 0.0);
-    acc_driver->GetSteeringController().SetGains(0.5, 0.0, 0.0);
-    acc_driver->GetSteeringController().SetLookAheadDistance(5);
+    path_driver->SetGains(demo_config[node_id].lookahead, 0.5, 0.0, 0.0,
+                          demo_config[node_id].speed_gain_p, 0.01, 0.0);
+    path_driver->Initialize();
 
-    driver = acc_driver;
+    // Set the callback so that we can check the state of other vehicles
+    auto callback =
+        std::bind(&VehicleProcessMessageCallback, std::placeholders::_1,
+                  std::ref(vehicle), agent, path_driver);
+    agent->SetProcessMessageCallback(callback);
+
+    driver = path_driver;
   }
 
   // ---------------
@@ -878,5 +889,40 @@ void AddSceneMeshes(ChSystem *chsystem, RigidTerrain *terrain) {
     }
     std::cout << "Total meshes: " << meshes_added
               << " | Unique meshes: " << mesh_map.size() << std::endl;
+  }
+}
+
+void VehicleProcessMessageCallback(
+    std::shared_ptr<SynMessage> message, WheeledVehicle &vehicle,
+    std::shared_ptr<SynWheeledVehicleAgent> agent,
+    std::shared_ptr<ChLidarWaypointDriver> driver) {
+  if (auto vehicle_message =
+          std::dynamic_pointer_cast<SynWheeledVehicleStateMessage>(message)) {
+    // The IsInsideBox function will determine whether the a passsed point is
+    // inside a box defined by a front position, back position and the width of
+    // the box. Rotation of the vectors are taken into account. The positions
+    // must be in the same reference, i.e. local OR global, not both.
+
+    // First calculate the box
+    // We'll do everything in the local frame
+    double width = 4;
+    double x_min = 0;
+    double x_max = 100;
+    double offset_for_chassis_size = 10;
+
+    double max_angle = vehicle.GetMaxSteeringAngle();
+    double curr_steering = driver->GetSteering();
+
+    ChQuaternion<> q = Q_from_AngZ(max_angle * curr_steering);
+
+    // Get the zombies position relative to this vehicle
+    auto zombie_pos =
+        vehicle_message->chassis.GetFrame().GetPos() - vehicle.GetPos();
+    zombie_pos = q.RotateBack(vehicle.GetRot().RotateBack(zombie_pos));
+
+    if (zombie_pos.x() < x_max && zombie_pos.x() > x_min &&
+        abs(zombie_pos.y()) < width / 2) {
+      driver->SetCurrentDistance(zombie_pos.Length() - offset_for_chassis_size);
+    }
   }
 }
