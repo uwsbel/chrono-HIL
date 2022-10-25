@@ -41,6 +41,8 @@
 #include "chrono_vehicle/driver/ChPathFollowerACCDriver.h"
 #include "chrono_vehicle/driver/ChPathFollowerDriver.h"
 
+#include "chrono_hil/timer/ChRealtimeCumulative.h"
+
 #include "chrono_sensor/ChSensorManager.h"
 #include "chrono_sensor/filters/ChFilterAccess.h"
 #include "chrono_sensor/filters/ChFilterLidarNoise.h"
