@@ -156,8 +156,8 @@ std::vector<PathVehicleSetup> demo_config = {
      {925.434, 0.47, -65.2},
      Q_from_AngZ(3.14 / 2),
      "/paths/2.txt",
-     audi_tight_lookahead,
-     audi_pgain},
+     8.0,
+     0.1},
     /*
    {VAN,
     {925.434, 50.47, -64.8},
@@ -594,8 +594,8 @@ int main(int argc, char *argv[]) {
   } else {
     auto path =
         ChBezierCurve::read(GetChronoDataFile(demo_config[node_id].path_file));
-    double target_speed = 10;
-    bool isPathClosed = true;
+    double target_speed = 8;
+    bool isPathClosed = false;
     double following_time = 4.0;
     double following_distance = 10;
     double current_distance = 100;
@@ -604,8 +604,8 @@ int main(int argc, char *argv[]) {
         vehicle, path, "Highway", target_speed, following_time,
         following_distance, current_distance, isPathClosed);
     acc_driver->GetSpeedController().SetGains(0.4, 0.0, 0.0);
-    acc_driver->GetSteeringController().SetGains(0.5, 0.02, 0.0);
-    acc_driver->GetSteeringController().SetLookAheadDistance(8);
+    acc_driver->GetSteeringController().SetGains(0.5, 0.0, 0.0);
+    acc_driver->GetSteeringController().SetLookAheadDistance(5);
 
     driver = acc_driver;
   }
@@ -624,6 +624,10 @@ int main(int argc, char *argv[]) {
   float orbit_radius = 10.f;
   float orbit_rate = .25;
   double time = 0;
+
+  if (render) {
+    manager->Update();
+  }
 
   while (syn_manager.IsOk()) {
 
@@ -646,6 +650,11 @@ int main(int argc, char *argv[]) {
 
     } else {
       driver_inputs = driver->GetInputs();
+      if (driver_inputs.m_steering < -0.8) {
+        driver_inputs.m_steering = -0.8;
+      } else if (driver_inputs.m_steering > 0.8) {
+        driver_inputs.m_steering = 0.8;
+      }
     }
 
     // Update modules (process inputs from other modules)
