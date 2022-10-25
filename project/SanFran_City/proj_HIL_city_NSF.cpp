@@ -566,7 +566,7 @@ int main(int argc, char *argv[]) {
     // camera at driver's eye location for Audi
     auto driver_cam = chrono_types::make_shared<ChCameraSensor>(
         vehicle.GetChassisBody(), // body camera is attached to
-        20,                       // update rate in Hz
+        30,                       // update rate in Hz
         chrono::ChFrame<double>({0.54, .381, 1.04},
                                 Q_from_AngAxis(0, {0, 1, 0})), // offset pose
         image_width,                                           // image width
