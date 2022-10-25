@@ -142,20 +142,20 @@ std::vector<PathVehicleSetup> demo_config = {
     {HMMWV,
      {925.434, -150.87, -65.2},
      Q_from_AngZ(3.14 / 2),
-     "/paths/3.txt",
+     "/paths/2.txt",
      8.0,
      0.1}, // ego vehicle
 
     {SEDAN,
      {925.434, -53.47, -65.2},
      Q_from_AngZ(3.14 / 2),
-     "/paths/3.txt",
+     "/paths/2.txt",
      8.0,
      0.1},
     {HMMWV,
      {925.434, 0.47, -65.2},
      Q_from_AngZ(3.14 / 2),
-     "/paths/3.txt",
+     "/paths/2.txt",
      audi_tight_lookahead,
      audi_pgain},
     /*
@@ -604,7 +604,7 @@ int main(int argc, char *argv[]) {
         vehicle, path, "Highway", target_speed, 1.2, 10, current_distance,
         isPathClosed);
     acc_driver->GetSpeedController().SetGains(0.4, 0.0, 0.0);
-    acc_driver->GetSteeringController().SetGains(0.2, 0.1, 0.0);
+    acc_driver->GetSteeringController().SetGains(0.5, 0.01, 0.0);
     acc_driver->GetSteeringController().SetLookAheadDistance(5);
 
     driver = acc_driver;
