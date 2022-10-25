@@ -91,7 +91,7 @@ VisualizationType tire_vis_type = VisualizationType::MESH;
 TireModelType tire_model = TireModelType::TMEASY;
 
 // Type of vehicle
-enum VehicleType { SEDAN, AUDI, SUV, VAN, TRUCK, CITYBUS };
+enum VehicleType { HMMWV, SEDAN };
 
 // Point on chassis tracked by the camera
 ChVector<> trackPoint(0.0, 0.0, 1.75);
@@ -139,244 +139,246 @@ double audi_pgain = .5;
 
 // starting locations and paths
 std::vector<PathVehicleSetup> demo_config = {
-    {AUDI,
+    {HMMWV,
      {925.434, -150.87, -65.2},
      Q_from_AngZ(3.14 / 2),
      "/paths/2.txt",
      8.0,
      0.1}, // ego vehicle
 
-    {AUDI,
+    {SEDAN,
      {925.434, -53.47, -65.2},
      Q_from_AngZ(3.14 / 2),
      "/paths/2.txt",
      8.0,
      0.1},
-    {AUDI,
+    {HMMWV,
      {925.434, 0.47, -65.2},
      Q_from_AngZ(3.14 / 2),
      "/paths/2.txt",
      audi_tight_lookahead,
      audi_pgain},
-    {VAN,
-     {925.434, 50.47, -64.8},
-     Q_from_AngZ(3.14 / 2),
-     "/paths/2.txt",
-     8.0,
-     1.0},
-    {SUV,
-     {925.434, 75.47, -64.8},
-     Q_from_AngZ(3.14 / 2),
-     "/paths/2.txt",
-     suv_lookahead,
-     suv_pgain},
-    {AUDI,
-     {903.134, 149.13, -64.8},
-     Q_from_AngZ(3.14),
-     "/paths/2.txt",
-     audi_tight_lookahead,
-     audi_pgain},
-    {AUDI,
-     {825.134, 149.13, -64.8},
-     Q_from_AngZ(3.14),
-     "/paths/2.txt",
-     audi_tight_lookahead,
-     audi_pgain},
-    {SUV,
-     {751.234, 148.93, -64.8},
-     Q_from_AngZ(3.14),
-     "/paths/2.txt",
-     suv_lookahead,
-     suv_pgain},
-    {CITYBUS,
-     {727.834, 124.13, -64.8},
-     Q_from_AngZ(-3.14 / 2),
-     "/paths/2.txt",
-     5.0,
-     1.0},
-    {SUV,
-     {727.834, 85.13, -64.8},
-     Q_from_AngZ(-3.14 / 2),
-     "/paths/2.txt",
-     suv_lookahead,
-     suv_pgain},
-    {AUDI,
-     {727.834, 40.13, -64.8},
-     Q_from_AngZ(-3.14 / 2),
-     "/paths/2.txt",
-     audi_tight_lookahead,
-     audi_pgain},
-    {SUV,
-     {727.834, -34.27, -64.8},
-     Q_from_AngZ(-3.14 / 2),
-     "/paths/2.txt",
-     suv_lookahead,
-     suv_pgain},
-    {AUDI,
-     {727.834, -100.27, -64.8},
-     Q_from_AngZ(-3.14 / 2),
-     "/paths/2.txt",
-     audi_tight_lookahead,
-     audi_pgain},
-    {AUDI,
-     {727.834, -212.97, -64.8},
-     Q_from_AngZ(-3.14 / 2),
-     "/paths/2.txt",
-     audi_tight_lookahead,
-     audi_pgain},
-    {VAN, {748.234, -225.07, -64.8}, Q_from_AngZ(0), "/paths/2.txt", 8.0, 1.0},
-    {AUDI,
-     {855.934, -222.77, -64.8},
-     Q_from_AngZ(0),
-     "/paths/2.txt",
-     audi_tight_lookahead,
-     audi_pgain},
-    {CITYBUS,
-     {925.634, -214.17, -64.8},
-     Q_from_AngZ(3.14 / 2),
-     "/paths/2.txt",
-     5.0,
-     1.0},
+    /*
+   {VAN,
+    {925.434, 50.47, -64.8},
+    Q_from_AngZ(3.14 / 2),
+    "/paths/2.txt",
+    8.0,
+    1.0},
+   {SUV,
+    {925.434, 75.47, -64.8},
+    Q_from_AngZ(3.14 / 2),
+    "/paths/2.txt",
+    suv_lookahead,
+    suv_pgain},
+   {AUDI,
+    {903.134, 149.13, -64.8},
+    Q_from_AngZ(3.14),
+    "/paths/2.txt",
+    audi_tight_lookahead,
+    audi_pgain},
+   {AUDI,
+    {825.134, 149.13, -64.8},
+    Q_from_AngZ(3.14),
+    "/paths/2.txt",
+    audi_tight_lookahead,
+    audi_pgain},
+   {SUV,
+    {751.234, 148.93, -64.8},
+    Q_from_AngZ(3.14),
+    "/paths/2.txt",
+    suv_lookahead,
+    suv_pgain},
+   {CITYBUS,
+    {727.834, 124.13, -64.8},
+    Q_from_AngZ(-3.14 / 2),
+    "/paths/2.txt",
+    5.0,
+    1.0},
+   {SUV,
+    {727.834, 85.13, -64.8},
+    Q_from_AngZ(-3.14 / 2),
+    "/paths/2.txt",
+    suv_lookahead,
+    suv_pgain},
+   {AUDI,
+    {727.834, 40.13, -64.8},
+    Q_from_AngZ(-3.14 / 2),
+    "/paths/2.txt",
+    audi_tight_lookahead,
+    audi_pgain},
+   {SUV,
+    {727.834, -34.27, -64.8},
+    Q_from_AngZ(-3.14 / 2),
+    "/paths/2.txt",
+    suv_lookahead,
+    suv_pgain},
+   {AUDI,
+    {727.834, -100.27, -64.8},
+    Q_from_AngZ(-3.14 / 2),
+    "/paths/2.txt",
+    audi_tight_lookahead,
+    audi_pgain},
+   {AUDI,
+    {727.834, -212.97, -64.8},
+    Q_from_AngZ(-3.14 / 2),
+    "/paths/2.txt",
+    audi_tight_lookahead,
+    audi_pgain},
+   {VAN, {748.234, -225.07, -64.8}, Q_from_AngZ(0), "/paths/2.txt", 8.0, 1.0},
+   {AUDI,
+    {855.934, -222.77, -64.8},
+    Q_from_AngZ(0),
+    "/paths/2.txt",
+    audi_tight_lookahead,
+    audi_pgain},
+   {CITYBUS,
+    {925.634, -214.17, -64.8},
+    Q_from_AngZ(3.14 / 2),
+    "/paths/2.txt",
+    5.0,
+    1.0},
 
-    {AUDI,
-     {867.634, 140.83, -64.8},
-     Q_from_AngZ(0),
-     "/paths/3.txt",
-     audi_tight_lookahead,
-     audi_pgain},
-    {AUDI,
-     {847.634, 140.83, -64.8},
-     Q_from_AngZ(0),
-     "/paths/3.txt",
-     audi_tight_lookahead,
-     audi_pgain},
-    {AUDI,
-     {917.234, 116.63, -64.8},
-     Q_from_AngZ(-3.14 / 2),
-     "/paths/3.txt",
-     audi_tight_lookahead,
-     audi_pgain},
-    {SUV,
-     {917.234, 60.63, -64.8},
-     Q_from_AngZ(-3.14 / 2),
-     "/paths/3.txt",
-     suv_lookahead,
-     suv_pgain},
-    {SUV,
-     {917.234, -10.63, -64.8},
-     Q_from_AngZ(-3.14 / 2),
-     "/paths/3.txt",
-     suv_lookahead,
-     suv_pgain},
-    {AUDI,
-     {917.334, -95.67, -64.8},
-     Q_from_AngZ(-3.14 / 2),
-     "/paths/3.txt",
-     audi_tight_lookahead,
-     audi_pgain},
-    {SUV,
-     {892.334, -120.17, -64.8},
-     Q_from_AngZ(3.14),
-     "/paths/3.txt",
-     suv_lookahead,
-     suv_pgain},
-    {SUV,
-     {850.334, -120.17, -64.8},
-     Q_from_AngZ(3.14),
-     "/paths/3.txt",
-     suv_lookahead,
-     suv_pgain},
-    {AUDI,
-     {752.934, -119.47, -64.8},
-     Q_from_AngZ(3.14),
-     "/paths/3.txt",
-     audi_tight_lookahead,
-     audi_pgain},
-    {SUV,
-     {735.734, -102.97, -64.8},
-     Q_from_AngZ(3.14 / 2),
-     "/paths/3.txt",
-     suv_lookahead,
-     suv_pgain},
-    {AUDI,
-     {735.734, -75.97, -64.8},
-     Q_from_AngZ(3.14 / 2),
-     "/paths/3.txt",
-     audi_tight_lookahead,
-     audi_pgain},
-    {AUDI,
-     {735.734, 1.43, -64.8},
-     Q_from_AngZ(3.14 / 2),
-     "/paths/3.txt",
-     audi_tight_lookahead,
-     audi_pgain},
-    {AUDI,
-     {735.734, 123.63, -64.8},
-     Q_from_AngZ(3.14 / 2),
-     "/paths/3.txt",
-     audi_tight_lookahead,
-     audi_pgain},
-    {SUV,
-     {755.634, 140.93, -64.8},
-     Q_from_AngZ(0),
-     "/paths/3.txt",
-     suv_lookahead,
-     suv_pgain},
-    {SUV,
-     {785.634, 140.93, -64.8},
-     Q_from_AngZ(0),
-     "/paths/3.txt",
-     suv_lookahead,
-     suv_pgain},
+   {AUDI,
+    {867.634, 140.83, -64.8},
+    Q_from_AngZ(0),
+    "/paths/3.txt",
+    audi_tight_lookahead,
+    audi_pgain},
+   {AUDI,
+    {847.634, 140.83, -64.8},
+    Q_from_AngZ(0),
+    "/paths/3.txt",
+    audi_tight_lookahead,
+    audi_pgain},
+   {AUDI,
+    {917.234, 116.63, -64.8},
+    Q_from_AngZ(-3.14 / 2),
+    "/paths/3.txt",
+    audi_tight_lookahead,
+    audi_pgain},
+   {SUV,
+    {917.234, 60.63, -64.8},
+    Q_from_AngZ(-3.14 / 2),
+    "/paths/3.txt",
+    suv_lookahead,
+    suv_pgain},
+   {SUV,
+    {917.234, -10.63, -64.8},
+    Q_from_AngZ(-3.14 / 2),
+    "/paths/3.txt",
+    suv_lookahead,
+    suv_pgain},
+   {AUDI,
+    {917.334, -95.67, -64.8},
+    Q_from_AngZ(-3.14 / 2),
+    "/paths/3.txt",
+    audi_tight_lookahead,
+    audi_pgain},
+   {SUV,
+    {892.334, -120.17, -64.8},
+    Q_from_AngZ(3.14),
+    "/paths/3.txt",
+    suv_lookahead,
+    suv_pgain},
+   {SUV,
+    {850.334, -120.17, -64.8},
+    Q_from_AngZ(3.14),
+    "/paths/3.txt",
+    suv_lookahead,
+    suv_pgain},
+   {AUDI,
+    {752.934, -119.47, -64.8},
+    Q_from_AngZ(3.14),
+    "/paths/3.txt",
+    audi_tight_lookahead,
+    audi_pgain},
+   {SUV,
+    {735.734, -102.97, -64.8},
+    Q_from_AngZ(3.14 / 2),
+    "/paths/3.txt",
+    suv_lookahead,
+    suv_pgain},
+   {AUDI,
+    {735.734, -75.97, -64.8},
+    Q_from_AngZ(3.14 / 2),
+    "/paths/3.txt",
+    audi_tight_lookahead,
+    audi_pgain},
+   {AUDI,
+    {735.734, 1.43, -64.8},
+    Q_from_AngZ(3.14 / 2),
+    "/paths/3.txt",
+    audi_tight_lookahead,
+    audi_pgain},
+   {AUDI,
+    {735.734, 123.63, -64.8},
+    Q_from_AngZ(3.14 / 2),
+    "/paths/3.txt",
+    audi_tight_lookahead,
+    audi_pgain},
+   {SUV,
+    {755.634, 140.93, -64.8},
+    Q_from_AngZ(0),
+    "/paths/3.txt",
+    suv_lookahead,
+    suv_pgain},
+   {SUV,
+    {785.634, 140.93, -64.8},
+    Q_from_AngZ(0),
+    "/paths/3.txt",
+    suv_lookahead,
+    suv_pgain},
 
-    {AUDI,
-     {845.534, -131.97, -64.8},
-     Q_from_AngZ(3.14),
-     "/paths/4.txt",
-     audi_tight_lookahead,
-     audi_pgain},
-    {VAN,
-     {763.334, -131.37, -64.8},
-     Q_from_AngZ(3.14),
-     "/paths/4.txt",
-     8.0,
-     1.0},
-    {SUV,
-     {727.834, -158.07, -64.8},
-     Q_from_AngZ(-3.14 / 2),
-     "/paths/4.txt",
-     suv_lookahead,
-     suv_pgain},
-    {SUV,
-     {727.834, -203.57, -64.8},
-     Q_from_AngZ(-3.14 / 2),
-     "/paths/4.txt",
-     suv_lookahead,
-     suv_pgain},
-    {AUDI,
-     {759.734, -225.07, -64.8},
-     Q_from_AngZ(0),
-     "/paths/4.txt",
-     audi_tight_lookahead,
-     audi_pgain},
-    {SUV,
-     {897.934, -223.27, -64.8},
-     Q_from_AngZ(0),
-     "/paths/4.txt",
-     suv_lookahead,
-     suv_pgain},
-    {AUDI,
-     {925.434, -199.77, -64.8},
-     Q_from_AngZ(3.14 / 2),
-     "/paths/4.txt",
-     audi_tight_lookahead,
-     audi_pgain},
-    {AUDI,
-     {897.434, -132.07, -64.8},
-     Q_from_AngZ(3.14),
-     "/paths/4.txt",
-     audi_tight_lookahead,
-     audi_pgain}
+   {AUDI,
+    {845.534, -131.97, -64.8},
+    Q_from_AngZ(3.14),
+    "/paths/4.txt",
+    audi_tight_lookahead,
+    audi_pgain},
+   {VAN,
+    {763.334, -131.37, -64.8},
+    Q_from_AngZ(3.14),
+    "/paths/4.txt",
+    8.0,
+    1.0},
+   {SUV,
+    {727.834, -158.07, -64.8},
+    Q_from_AngZ(-3.14 / 2),
+    "/paths/4.txt",
+    suv_lookahead,
+    suv_pgain},
+   {SUV,
+    {727.834, -203.57, -64.8},
+    Q_from_AngZ(-3.14 / 2),
+    "/paths/4.txt",
+    suv_lookahead,
+    suv_pgain},
+   {AUDI,
+    {759.734, -225.07, -64.8},
+    Q_from_AngZ(0),
+    "/paths/4.txt",
+    audi_tight_lookahead,
+    audi_pgain},
+   {SUV,
+    {897.934, -223.27, -64.8},
+    Q_from_AngZ(0),
+    "/paths/4.txt",
+    suv_lookahead,
+    suv_pgain},
+   {AUDI,
+    {925.434, -199.77, -64.8},
+    Q_from_AngZ(3.14 / 2),
+    "/paths/4.txt",
+    audi_tight_lookahead,
+    audi_pgain},
+   {AUDI,
+    {897.434, -132.07, -64.8},
+    Q_from_AngZ(3.14),
+    "/paths/4.txt",
+    audi_tight_lookahead,
+    audi_pgain}
+    */
 
 };
 
@@ -391,10 +393,6 @@ void GetVehicleModelFiles(VehicleType type, std::string &vehicle,
                           double &cam_distance);
 
 void AddSceneMeshes(ChSystem *chsystem, RigidTerrain *terrain);
-void VehicleProcessMessageCallback(
-    std::shared_ptr<SynMessage> message, WheeledVehicle &vehicle,
-    std::shared_ptr<SynWheeledVehicleAgent> agent,
-    std::shared_ptr<ChLidarWaypointDriver> driver);
 
 // =============================================================================
 
@@ -442,8 +440,8 @@ int main(int argc, char *argv[]) {
 
   // all the demo data will be in user-specified location
   SetChronoDataPath(demo_data_path);
-  vehicle::SetDataPath(demo_data_path + std::string("/vehicles/"));
-  synchrono::SetDataPath(demo_data_path + std::string("/synchrono/"));
+  vehicle::SetDataPath(CHRONO_DATA_DIR + std::string("vehicle/"));
+  synchrono::SetDataPath(CHRONO_DATA_DIR + std::string("vehicle/"));
 
   // Normal simulation options
   step_size = cli.GetAsType<double>("step_size");
@@ -552,13 +550,15 @@ int main(int argc, char *argv[]) {
     manager = chrono_types::make_shared<ChSensorManager>(vehicle.GetSystem());
     Background b;
     b.mode = BackgroundMode::ENVIRONMENT_MAP; // GRADIENT
-    b.color_zenith = {.5f, .6f, .7f};
-    b.color_horizon = {.9f, .8f, .7f};
     b.env_tex = GetChronoDataFile("/Environments/sky_2_4k.hdr");
     manager->scene->SetBackground(b);
     float brightness = 1.5f;
     manager->scene->AddPointLight({0, 0, 10000},
                                   {brightness, brightness, brightness}, 100000);
+    manager->scene->SetAmbientLight({.1, .1, .1});
+    manager->scene->SetSceneEpsilon(1e-3);
+    manager->scene->EnableDynamicOrigin(true);
+    manager->scene->SetOriginOffsetThreshold(500.f);
 
     const int image_width = resolution_x;
     const int image_height = resolution_y;
@@ -577,6 +577,7 @@ int main(int argc, char *argv[]) {
     driver_cam->SetName("DriverCam");
     driver_cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
         image_width, image_height, "Camera1", use_fullscreen));
+    driver_cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
     manager->AddSensor(driver_cam);
   }
 
@@ -599,27 +600,11 @@ int main(int argc, char *argv[]) {
     double following_distance = 10;
     double current_distance = 100;
 
-    // auto path_driver = chrono_types::make_shared<ChPathFollowerDriver>(
-    //     vehicle, path, "NSF", target_speed, true);
-    /*
-        auto path_driver = chrono_types::make_shared<ChLidarWaypointDriver>(
-            vehicle, lidar, path, "NSF", target_speed, following_time,
-            following_distance, current_distance, isPathClosed);
-        path_driver->SetGains(demo_config[node_id].lookahead, 0.5, 0.0, 0.0,
-                              demo_config[node_id].speed_gain_p, 0.01, 0.0);
-        path_driver->Initialize();
-
-        auto callback =
-            std::bind(&VehicleProcessMessageCallback, std::placeholders::_1,
-                      std::ref(vehicle), agent, path_driver);
-        agent->SetProcessMessageCallback(callback);
-        */
-
     auto acc_driver = chrono_types::make_shared<ChPathFollowerACCDriver>(
         vehicle, path, "Highway", target_speed, 1.2, 10, current_distance,
         isPathClosed);
     acc_driver->GetSpeedController().SetGains(0.4, 0.0, 0.0);
-    acc_driver->GetSteeringController().SetGains(0.4, 0.1, 0.2);
+    acc_driver->GetSteeringController().SetGains(0.2, 0.1, 0.0);
     acc_driver->GetSteeringController().SetLookAheadDistance(5);
 
     driver = acc_driver;
@@ -642,7 +627,7 @@ int main(int argc, char *argv[]) {
 
   while (syn_manager.IsOk()) {
 
-    if (step_number == 0) {
+    if (step_number == 1) {
       realtime_timer.Reset();
     }
 
@@ -767,56 +752,29 @@ void GetVehicleModelFiles(VehicleType type, std::string &vehicle,
                           std::string &zombie, ChVector<> &lidar_pos,
                           double &cam_distance) {
   switch (type) {
-  case VehicleType::SEDAN:
-    vehicle = vehicle::GetDataFile("sedan/vehicle/Sedan_Vehicle.json");
+  case VehicleType::HMMWV:
+    vehicle = CHRONO_DATA_DIR +
+              std::string("vehicle/hmmwv/vehicle/HMMWV_Vehicle.json");
     powertrain =
-        vehicle::GetDataFile("sedan/powertrain/Sedan_SimpleMapPowertrain.json");
-    tire = vehicle::GetDataFile("sedan/tire/Sedan_TMeasyTire.json");
-    zombie = vehicle::GetDataFile("sedan/Sedan.json");
-    lidar_pos = {1.0, 0, 0.25};
-    cam_distance = 6.0;
-    break;
-  case VehicleType::AUDI:
-    vehicle = vehicle::GetDataFile("audi/json/audi_Vehicle.json");
-    powertrain = vehicle::GetDataFile("audi/json/audi_ShaftsPowertrain.json");
-    tire = vehicle::GetDataFile("audi/json/audi_TMeasyTire.json");
-    zombie = vehicle::GetDataFile("audi/json/audi.json");
+        CHRONO_DATA_DIR +
+        std::string("vehicle/hmmwv/powertrain/HMMWV_ShaftsPowertrain.json");
+    tire = CHRONO_DATA_DIR +
+           std::string("vehicle/hmmwv/tire/HMMWV_TMeasyTire.json");
+    zombie = CHRONO_DATA_DIR + std::string("synchrono/vehicle/HMMWV.json");
     lidar_pos = {2.3, 0, .4};
     cam_distance = 6.0;
     break;
-  case VehicleType::TRUCK:
-    vehicle = vehicle::GetDataFile("truck/json/truck_Vehicle.json");
+  case VehicleType::SEDAN:
+    vehicle = CHRONO_DATA_DIR +
+              std::string("vehicle/sedan/vehicle/Sedan_Vehicle.json");
     powertrain =
-        vehicle::GetDataFile("truck/json/truck_SimpleCVTPowertrain.json");
-    tire = vehicle::GetDataFile("truck/json/truck_TMeasyTire.json");
-    zombie = vehicle::GetDataFile("truck/json/truck.json");
-    lidar_pos = {1.92, 0, 0.88};
-    cam_distance = 14.0;
-    break;
-  case VehicleType::VAN:
-    vehicle = vehicle::GetDataFile("van/json/van_Vehicle.json");
-    powertrain = vehicle::GetDataFile("van/json/van_SimpleMapPowertrain.json");
-    tire = vehicle::GetDataFile("van/json/van_TMeasyTire.json");
-    zombie = vehicle::GetDataFile("van/json/van.json");
-    lidar_pos = {1.1, 0, 0.5};
-    cam_distance = 5.0;
-    break;
-  case VehicleType::SUV:
-    vehicle = vehicle::GetDataFile("suv/json/suv_Vehicle.json");
-    powertrain = vehicle::GetDataFile("suv/json/suv_ShaftsPowertrain.json");
-    tire = vehicle::GetDataFile("suv/json/suv_TMeasyTire.json");
-    zombie = vehicle::GetDataFile("suv/json/suv.json");
-    lidar_pos = {.95, 0, 0.45};
+        CHRONO_DATA_DIR +
+        std::string("vehicle/sedan/powertrain/Sedan_SimpleMapPowertrain.json");
+    tire = CHRONO_DATA_DIR +
+           std::string("vehicle/sedan/tire/Sedan_TMeasyTire.json");
+    zombie = CHRONO_DATA_DIR + std::string("synchrono/vehicle/Sedan.json");
+    lidar_pos = {2.3, 0, .4};
     cam_distance = 6.0;
-    break;
-  case VehicleType::CITYBUS:
-    vehicle = vehicle::GetDataFile("citybus/vehicle/CityBus_Vehicle.json");
-    powertrain = vehicle::GetDataFile(
-        "citybus/powertrain/CityBus_SimpleMapPowertrain.json");
-    tire = vehicle::GetDataFile("citybus/tire/CityBus_TMeasyTire.json");
-    zombie = vehicle::GetDataFile("citybus/CityBus.json");
-    lidar_pos = {2.32, 0, 0.5};
-    cam_distance = 14.0;
     break;
   }
 }
@@ -911,40 +869,5 @@ void AddSceneMeshes(ChSystem *chsystem, RigidTerrain *terrain) {
     }
     std::cout << "Total meshes: " << meshes_added
               << " | Unique meshes: " << mesh_map.size() << std::endl;
-  }
-}
-
-void VehicleProcessMessageCallback(
-    std::shared_ptr<SynMessage> message, WheeledVehicle &vehicle,
-    std::shared_ptr<SynWheeledVehicleAgent> agent,
-    std::shared_ptr<ChLidarWaypointDriver> driver) {
-  if (auto vehicle_message =
-          std::dynamic_pointer_cast<SynWheeledVehicleStateMessage>(message)) {
-    // The IsInsideBox function will determine whether the a passsed point is
-    // inside a box defined by a front position, back position and the width of
-    // the box. Rotation of the vectors are taken into account. The positions
-    // must be in the same reference, i.e. local OR global, not both.
-
-    // First calculate the box
-    // We'll do everything in the local frame
-    double width = 4;
-    double x_min = 0;
-    double x_max = 100;
-    double offset_for_chassis_size = 10;
-
-    double max_angle = vehicle.GetMaxSteeringAngle();
-    double curr_steering = driver->GetSteering();
-
-    ChQuaternion<> q = Q_from_AngZ(max_angle * curr_steering);
-
-    // Get the zombies position relative to this vehicle
-    auto zombie_pos =
-        vehicle_message->chassis.GetFrame().GetPos() - vehicle.GetPos();
-    zombie_pos = q.RotateBack(vehicle.GetRot().RotateBack(zombie_pos));
-
-    if (zombie_pos.x() < x_max && zombie_pos.x() > x_min &&
-        abs(zombie_pos.y()) < width / 2) {
-      driver->SetCurrentDistance(zombie_pos.Length() - offset_for_chassis_size);
-    }
   }
 }
