@@ -594,18 +594,18 @@ int main(int argc, char *argv[]) {
   } else {
     auto path =
         ChBezierCurve::read(GetChronoDataFile(demo_config[node_id].path_file));
-    double target_speed = 11.2;
+    double target_speed = 10;
     bool isPathClosed = true;
-    double following_time = 4.0;
+    double following_time = 40.0;
     double following_distance = 10;
     double current_distance = 100;
 
     auto acc_driver = chrono_types::make_shared<ChPathFollowerACCDriver>(
-        vehicle, path, "Highway", target_speed, 1.2, 10, current_distance,
-        isPathClosed);
+        vehicle, path, "Highway", target_speed, following_time,
+        following_distance, current_distance, isPathClosed);
     acc_driver->GetSpeedController().SetGains(0.4, 0.0, 0.0);
-    acc_driver->GetSteeringController().SetGains(0.5, 0.01, 0.0);
-    acc_driver->GetSteeringController().SetLookAheadDistance(5);
+    acc_driver->GetSteeringController().SetGains(0.5, 0.02, 0.0);
+    acc_driver->GetSteeringController().SetLookAheadDistance(10);
 
     driver = acc_driver;
   }
