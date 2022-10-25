@@ -596,7 +596,7 @@ int main(int argc, char *argv[]) {
         ChBezierCurve::read(GetChronoDataFile(demo_config[node_id].path_file));
     double target_speed = 10;
     bool isPathClosed = true;
-    double following_time = 40.0;
+    double following_time = 4.0;
     double following_distance = 10;
     double current_distance = 100;
 
@@ -605,7 +605,7 @@ int main(int argc, char *argv[]) {
         following_distance, current_distance, isPathClosed);
     acc_driver->GetSpeedController().SetGains(0.4, 0.0, 0.0);
     acc_driver->GetSteeringController().SetGains(0.5, 0.02, 0.0);
-    acc_driver->GetSteeringController().SetLookAheadDistance(10);
+    acc_driver->GetSteeringController().SetLookAheadDistance(8);
 
     driver = acc_driver;
   }
