@@ -511,6 +511,8 @@ int main(int argc, char *argv[]) {
   syn_manager.AddAgent(agent);
   syn_manager.Initialize(vehicle.GetSystem());
 
+  ChRealtimeCumulative realtime_timer;
+
   RigidTerrain terrain(vehicle.GetSystem());
   AddSceneMeshes(vehicle.GetSystem(), &terrain);
 
@@ -638,6 +640,10 @@ int main(int argc, char *argv[]) {
 
   while (syn_manager.IsOk()) {
 
+    if (step_number == 0) {
+      realtime_timer.Reset();
+    }
+
     time = vehicle.GetSystem()->GetChTime();
 
     // Get driver inputs
@@ -679,6 +685,10 @@ int main(int argc, char *argv[]) {
 
     // Increment frame number
     step_number++;
+
+    if (step_number % 10 == 0) {
+      realtime_timer.Spin(time);
+    }
 
     // Log clock time
     if (step_number % 500 == 0) {
