@@ -106,7 +106,7 @@ double step_size = 2e-3;
 double end_time = 1000;
 
 // How often SynChrono state messages are interchanged
-double heartbeat = 5e-3; // 100[Hz]
+double heartbeat = 1e-2; // 100[Hz]
 
 bool use_fullscreen = false;
 
