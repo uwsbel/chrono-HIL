@@ -759,7 +759,7 @@ void AddCommandLineOptions(ChCLI &cli) {
                        std::to_string(resolution_y));
   cli.AddOption<int>("Simulation", "r,supersample_rate", "Supersample Rate",
                      std::to_string(supersample));
-  cli.AddOption<int>("Simulation", "r,refresh_rate", "Cam Refresh Rate",
+  cli.AddOption<int>("Simulation", "p,refresh_rate", "Cam Refresh Rate",
                      std::to_string(refresh_rate));
   cli.AddOption<bool>("Simulation", "render", "Render rank",
                       std::to_string(render));
