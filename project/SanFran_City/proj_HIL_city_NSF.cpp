@@ -106,7 +106,7 @@ double step_size = 2e-3;
 double end_time = 1000;
 
 // How often SynChrono state messages are interchanged
-double heartbeat = 1e-2; // 100[Hz]
+double heartbeat = 2e-2; // 50[Hz]
 
 bool use_fullscreen = false;
 
@@ -120,6 +120,7 @@ int supersample = 1;
 std::string joystick_filename;
 bool use_data_driver = false;
 bool render = false;
+int refresh_rate = 35;
 
 std::string demo_data_path = std::string(STRINGIFY(HIL_DATA_DIR));
 
@@ -481,6 +482,7 @@ int main(int argc, char *argv[]) {
   supersample = cli.GetAsType<int>("supersample_rate");
   render = cli.GetAsType<bool>("render");
   use_data_driver = cli.GetAsType<bool>("data_driver");
+  refresh_rate = cli.GetAsType<int>("refresh_rate");
 
   // Change SynChronoManager settings
   syn_manager.SetHeartbeat(heartbeat);
@@ -589,7 +591,7 @@ int main(int argc, char *argv[]) {
     // camera at driver's eye location for Audi
     auto driver_cam = chrono_types::make_shared<ChCameraSensor>(
         vehicle.GetChassisBody(), // body camera is attached to
-        30,                       // update rate in Hz
+        refresh_rate,             // update rate in Hz
         chrono::ChFrame<double>({0.54, .381, 1.04},
                                 Q_from_AngAxis(0, {0, 1, 0})), // offset pose
         image_width,                                           // image width
@@ -757,6 +759,8 @@ void AddCommandLineOptions(ChCLI &cli) {
                        std::to_string(resolution_y));
   cli.AddOption<int>("Simulation", "r,supersample_rate", "Supersample Rate",
                      std::to_string(supersample));
+  cli.AddOption<int>("Simulation", "r,refresh_rate", "Cam Refresh Rate",
+                     std::to_string(refresh_rate));
   cli.AddOption<bool>("Simulation", "render", "Render rank",
                       std::to_string(render));
   // mesh loading options
