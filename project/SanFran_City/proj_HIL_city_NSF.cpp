@@ -188,6 +188,13 @@ std::vector<PathVehicleSetup> demo_config = {
      Q_from_AngZ(3.14 / 2),
      "/paths/2.txt",
      8.0,
+     0.1},
+    // mini sim
+    {HMMWV,
+     {925.434, -170.87, -65.2},
+     Q_from_AngZ(3.14 / 2),
+     "/paths/2.txt",
+     8.0,
      0.1}, // ego vehicle
            /*
           {AUDI,

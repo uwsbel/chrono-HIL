@@ -4,7 +4,7 @@ if(ENABLE_PROJECTS)
   message(STATUS "\n==== Chrono HIL projects ====")
   add_subdirectory(Iowa_Highway)
   add_subdirectory(SanFran_City)
-  add_subdirectory(Unity_Couple)
+  #add_subdirectory(Unity_Couple)
   add_subdirectory(HMMWV_SCM)
   add_subdirectory(Jsonfy_Env)
 
