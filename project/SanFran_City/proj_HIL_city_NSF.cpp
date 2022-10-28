@@ -792,7 +792,7 @@ void AddCommandLineOptions(ChCLI &cli) {
 
   cli.AddOption<std::string>("Simulation", "joystick_filename",
                              "Joystick config JSON file", joystick_filename);
-  cli.AddOption<bool>("Simulation", "driver type", "type of driver to be used",
+  cli.AddOption<bool>("Simulation", "driver_type", "type of driver to be used",
                       std::to_string(driver_type));
 }
 
