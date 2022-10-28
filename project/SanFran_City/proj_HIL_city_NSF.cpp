@@ -118,7 +118,7 @@ float resolution_x = 1920;
 float resolution_y = 1080;
 int supersample = 1;
 std::string joystick_filename;
-bool use_data_driver = false;
+int driver_type = 0; // 0 for data driven, 1 for SDL driven, 2 for stream driven
 bool render = false;
 int refresh_rate = 35;
 
@@ -488,7 +488,7 @@ int main(int argc, char *argv[]) {
   resolution_y = cli.GetAsType<float>("resolution_y");
   supersample = cli.GetAsType<int>("supersample_rate");
   render = cli.GetAsType<bool>("render");
-  use_data_driver = cli.GetAsType<bool>("data_driver");
+  driver_type = cli.GetAsType<bool>("driver_type");
   refresh_rate = cli.GetAsType<int>("refresh_rate");
 
   // Change SynChronoManager settings
@@ -619,7 +619,7 @@ int main(int argc, char *argv[]) {
   std::shared_ptr<ChDriver> driver;
   ChSDLInterface SDLDriver;
 
-  if (!use_data_driver) {
+  if (driver_type == 1) {
     // Create the interactive driver system
     SDLDriver.Initialize();
     SDLDriver.SetJoystickConfigFile(joystick_filename);
@@ -678,7 +678,7 @@ int main(int argc, char *argv[]) {
     // Get driver inputs
     DriverInputs driver_inputs;
 
-    if (!use_data_driver) {
+    if (driver_type == 1) {
       if (step_number % 50 == 0) {
         // Create the interactive driver system
         driver_inputs.m_throttle = SDLDriver.GetThrottle();
@@ -697,13 +697,13 @@ int main(int argc, char *argv[]) {
 
     // Update modules (process inputs from other modules)
     syn_manager.Synchronize(time); // Synchronize between nodes
-    if (use_data_driver)
+    if (driver_type == 1)
       driver->Synchronize(time);
     vehicle.Synchronize(time, driver_inputs, terrain);
     terrain.Synchronize(time);
 
     // Advance simulation for one timestep for all modules
-    if (use_data_driver)
+    if (driver_type == 1)
       driver->Advance(step_size);
     vehicle.Advance(step_size);
     terrain.Advance(step_size);
@@ -712,7 +712,7 @@ int main(int argc, char *argv[]) {
       manager->Update();
     }
 
-    if (!use_data_driver) {
+    if (driver_type == 1) {
       if (SDLDriver.Synchronize() == 1)
         break;
     }
@@ -792,8 +792,8 @@ void AddCommandLineOptions(ChCLI &cli) {
 
   cli.AddOption<std::string>("Simulation", "joystick_filename",
                              "Joystick config JSON file", joystick_filename);
-  cli.AddOption<bool>("Simulation", "data_driver", "whether to use data driver",
-                      std::to_string(use_data_driver));
+  cli.AddOption<bool>("Simulation", "driver type", "type of driver to be used",
+                      std::to_string(driver_type));
 }
 
 void GetVehicleModelFiles(VehicleType type, std::string &vehicle,

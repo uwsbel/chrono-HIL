@@ -9,6 +9,8 @@ set(DRIVER_FILES
     driver/ChNSF_Drivers.cpp
     driver/ChSDLInterface.h
     driver/ChSDLInterface.cpp
+    driver/ChBoostStreamInterface.h
+    driver/ChBoostStreamInterface.cpp
     #driver/joystick.h
 )
 source_group("driver" FILES ${DRIVER_FILES})
