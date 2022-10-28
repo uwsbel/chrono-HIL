@@ -57,6 +57,7 @@
 
 #include "chrono_thirdparty/cxxopts/ChCLI.h"
 
+#include "chrono_hil/driver/ChBoostStreamInterface.h"
 #include "chrono_hil/driver/ChLidarWaypointDriver.h"
 #include "chrono_hil/driver/ChSDLInterface.h"
 
@@ -121,6 +122,8 @@ std::string joystick_filename;
 int driver_type = 0; // 0 for data driven, 1 for SDL driven, 2 for stream driven
 bool render = false;
 int refresh_rate = 35;
+
+int port_id = 6078;
 
 std::string demo_data_path = std::string(STRINGIFY(HIL_DATA_DIR));
 
@@ -490,6 +493,7 @@ int main(int argc, char *argv[]) {
   render = cli.GetAsType<bool>("render");
   driver_type = cli.GetAsType<int>("driver_type");
   refresh_rate = cli.GetAsType<int>("refresh_rate");
+  port_id = cli.GetAsType<int>("driver2_port");
 
   // Change SynChronoManager settings
   syn_manager.SetHeartbeat(heartbeat);
@@ -618,6 +622,7 @@ int main(int argc, char *argv[]) {
 
   std::shared_ptr<ChDriver> driver;
   ChSDLInterface SDLDriver;
+  ChBoostStreamInterface StreamDriver;
 
   if (driver_type == 1) {
     // Create the interactive driver system
@@ -673,6 +678,10 @@ int main(int argc, char *argv[]) {
       realtime_timer.Reset();
     }
 
+    if (driver_type == 2) {
+      StreamDriver.Synchronize(port_id);
+    }
+
     time = vehicle.GetSystem()->GetChTime();
 
     // Get driver inputs
@@ -684,6 +693,13 @@ int main(int argc, char *argv[]) {
         driver_inputs.m_throttle = SDLDriver.GetThrottle();
         driver_inputs.m_steering = SDLDriver.GetSteering();
         driver_inputs.m_braking = SDLDriver.GetBraking();
+      }
+
+    } else if (driver_type == 2) {
+      if (step_number % 50 == 0) {
+        driver_inputs.m_throttle = StreamDriver.GetThrottle();
+        driver_inputs.m_steering = StreamDriver.GetSteering();
+        driver_inputs.m_braking = StreamDriver.GetBraking();
       }
 
     } else {
@@ -794,6 +810,8 @@ void AddCommandLineOptions(ChCLI &cli) {
                              "Joystick config JSON file", joystick_filename);
   cli.AddOption<int>("Simulation", "driver_type", "type of driver to be used",
                      std::to_string(driver_type));
+  cli.AddOption<int>("Simulation", "driver2_port", "port for driver 2",
+                     std::to_string(port_id));
 }
 
 void GetVehicleModelFiles(VehicleType type, std::string &vehicle,

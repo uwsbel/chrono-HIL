@@ -30,18 +30,28 @@ ChBoostStreamInterface::~ChBoostStreamInterface() {}
 
 void ChBoostStreamInterface::Initialize() {}
 
-int ChBoostStreamInterface::Synchronize(std::string ip_addr_in, int port_in) {
-  boost::asio::io_service io_service;
-  udp::socket socket(io_service);
-  udp::endpoint remote_endpoint =
-      udp::endpoint(address::from_string(ip_addr_in), port_in);
-  socket.open(udp::v4());
-  boost::asio::ip::udp::endpoint sender;
-  std::size_t bytes_transferred =
-      socket.receive_from(boost::asio::buffer(recv_buffer), sender);
-  m_throttle = recv_buffer[0];
-  m_braking = recv_buffer[1];
-  m_steering = recv_buffer[2];
+int ChBoostStreamInterface::Synchronize(int port_in) {
+
+  boost::asio::io_context ioContext;
+  udp::socket socket(ioContext,
+                     udp::endpoint(udp::v4(), port_in)); // designated port
+
+  float udp_float_arr[3];
+
+  udp::endpoint ep_sender;
+  // socket.receive_from(boost::asio::buffer(&udp_float_arr, sizeof(float) *
+  // 3),
+  //                     ep_sender);
+
+  while (socket.receive_from(
+      boost::asio::buffer(&udp_float_arr, sizeof(float) * 3), ep_sender)) {
+    m_throttle = udp_float_arr[0];
+    m_braking = udp_float_arr[1];
+    m_steering = udp_float_arr[2];
+    return 1;
+  }
+
+  return 0;
 }
 
 float ChBoostStreamInterface::GetThrottle() { return m_throttle; };

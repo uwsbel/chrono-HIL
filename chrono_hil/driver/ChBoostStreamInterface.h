@@ -48,14 +48,12 @@ public:
 
   float GetSteering();
 
-  int Synchronize(std::string ip_addr_in, int port_in);
+  int Synchronize(int port_in);
 
 private:
   float m_throttle;
   float m_braking;
   float m_steering;
-
-  boost::array<float, 3> recv_buffer;
 };
 
 } // namespace hil
