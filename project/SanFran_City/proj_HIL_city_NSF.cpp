@@ -488,7 +488,7 @@ int main(int argc, char *argv[]) {
   resolution_y = cli.GetAsType<float>("resolution_y");
   supersample = cli.GetAsType<int>("supersample_rate");
   render = cli.GetAsType<bool>("render");
-  driver_type = cli.GetAsType<bool>("driver_type");
+  driver_type = cli.GetAsType<int>("driver_type");
   refresh_rate = cli.GetAsType<int>("refresh_rate");
 
   // Change SynChronoManager settings
@@ -697,13 +697,13 @@ int main(int argc, char *argv[]) {
 
     // Update modules (process inputs from other modules)
     syn_manager.Synchronize(time); // Synchronize between nodes
-    if (driver_type == 1)
+    if (driver_type == 0)
       driver->Synchronize(time);
     vehicle.Synchronize(time, driver_inputs, terrain);
     terrain.Synchronize(time);
 
     // Advance simulation for one timestep for all modules
-    if (driver_type == 1)
+    if (driver_type == 0)
       driver->Advance(step_size);
     vehicle.Advance(step_size);
     terrain.Advance(step_size);
@@ -792,8 +792,8 @@ void AddCommandLineOptions(ChCLI &cli) {
 
   cli.AddOption<std::string>("Simulation", "joystick_filename",
                              "Joystick config JSON file", joystick_filename);
-  cli.AddOption<bool>("Simulation", "driver_type", "type of driver to be used",
-                      std::to_string(driver_type));
+  cli.AddOption<int>("Simulation", "driver_type", "type of driver to be used",
+                     std::to_string(driver_type));
 }
 
 void GetVehicleModelFiles(VehicleType type, std::string &vehicle,
