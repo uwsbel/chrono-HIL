@@ -54,6 +54,28 @@ int ChBoostStreamInterface::Synchronize(int port_in) {
   return 0;
 }
 
+void ChBoostStreamInterface::StreamDashboard(std::string ip_addr_out,
+                                             int port_out, float veh_speed_ms,
+                                             float veh_rpm) {
+
+  boost::asio::io_service io_service;
+  udp::socket socket(io_service);
+  udp::endpoint remote_endpoint =
+      udp::endpoint(address::from_string(ip_addr_out), port_out);
+  socket.open(udp::v4());
+
+  float udp_veh_dash[2];
+  udp_veh_dash[0] = veh_speed_ms;
+  udp_veh_dash[1] = veh_rpm;
+
+  boost::system::error_code err;
+  auto sent =
+      socket.send_to(boost::asio::buffer(udp_veh_dash, sizeof(float) * 2),
+                     remote_endpoint, 0, err);
+
+  socket.close();
+}
+
 float ChBoostStreamInterface::GetThrottle() { return m_throttle; };
 
 float ChBoostStreamInterface::GetBraking() { return m_braking; };

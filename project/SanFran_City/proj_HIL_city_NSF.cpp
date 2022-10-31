@@ -78,7 +78,9 @@ using namespace chrono::synchrono;
 using namespace chrono::vehicle;
 using namespace chrono::sensor;
 using namespace chrono::hil;
-
+// =============================================================================
+const double RADS_2_RPM = 30 / CH_C_PI;
+const double MS_2_MPH = 2.2369;
 // =============================================================================
 
 // Visualization type for vehicle parts (PRIMITIVES, MESH, or NONE)
@@ -125,6 +127,10 @@ int refresh_rate = 35;
 float cam_offset = 0.54;
 
 int port_id = 6078;
+
+// dashboard
+int port_out = 7021;
+std::string dash_out_ip = "192.168.0.2";
 
 std::string demo_data_path = std::string(STRINGIFY(HIL_DATA_DIR));
 
@@ -206,217 +212,7 @@ std::vector<PathVehicleSetup> demo_config = {
      Q_from_AngZ(3.14 / 2),
      "/paths/2.txt",
      8.0,
-     0.1},
-    // ego vehicle
-    /*
-   {AUDI,
-    {903.134, 149.13, -64.8},
-    Q_from_AngZ(3.14),
-    "/paths/2.txt",
-    audi_tight_lookahead,
-    audi_pgain},
-   {AUDI,
-    {825.134, 149.13, -64.8},
-    Q_from_AngZ(3.14),
-    "/paths/2.txt",
-    audi_tight_lookahead,
-    audi_pgain},
-   {SUV,
-    {751.234, 148.93, -64.8},
-    Q_from_AngZ(3.14),
-    "/paths/2.txt",
-    suv_lookahead,
-    suv_pgain},
-   {CITYBUS,
-    {727.834, 124.13, -64.8},
-    Q_from_AngZ(-3.14 / 2),
-    "/paths/2.txt",
-    5.0,
-    1.0},
-   {SUV,
-    {727.834, 85.13, -64.8},
-    Q_from_AngZ(-3.14 / 2),
-    "/paths/2.txt",
-    suv_lookahead,
-    suv_pgain},
-   {AUDI,
-    {727.834, 40.13, -64.8},
-    Q_from_AngZ(-3.14 / 2),
-    "/paths/2.txt",
-    audi_tight_lookahead,
-    audi_pgain},
-   {SUV,
-    {727.834, -34.27, -64.8},
-    Q_from_AngZ(-3.14 / 2),
-    "/paths/2.txt",
-    suv_lookahead,
-    suv_pgain},
-   {AUDI,
-    {727.834, -100.27, -64.8},
-    Q_from_AngZ(-3.14 / 2),
-    "/paths/2.txt",
-    audi_tight_lookahead,
-    audi_pgain},
-   {AUDI,
-    {727.834, -212.97, -64.8},
-    Q_from_AngZ(-3.14 / 2),
-    "/paths/2.txt",
-    audi_tight_lookahead,
-    audi_pgain},
-   {VAN, {748.234, -225.07, -64.8}, Q_from_AngZ(0), "/paths/2.txt", 8.0, 1.0},
-   {AUDI,
-    {855.934, -222.77, -64.8},
-    Q_from_AngZ(0),
-    "/paths/2.txt",
-    audi_tight_lookahead,
-    audi_pgain},
-   {CITYBUS,
-    {925.634, -214.17, -64.8},
-    Q_from_AngZ(3.14 / 2),
-    "/paths/2.txt",
-    5.0,
-    1.0},
-
-   {AUDI,
-    {867.634, 140.83, -64.8},
-    Q_from_AngZ(0),
-    "/paths/3.txt",
-    audi_tight_lookahead,
-    audi_pgain},
-   {AUDI,
-    {847.634, 140.83, -64.8},
-    Q_from_AngZ(0),
-    "/paths/3.txt",
-    audi_tight_lookahead,
-    audi_pgain},
-   {AUDI,
-    {917.234, 116.63, -64.8},
-    Q_from_AngZ(-3.14 / 2),
-    "/paths/3.txt",
-    audi_tight_lookahead,
-    audi_pgain},
-   {SUV,
-    {917.234, 60.63, -64.8},
-    Q_from_AngZ(-3.14 / 2),
-    "/paths/3.txt",
-    suv_lookahead,
-    suv_pgain},
-   {SUV,
-    {917.234, -10.63, -64.8},
-    Q_from_AngZ(-3.14 / 2),
-    "/paths/3.txt",
-    suv_lookahead,
-    suv_pgain},
-   {AUDI,
-    {917.334, -95.67, -64.8},
-    Q_from_AngZ(-3.14 / 2),
-    "/paths/3.txt",
-    audi_tight_lookahead,
-    audi_pgain},
-   {SUV,
-    {892.334, -120.17, -64.8},
-    Q_from_AngZ(3.14),
-    "/paths/3.txt",
-    suv_lookahead,
-    suv_pgain},
-   {SUV,
-    {850.334, -120.17, -64.8},
-    Q_from_AngZ(3.14),
-    "/paths/3.txt",
-    suv_lookahead,
-    suv_pgain},
-   {AUDI,
-    {752.934, -119.47, -64.8},
-    Q_from_AngZ(3.14),
-    "/paths/3.txt",
-    audi_tight_lookahead,
-    audi_pgain},
-   {SUV,
-    {735.734, -102.97, -64.8},
-    Q_from_AngZ(3.14 / 2),
-    "/paths/3.txt",
-    suv_lookahead,
-    suv_pgain},
-   {AUDI,
-    {735.734, -75.97, -64.8},
-    Q_from_AngZ(3.14 / 2),
-    "/paths/3.txt",
-    audi_tight_lookahead,
-    audi_pgain},
-   {AUDI,
-    {735.734, 1.43, -64.8},
-    Q_from_AngZ(3.14 / 2),
-    "/paths/3.txt",
-    audi_tight_lookahead,
-    audi_pgain},
-   {AUDI,
-    {735.734, 123.63, -64.8},
-    Q_from_AngZ(3.14 / 2),
-    "/paths/3.txt",
-    audi_tight_lookahead,
-    audi_pgain},
-   {SUV,
-    {755.634, 140.93, -64.8},
-    Q_from_AngZ(0),
-    "/paths/3.txt",
-    suv_lookahead,
-    suv_pgain},
-   {SUV,
-    {785.634, 140.93, -64.8},
-    Q_from_AngZ(0),
-    "/paths/3.txt",
-    suv_lookahead,
-    suv_pgain},
-
-   {AUDI,
-    {845.534, -131.97, -64.8},
-    Q_from_AngZ(3.14),
-    "/paths/4.txt",
-    audi_tight_lookahead,
-    audi_pgain},
-   {VAN,
-    {763.334, -131.37, -64.8},
-    Q_from_AngZ(3.14),
-    "/paths/4.txt",
-    8.0,
-    1.0},
-   {SUV,
-    {727.834, -158.07, -64.8},
-    Q_from_AngZ(-3.14 / 2),
-    "/paths/4.txt",
-    suv_lookahead,
-    suv_pgain},
-   {SUV,
-    {727.834, -203.57, -64.8},
-    Q_from_AngZ(-3.14 / 2),
-    "/paths/4.txt",
-    suv_lookahead,
-    suv_pgain},
-   {AUDI,
-    {759.734, -225.07, -64.8},
-    Q_from_AngZ(0),
-    "/paths/4.txt",
-    audi_tight_lookahead,
-    audi_pgain},
-   {SUV,
-    {897.934, -223.27, -64.8},
-    Q_from_AngZ(0),
-    "/paths/4.txt",
-    suv_lookahead,
-    suv_pgain},
-   {AUDI,
-    {925.434, -199.77, -64.8},
-    Q_from_AngZ(3.14 / 2),
-    "/paths/4.txt",
-    audi_tight_lookahead,
-    audi_pgain},
-   {AUDI,
-    {897.434, -132.07, -64.8},
-    Q_from_AngZ(3.14),
-    "/paths/4.txt",
-    audi_tight_lookahead,
-    audi_pgain}
-    */
+     0.1}
 
 };
 
@@ -504,6 +300,8 @@ int main(int argc, char *argv[]) {
   refresh_rate = cli.GetAsType<int>("refresh_rate");
   port_id = cli.GetAsType<int>("driver2_port");
   cam_offset = cli.GetAsType<float>("cam_offset");
+  dash_out_ip = cli.GetAsType<std::string>("dashboard_ip");
+  port_out = cli.GetAsType<int>("driver2_port_out");
 
   // Change SynChronoManager settings
   syn_manager.SetHeartbeat(heartbeat);
@@ -745,6 +543,14 @@ int main(int argc, char *argv[]) {
         break;
     }
 
+    if (driver_type == 2) {
+      if (step_number % 50 == 0) {
+        StreamDriver.StreamDashboard(
+            dash_out_ip, port_out, vehicle.GetSpeed() * MS_2_MPH,
+            vehicle.GetPowertrain()->GetMotorSpeed() * RADS_2_RPM);
+      }
+    }
+
     // Increment frame number
     step_number++;
 
@@ -826,6 +632,10 @@ void AddCommandLineOptions(ChCLI &cli) {
                      std::to_string(driver_type));
   cli.AddOption<int>("Simulation", "driver2_port", "port for driver 2",
                      std::to_string(port_id));
+  cli.AddOption<int>("Simulation", "driver2_port_out",
+                     "dashboard port for driver 2", std::to_string(port_out));
+  cli.AddOption<std::string>("Simulation", "dashboard_ip",
+                             "dashboard ip address", dash_out_ip);
 }
 
 void GetVehicleModelFiles(VehicleType type, std::string &vehicle,

@@ -50,6 +50,9 @@ public:
 
   int Synchronize(int port_in);
 
+  void StreamDashboard(std::string ip_addr_out, int port_out,
+                       float veh_speed_ms, float veh_rpm);
+
 private:
   float m_throttle;
   float m_braking;
