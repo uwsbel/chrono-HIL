@@ -554,9 +554,9 @@ int main(int argc, char *argv[]) {
     // Increment frame number
     step_number++;
 
-    if (step_number % 10 == 0) {
-      realtime_timer.Spin(time);
-    }
+    // if (step_number % 10 == 0) {
+    realtime_timer.Spin(time);
+    //}
 
     // Log clock time
     if (step_number % 500 == 0) {
