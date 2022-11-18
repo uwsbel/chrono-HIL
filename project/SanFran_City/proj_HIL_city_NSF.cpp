@@ -94,7 +94,7 @@ VisualizationType tire_vis_type = VisualizationType::MESH;
 TireModelType tire_model = TireModelType::TMEASY;
 
 // Type of vehicle
-enum VehicleType { HMMWV, SEDAN, CITYBUS, AUDI, SUV };
+enum VehicleType { HMMWV, SEDAN, CITYBUS, AUDI, SUV, TRUCK };
 
 // Point on chassis tracked by the camera
 ChVector<> trackPoint(0.0, 0.0, 1.75);
@@ -207,7 +207,7 @@ std::vector<PathVehicleSetup> demo_config = {
      8.0,
      0.1},
     // sbel sim - 8
-    {HMMWV,
+    {TRUCK,
      {925.434, -190.87, -65.2},
      Q_from_AngZ(3.14 / 2),
      "/paths/2.txt",
@@ -448,7 +448,7 @@ int main(int argc, char *argv[]) {
     auto path_driver = chrono_types::make_shared<ChLidarWaypointDriver>(
         vehicle, lidar, path, "NSF", target_speed, following_time,
         following_distance, current_distance, isPathClosed);
-    path_driver->SetGains(demo_config[node_id].lookahead, 0.5, 0.0, 0.0,
+    path_driver->SetGains(demo_config[node_id].lookahead, 0.8, 0.0, 0.0,
                           demo_config[node_id].speed_gain_p, 0.01, 0.0);
     path_driver->Initialize();
 
@@ -701,6 +701,18 @@ void GetVehicleModelFiles(VehicleType type, std::string &vehicle,
            std::string("vehicle/Nissan_Patrol/json/suv_TMeasyTire.json");
     zombie =
         CHRONO_DATA_DIR + std::string("vehicle/Nissan_Patrol/json/suv.json");
+    lidar_pos = {2.32, 0, 0.5};
+    cam_distance = 14.0;
+    break;
+  case VehicleType::TRUCK:
+    vehicle =
+        CHRONO_DATA_DIR + std::string("vehicle/truck/json/truck_Vehicle.json");
+    powertrain =
+        CHRONO_DATA_DIR +
+        std::string("vehicle/truck/json/truck_SimpleCVTPowertrain.json");
+    tire = CHRONO_DATA_DIR +
+           std::string("vehicle/truck/json/truck_TMeasyTire.json");
+    zombie = CHRONO_DATA_DIR + std::string("vehicle/truck/json/truck.json");
     lidar_pos = {2.32, 0, 0.5};
     cam_distance = 14.0;
     break;
