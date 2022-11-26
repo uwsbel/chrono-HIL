@@ -1969,10 +1969,9 @@ void CustomButtonCallback() {
     if (driver_mode == HUMAN) {
       driver_mode = AUTONOMOUS;
       PF_driver_ptr->Set_TheroSpeed(cur_follower_speed);
-    }
-
-    else
+    } else {
       driver_mode = HUMAN;
+    }
     // last, update the last call
     last_invoked = current_invoke;
   } else
