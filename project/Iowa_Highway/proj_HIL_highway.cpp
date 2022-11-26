@@ -903,11 +903,10 @@ int main(int argc, char *argv[]) {
   // Create the terrain
   RigidTerrain terrain(vehicle.GetSystem());
 
-  MaterialInfo minfo;
+  ChContactMaterialData minfo;
   minfo.mu = 0.9f;
   minfo.cr = 0.01f;
   minfo.Y = 2e7f;
-  minfo.gt = 3000;
   auto patch_mat = minfo.CreateMaterial(contact_method);
 
   ChVector<> normal = ChVector<>({0, 0, 1});

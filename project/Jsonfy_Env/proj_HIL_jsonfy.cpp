@@ -394,7 +394,7 @@ int main(int argc, char *argv[]) {
 
   auto terrain = std::make_shared<RigidTerrain>(vehicle.GetSystem());
 
-  MaterialInfo minfo;
+  ChContactMaterialData minfo;
   minfo.mu = 0.9f;
   minfo.cr = 0.01f;
   minfo.Y = 2e7f;

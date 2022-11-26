@@ -360,15 +360,15 @@ int main(int argc, char *argv[]) {
   RigidTerrain terrain(vehicle.GetSystem());
   AddSceneMeshes(vehicle.GetSystem(), &terrain);
 
-  MaterialInfo minfo; // values from RigidPlane.json
-  minfo.mu = 0.9;     // coefficient of friction
-  minfo.cr = 0.01;    // coefficient of restitution
-  minfo.Y = 2e7;      // Young's modulus
-  minfo.nu = 0.3;     // Poisson ratio
-  minfo.kn = 2e5;     // normal stiffness
-  minfo.gn = 40.0;    // normal viscous damping
-  minfo.kt = 2e5;     // tangential stiffness
-  minfo.gt = 20.0;    // tangential viscous damping
+  ChContactMaterialData minfo; // values from RigidPlane.json
+  minfo.mu = 0.9;              // coefficient of friction
+  minfo.cr = 0.01;             // coefficient of restitution
+  minfo.Y = 2e7;               // Young's modulus
+  minfo.nu = 0.3;              // Poisson ratio
+  minfo.kn = 2e5;              // normal stiffness
+  minfo.gn = 40.0;             // normal viscous damping
+  minfo.kt = 2e5;              // tangential stiffness
+  minfo.gt = 20.0;             // tangential viscous damping
   auto patch_mat = minfo.CreateMaterial(contact_method);
 
   ChVector<> normal = ChVector<>({0, 0, 1});
