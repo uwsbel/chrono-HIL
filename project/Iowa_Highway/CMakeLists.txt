@@ -8,7 +8,8 @@
 #--------------------------------------------------------------
 
 set(DEMOS
-	proj_HIL_highway
+	proj_HIL_highway_1
+  proj_HIL_highway_2
 	#proj_HIL_highway_parallel
 )
 
