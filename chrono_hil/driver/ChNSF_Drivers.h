@@ -59,10 +59,10 @@ public:
       const std::string &path_name,        ///< name of the path curve
       double target_speed,                 ///< constant target speed
       std::vector<std::vector<double>>
-          behavior,      ///< JSON file with piecewise directives
-      bool isClosedPath) ///< Treat the path as a closed loop
+          behavior) ///< JSON file with piecewise directives
+
       : ChPathFollowerDriver(vehicle, steering_filename, speed_filename, path,
-                             path_name, target_speed, isClosedPath),
+                             path_name, target_speed),
         behavior_data(behavior), cruise_speed(target_speed) {
     previousPos = vehicle.GetChassis()->GetPos();
     dist = 0;
@@ -101,10 +101,10 @@ public:
       const std::string &path_name,        ///< name of the path curve
       double target_speed,                 ///< constant target speed
       std::shared_ptr<ChVehicle> lead_vehicle, ///< followed_vehicle
-      std::vector<double> params, ///< JSON file with piecewise params
-      bool isClosedPath)          ///< Treat the path as a closed loop
+      std::vector<double> params) ///< JSON file with piecewise params
+
       : ChPathFollowerDriver(vehicle, steering_filename, speed_filename, path,
-                             path_name, target_speed, isClosedPath),
+                             path_name, target_speed),
         behavior_data(params), cruise_speed(target_speed),
         leader(lead_vehicle) {
     previousPos = vehicle.GetChassis()->GetPos();
@@ -121,10 +121,10 @@ public:
       std::shared_ptr<ChBezierCurve> path, ///< Bezier curve with target path
       const std::string &path_name,        ///< name of the path curve
       double target_speed,                 ///< constant target speed
-      std::vector<double> params,          ///< JSON file with piecewise params
-      bool isClosedPath)                   ///< Treat the path as a closed loop
+      std::vector<double> params)          ///< JSON file with piecewise params
+
       : ChPathFollowerDriver(vehicle, steering_filename, speed_filename, path,
-                             path_name, target_speed, isClosedPath),
+                             path_name, target_speed),
         behavior_data(params), cruise_speed(target_speed) {
     previousPos = vehicle.GetChassis()->GetPos();
     dist = 0;

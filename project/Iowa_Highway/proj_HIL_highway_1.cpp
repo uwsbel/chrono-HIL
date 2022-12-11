@@ -759,19 +759,19 @@ int main(int argc, char *argv[]) {
   // "/Environments/Iowa/terrain/oval_highway_path.csv";
   std::string outer_path_file =
       demo_data_path + "/Environments/Iowa/Driver/OnOuterLane.txt";
-  auto outer_path = ChBezierCurve::read(outer_path_file);
+  auto outer_path = ChBezierCurve::read(outer_path_file, true);
   auto inner_path_file =
       demo_data_path + "/Environments/Iowa/Driver/OnInnerLane.txt";
-  auto inner_path = ChBezierCurve::read(inner_path_file);
+  auto inner_path = ChBezierCurve::read(inner_path_file, true);
 
   // IG vehicle lane number tracker
   // lane 1 - inner lane; lane 2 - outer lanes
   auto lane_0_path_file =
       demo_data_path + "/Environments/Iowa/Driver/OnInnerLane.txt";
-  auto lane_0_path = ChBezierCurve::read(lane_0_path_file);
+  auto lane_0_path = ChBezierCurve::read(lane_0_path_file, true);
   auto lane_1_path_file =
       demo_data_path + "/Environments/Iowa/Driver/OnOuterLane.txt";
-  auto lane_1_path = ChBezierCurve::read(lane_1_path_file);
+  auto lane_1_path = ChBezierCurve::read(lane_1_path_file, true);
 
   WheeledVehicle vehicle(vehicle_file, ChContactMethod::SMC);
   auto ego_chassis = vehicle.GetChassis();
@@ -965,11 +965,9 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < num_dummy; i++) {
     if (dummy_lane[i] == 0) {
       ChBezierCurveTracker tracker(inner_path);
-      tracker.setIsClosedPath(true);
       tracker_vec.push_back(tracker);
     } else {
       ChBezierCurveTracker tracker(outer_path);
-      tracker.setIsClosedPath(true);
       tracker_vec.push_back(tracker);
     }
   }
@@ -1099,12 +1097,12 @@ int main(int argc, char *argv[]) {
   if (lead_count == 0) {
     PFdriver = chrono_types::make_shared<ChNSFFollowerDriver>(
         vehicle, steering_controller_file_IG_nl, speed_controller_file_IG_nl,
-        outer_path, "road", cruise_speed * MPH_TO_MS, followerParam, true);
+        outer_path, "road", cruise_speed * MPH_TO_MS, followerParam);
   } else {
     PFdriver = chrono_types::make_shared<ChNSFFollowerDriver>(
         vehicle, steering_controller_file_IG, speed_controller_file_IG,
         outer_path, "road", cruise_speed * MPH_TO_MS, lead_vehicles[0],
-        followerParam, true);
+        followerParam);
   }
 
   PFdriver->Initialize();
@@ -1129,14 +1127,14 @@ int main(int argc, char *argv[]) {
       auto lead_PFdriver = chrono_types::make_shared<ChNSFLeaderDriver>(
           *lead_vehicles[i], steering_controller_file_LD,
           speed_controller_file_LD, inner_path, "road",
-          dynamic_cruise_speed[i] * MPH_TO_MS, leaderParam[i], true);
+          dynamic_cruise_speed[i] * MPH_TO_MS, leaderParam[i]);
       lead_PFdriver->Initialize();
       lead_PFdrivers.push_back(lead_PFdriver);
     } else {
       auto lead_PFdriver = chrono_types::make_shared<ChNSFLeaderDriver>(
           *lead_vehicles[i], steering_controller_file_LD,
           speed_controller_file_LD, outer_path, "road",
-          dynamic_cruise_speed[i] * MPH_TO_MS, leaderParam[i], true);
+          dynamic_cruise_speed[i] * MPH_TO_MS, leaderParam[i]);
       lead_PFdriver->Initialize();
       lead_PFdrivers.push_back(lead_PFdriver);
     }
@@ -1487,9 +1485,6 @@ int main(int argc, char *argv[]) {
 
     ChBezierCurveTracker lane_0_tracker(lane_0_path);
     ChBezierCurveTracker lane_1_tracker(lane_1_path);
-
-    lane_0_tracker.setIsClosedPath(true);
-    lane_1_tracker.setIsClosedPath(true);
 
     if (save_driver) {
       if (step_number % int(tsave / step_size) == 0) {

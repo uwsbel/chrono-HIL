@@ -8,9 +8,7 @@
 #--------------------------------------------------------------
 
 set(DEMOS
-	proj_HIL_city
-  proj_HIL_city_NSF
-  proj_HIL_madison
+	proj_HIL_ring
 )
 
 #--------------------------------------------------------------
@@ -30,7 +28,6 @@ if(NOT Chrono_FOUND)
 endif()
 
 
-
 #--------------------------------------------------------------
 # Include paths and libraries
 #--------------------------------------------------------------
@@ -40,8 +37,9 @@ include_directories(
     ${CMAKE_SOURCE_DIR}
 )
 
-set(EXT_LIBRARIES 
+set(LINK_LIBRARY 
 	ChronoEngine_hil
+	${CHRONO_LIBRARIES}
 )
 
 
@@ -76,12 +74,12 @@ foreach(PROGRAM ${DEMOS})
 
   add_executable(${PROGRAM}  "${PROGRAM}.cpp")
   source_group(""  FILES "${PROGRAM}.cpp")
-  
+
   target_compile_definitions(${PROGRAM} PUBLIC "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\"") 
   target_compile_definitions(${PROGRAM} PUBLIC "PROJECTS_DATA_DIR=\"${PROJECTS_DATA_DIR}\"") 
   target_compile_options(${PROGRAM} PUBLIC ${CHRONO_CXX_FLAGS})
   target_link_options(${PROGRAM} PUBLIC ${CH_LINKERFLAG_SHARED})
 
-	target_link_libraries(${PROGRAM} ${EXT_LIBRARIES} ${CHRONO_LIBRARIES} "-L/usr/local/cuda/lib64")# -lcudart")
+	target_link_libraries(${PROGRAM} ${LINK_LIBRARY} ${CHRONO_LIBRARIES} "-L/usr/local/cuda/lib64")# -lcudart")
 
 endforeach(PROGRAM)

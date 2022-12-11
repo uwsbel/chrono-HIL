@@ -437,17 +437,16 @@ int main(int argc, char *argv[]) {
     SDLDriver.Initialize();
     SDLDriver.SetJoystickConfigFile(joystick_filename);
   } else {
-    auto path =
-        ChBezierCurve::read(GetChronoDataFile(demo_config[node_id].path_file));
+    auto path = ChBezierCurve::read(
+        GetChronoDataFile(demo_config[node_id].path_file), true);
     double target_speed = 11;
-    bool isPathClosed = true;
     double following_time = 4.0;
     double following_distance = 10;
     double current_distance = 100;
 
     auto path_driver = chrono_types::make_shared<ChLidarWaypointDriver>(
         vehicle, lidar, path, "NSF", target_speed, following_time,
-        following_distance, current_distance, isPathClosed);
+        following_distance, current_distance);
     path_driver->SetGains(demo_config[node_id].lookahead, 0.8, 0.0, 0.0,
                           demo_config[node_id].speed_gain_p, 0.01, 0.0);
     path_driver->Initialize();
