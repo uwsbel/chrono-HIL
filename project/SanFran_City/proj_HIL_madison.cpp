@@ -87,8 +87,8 @@ ChContactMethod contact_method = ChContactMethod::SMC;
 bool contact_vis = false;
 
 // Simulation step sizes
-double step_size = 2e-3;
-double tire_step_size = 1e-3;
+double step_size = 1e-3;
+double tire_step_size = 1e-4;
 
 // Simulation end time
 double t_end = 1000;
@@ -156,8 +156,8 @@ int main(int argc, char *argv[]) {
   // add vis mesh
   auto terrain_mesh = chrono_types::make_shared<ChTriangleMeshConnected>();
   terrain_mesh->LoadWavefrontMesh(std::string(STRINGIFY(HIL_DATA_DIR)) +
-                                      "/Environments/Madison/bld/test.obj",
-                                  false, true);
+                                      "/Environments/nads/newnads/terrain.obj",
+                                  true, true);
   terrain_mesh->Transform(ChVector<>(0, 0, 0),
                           ChMatrix33<>(1)); // scale to a different size
   auto terrain_shape = chrono_types::make_shared<ChTriangleMeshShape>();
@@ -167,7 +167,7 @@ int main(int argc, char *argv[]) {
 
   auto terrain_body = chrono_types::make_shared<ChBody>();
   terrain_body->SetPos({0, 0, -.01});
-  terrain_body->SetRot(Q_from_AngX(CH_C_PI_2));
+  // terrain_body->SetRot(Q_from_AngX(CH_C_PI_2));
   terrain_body->AddVisualShape(terrain_shape);
   terrain_body->SetBodyFixed(true);
   terrain_body->SetCollide(false);
@@ -230,7 +230,7 @@ int main(int argc, char *argv[]) {
       chrono_types::make_shared<ChSensorManager>(my_sedan.GetSystem());
   float intensity = 1.2;
   manager->scene->AddPointLight({0, 0, 1e8}, {1.0, 1.0, 1.0}, 1e12);
-  manager->scene->SetAmbientLight({.1, .1, .1});
+  manager->scene->SetAmbientLight({.5, .5, .5});
   manager->scene->SetSceneEpsilon(1e-3);
   manager->scene->EnableDynamicOrigin(true);
   manager->scene->SetOriginOffsetThreshold(500.f);
@@ -239,10 +239,10 @@ int main(int argc, char *argv[]) {
       my_sedan.GetChassis()->GetBody(), // body camera is attached to
       25,                               // update rate in Hz
       chrono::ChFrame<double>(
-          ChVector<>(-6.0, 0.0, 4.0),
-          Q_from_Euler123(ChVector<>(0.0, 0.15, 0.0))), // offset pose
-      1280,                                             // image width
-      720,                                              // image height
+          ChVector<>(-8.0, 0.0, 2.0),
+          Q_from_Euler123(ChVector<>(0.0, 0.11, 0.0))), // offset pose
+      1920,                                             // image width
+      1080,                                             // image height
       1.608f,
       2); // fov, lag, exposure
   cam->SetName("Camera Sensor");
