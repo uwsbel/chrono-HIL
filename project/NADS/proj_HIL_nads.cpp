@@ -32,12 +32,16 @@
 #include "chrono_sensor/filters/ChFilterVisualize.h"
 #include "chrono_sensor/sensors/ChSegmentationCamera.h"
 
+#include "chrono_hil/timer/ChRealtimeCumulative.h"
+
 #include "chrono_vehicle/ChConfigVehicle.h"
 #include "chrono_vehicle/ChVehicleModelData.h"
 #include "chrono_vehicle/driver/ChDataDriver.h"
 #include "chrono_vehicle/driver/ChIrrGuiDriver.h"
 #include "chrono_vehicle/terrain/RigidTerrain.h"
+#include "chrono_vehicle/utils/ChUtilsJSON.h"
 #include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
 
 #include "chrono_models/vehicle/sedan/Sedan.h"
 
@@ -116,28 +120,40 @@ int main(int argc, char *argv[]) {
   SetChronoDataPath(CHRONO_DATA_DIR);
   vehicle::SetDataPath(CHRONO_DATA_DIR + std::string("vehicle/"));
 
+  std::string vehicle_filename =
+      vehicle::GetDataFile("audi/json/audi_Vehicle.json");
+  std::string powertrain_filename =
+      vehicle::GetDataFile("audi/json/audi_SimpleMapPowertrain.json");
+  std::string tire_filename =
+      vehicle::GetDataFile("audi/json/audi_Pac02Tire.json");
+
   // --------------
   // Create systems
   // --------------
 
   // Create the Sedan vehicle, set parameters, and initialize
-  Sedan my_sedan;
-  my_sedan.SetContactMethod(contact_method);
-  my_sedan.SetChassisCollisionType(chassis_collision_type);
-  my_sedan.SetChassisFixed(false);
-  my_sedan.SetInitPosition(ChCoordsys<>(initLoc, initRot));
-  my_sedan.SetTireType(tire_model);
-  my_sedan.SetTireStepSize(tire_step_size);
-  my_sedan.Initialize();
+  WheeledVehicle my_vehicle(vehicle_filename, ChContactMethod::SMC);
+  auto ego_chassis = my_vehicle.GetChassis();
+  my_vehicle.Initialize(ChCoordsys<>(initLoc, initRot));
+  my_vehicle.GetChassis()->SetFixed(false);
+  auto powertrain = ReadPowertrainJSON(powertrain_filename);
+  my_vehicle.InitializePowertrain(powertrain);
+  my_vehicle.SetChassisVisualizationType(VisualizationType::MESH);
+  my_vehicle.SetSuspensionVisualizationType(VisualizationType::MESH);
+  my_vehicle.SetSteeringVisualizationType(VisualizationType::MESH);
+  my_vehicle.SetWheelVisualizationType(VisualizationType::MESH);
 
-  my_sedan.SetChassisVisualizationType(chassis_vis_type);
-  my_sedan.SetSuspensionVisualizationType(suspension_vis_type);
-  my_sedan.SetSteeringVisualizationType(steering_vis_type);
-  my_sedan.SetWheelVisualizationType(wheel_vis_type);
-  my_sedan.SetTireVisualizationType(tire_vis_type);
+  // Create and initialize the tires
+  for (auto &axle : my_vehicle.GetAxles()) {
+    for (auto &wheel : axle->GetWheels()) {
+      auto tire = ReadTireJSON(tire_filename);
+      tire->SetStepsize(step_size / 100);
+      my_vehicle.InitializeTire(tire, wheel, tire_vis_type);
+    }
+  }
 
   // Create the terrain
-  RigidTerrain terrain(my_sedan.GetSystem());
+  RigidTerrain terrain(my_vehicle.GetSystem());
 
   ChContactMaterialData minfo;
   minfo.mu = 0.9f;
@@ -147,7 +163,10 @@ int main(int argc, char *argv[]) {
 
   std::shared_ptr<RigidTerrain::Patch> patch;
 
-  patch = terrain.AddPatch(patch_mat, CSYSNORM, terrainLength, terrainWidth);
+  // patch = terrain.AddPatch(patch_mat, CSYSNORM, terrainLength, terrainWidth);
+  patch = terrain.AddPatch(patch_mat, CSYSNORM,
+                           std::string(STRINGIFY(HIL_DATA_DIR)) +
+                               "/Environments/nads/newnads/terrain.obj");
 
   patch->SetColor(ChColor(0.8f, 0.8f, 0.5f));
 
@@ -171,7 +190,7 @@ int main(int argc, char *argv[]) {
   terrain_body->AddVisualShape(terrain_shape);
   terrain_body->SetBodyFixed(true);
   terrain_body->SetCollide(false);
-  my_sedan.GetSystem()->Add(terrain_body);
+  my_vehicle.GetSystem()->Add(terrain_body);
 
   // -----------------
   // Initialize output
@@ -207,15 +226,7 @@ int main(int argc, char *argv[]) {
   // ---------------
   // Simulation loop
   // ---------------
-
-  if (debug_output) {
-    GetLog() << "\n\n============ System Configuration ============\n";
-    my_sedan.LogHardpointLocations();
-  }
-
-  my_sedan.GetVehicle().LogSubsystemTypes();
-  std::cout << "\nVehicle mass: " << my_sedan.GetVehicle().GetMass()
-            << std::endl;
+  std::cout << "\nVehicle mass: " << my_vehicle.GetMass() << std::endl;
 
   // Number of simulation steps between miscellaneous events
   int render_steps = (int)std::ceil(render_step_size / step_size);
@@ -227,7 +238,7 @@ int main(int argc, char *argv[]) {
 
   // Create the camera sensor
   auto manager =
-      chrono_types::make_shared<ChSensorManager>(my_sedan.GetSystem());
+      chrono_types::make_shared<ChSensorManager>(my_vehicle.GetSystem());
   float intensity = 1.2;
   manager->scene->AddPointLight({0, 0, 1e8}, {1.0, 1.0, 1.0}, 1e12);
   manager->scene->SetAmbientLight({.5, .5, .5});
@@ -236,15 +247,15 @@ int main(int argc, char *argv[]) {
   manager->scene->SetOriginOffsetThreshold(500.f);
 
   auto cam = chrono_types::make_shared<ChCameraSensor>(
-      my_sedan.GetChassis()->GetBody(), // body camera is attached to
-      25,                               // update rate in Hz
+      my_vehicle.GetChassis()->GetBody(), // body camera is attached to
+      25,                                 // update rate in Hz
       chrono::ChFrame<double>(
-          ChVector<>(-8.0, 0.0, 2.0),
+          ChVector<>(-6.0, 0.0, 2.0),
           Q_from_Euler123(ChVector<>(0.0, 0.11, 0.0))), // offset pose
       1920,                                             // image width
       1080,                                             // image height
       1.608f,
-      2); // fov, lag, exposure
+      1); // fov, lag, exposure
   cam->SetName("Camera Sensor");
 
   cam->PushFilter(
@@ -253,11 +264,14 @@ int main(int argc, char *argv[]) {
   cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
   manager->AddSensor(cam);
 
-  my_sedan.GetVehicle().EnableRealtime(true);
-  utils::ChRunningAverage RTF_filter(50);
+  my_vehicle.EnableRealtime(false);
 
+  ChRealtimeCumulative realtime_timer;
+  std::chrono::high_resolution_clock::time_point start =
+      std::chrono::high_resolution_clock::now();
+  double last_time = 0;
   while (true) {
-    double time = my_sedan.GetSystem()->GetChTime();
+    double time = my_vehicle.GetSystem()->GetChTime();
 
     manager->Update();
 
@@ -272,17 +286,10 @@ int main(int argc, char *argv[]) {
         char filename[100];
         sprintf(filename, "%s/data_%03d.dat", pov_dir.c_str(),
                 render_frame + 1);
-        utils::WriteVisualizationAssets(my_sedan.GetSystem(), filename);
+        utils::WriteVisualizationAssets(my_vehicle.GetSystem(), filename);
       }
 
       render_frame++;
-    }
-
-    // Debug logging
-    if (debug_output && step_number % debug_steps == 0) {
-      GetLog() << "\n\n============ System Information ============\n";
-      GetLog() << "Time = " << time << "\n\n";
-      my_sedan.DebugLog(OUT_SPRINGS | OUT_SHOCKS | OUT_CONSTRAINTS);
     }
 
     // Get driver inputs
@@ -293,16 +300,36 @@ int main(int argc, char *argv[]) {
 
     // Update modules (process inputs from other modules)
     terrain.Synchronize(time);
-    my_sedan.Synchronize(time, driver_inputs, terrain);
+    my_vehicle.Synchronize(time, driver_inputs, terrain);
     // vis->Synchronize(driver.GetInputModeAsString(), driver_inputs);
 
     // Advance simulation for one timestep for all modules
     terrain.Advance(step_size);
-    my_sedan.Advance(step_size);
+    my_vehicle.Advance(step_size);
     // vis->Advance(step_size);
 
     // Increment frame number
     step_number++;
+
+    if (step_number == 0) {
+      realtime_timer.Reset();
+    }
+
+    if (step_number % 10 == 0) {
+      realtime_timer.Spin(time);
+    }
+
+    if (step_number % 500 == 0) {
+      std::chrono::high_resolution_clock::time_point end =
+          std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> wall_time =
+          std::chrono::duration_cast<std::chrono::duration<double>>(end -
+                                                                    start);
+
+      std::cout << (wall_time.count()) / (time - last_time) << "\n";
+      last_time = time;
+      start = std::chrono::high_resolution_clock::now();
+    }
 
     if (SDLDriver.Synchronize() == 1) {
       break;
