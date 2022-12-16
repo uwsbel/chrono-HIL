@@ -152,6 +152,11 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  auto attached_body = std::make_shared<ChBody>();
+  my_vehicle.GetSystem()->AddBody(attached_body);
+  attached_body->SetCollide(false);
+  attached_body->SetBodyFixed(true);
+
   // Create the terrain
   RigidTerrain terrain(my_vehicle.GetSystem());
 
@@ -221,7 +226,7 @@ int main(int argc, char *argv[]) {
   SDLDriver.Initialize();
 
   SDLDriver.SetJoystickConfigFile(std::string(STRINGIFY(HIL_DATA_DIR)) +
-                                  std::string("/joystick/controller_G27.json"));
+                                  std::string("/joystick/controller_G29.json"));
 
   // ---------------
   // Simulation loop
@@ -241,25 +246,25 @@ int main(int argc, char *argv[]) {
       chrono_types::make_shared<ChSensorManager>(my_vehicle.GetSystem());
   float intensity = 1.2;
   manager->scene->AddPointLight({0, 0, 1e8}, {1.0, 1.0, 1.0}, 1e12);
-  manager->scene->SetAmbientLight({.5, .5, .5});
+  manager->scene->SetAmbientLight({.2, .2, .2});
   manager->scene->SetSceneEpsilon(1e-3);
   manager->scene->EnableDynamicOrigin(true);
   manager->scene->SetOriginOffsetThreshold(500.f);
 
   auto cam = chrono_types::make_shared<ChCameraSensor>(
-      my_vehicle.GetChassis()->GetBody(), // body camera is attached to
-      25,                                 // update rate in Hz
+      attached_body, // body camera is attached to
+      30,                                 // update rate in Hz
       chrono::ChFrame<double>(
-          ChVector<>(-6.0, 0.0, 2.0),
+          ChVector<>(-12.0, 0.0, 2.0),
           Q_from_Euler123(ChVector<>(0.0, 0.11, 0.0))), // offset pose
-      1920,                                             // image width
+      5760,                                             // image width
       1080,                                             // image height
-      1.608f,
-      1); // fov, lag, exposure
+      1.408f,
+      2); // fov, lag, exposure
   cam->SetName("Camera Sensor");
 
   cam->PushFilter(
-      chrono_types::make_shared<ChFilterVisualize>(1280, 720, "hwwmv", false));
+      chrono_types::make_shared<ChFilterVisualize>(5760, 1080, "hwwmv", false));
   // Provide the host access to the RGBA8 buffer
   cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
   manager->AddSensor(cam);
@@ -272,6 +277,17 @@ int main(int argc, char *argv[]) {
   double last_time = 0;
   while (true) {
     double time = my_vehicle.GetSystem()->GetChTime();
+
+    ChVector<> pos = my_vehicle.GetChassis()->GetPos();
+    ChQuaternion<> rot = my_vehicle.GetChassis()->GetRot();
+
+    auto euler_rot = Q_to_Euler123(rot);
+    euler_rot.x() = 0.0;
+    euler_rot.y() = 0.0;
+    auto y_0_rot = Q_from_Euler123(euler_rot);
+
+    attached_body->SetPos(pos);
+    attached_body->SetRot(y_0_rot);
 
     manager->Update();
 
