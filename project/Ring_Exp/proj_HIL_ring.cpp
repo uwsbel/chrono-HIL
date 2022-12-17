@@ -447,6 +447,12 @@ int main(int argc, char *argv[]) {
         ChVector<> temp_pos = id_map[i]->GetZombiePos();
         all_x[i] = temp_pos.x();
         all_y[i] = temp_pos.y();
+
+        if (step_number == 0) {
+          all_prev_x[i] = all_x[i];
+          all_prev_y[i] = all_y[i];
+        }
+
         all_speed[i] =
             sqrt((all_x[i] - all_prev_x[i]) * (all_x[i] - all_prev_x[i]) +
                  (all_y[i] - all_prev_y[i]) * (all_y[i] - all_prev_y[i])) /
