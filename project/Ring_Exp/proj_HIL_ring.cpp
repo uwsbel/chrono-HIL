@@ -290,9 +290,6 @@ int main(int argc, char *argv[]) {
   manager->scene->EnableDynamicOrigin(true);
   manager->scene->SetOriginOffsetThreshold(500.f);
 
-  std::cout << "node_id:" << node_id << ", num_nodes:" << num_nodes
-            << std::endl;
-
   if (node_id == 0) {
     auto cam = chrono_types::make_shared<ChCameraSensor>(
         attached_body, // body camera is attached to
@@ -446,7 +443,6 @@ int main(int argc, char *argv[]) {
       for (int i = 0; i < num_nodes; i++) {
         if (i != node_id) {
           ChVector<> temp_pos = id_map[i]->GetZombiePos();
-          std::cout << "i: " << i << "  pos:" << temp_pos << std::endl;
           all_x[i] = temp_pos.x();
           all_y[i] = temp_pos.y();
 
