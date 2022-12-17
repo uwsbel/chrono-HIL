@@ -9,9 +9,11 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
+
 #include "chrono/core/ChStream.h"
 #include "chrono/utils/ChFilters.h"
 #include "chrono/utils/ChUtilsInputOutput.h"
+#include <map>
 
 #include "chrono_sensor/ChSensorManager.h"
 #include "chrono_sensor/filters/ChFilterAccess.h"
@@ -25,7 +27,7 @@
 #include "chrono_synchrono/SynChronoManager.h"
 #include "chrono_synchrono/SynConfig.h"
 #include "chrono_synchrono/agent/SynWheeledVehicleAgent.h"
-#include "chrono_synchrono/communication/mpi/SynMPICommunicator.h"
+#include "chrono_synchrono/communication/dds/SynDDSCommunicator.h"
 #include "chrono_synchrono/controller/driver/SynMultiPathDriver.h"
 #include "chrono_synchrono/utils/SynDataLoader.h"
 #include "chrono_synchrono/utils/SynLog.h"
@@ -45,6 +47,8 @@
 #include "chrono_hil/driver/ChIDM_Follower.h"
 #include "chrono_hil/timer/ChRealtimeCumulative.h"
 
+#include "chrono_thirdparty/cxxopts/ChCLI.h"
+
 #include "chrono/assets/ChLineShape.h"
 #include "chrono/geometry/ChLineBezier.h"
 
@@ -59,6 +63,15 @@ using namespace chrono::geometry;
 using namespace chrono::synchrono;
 using namespace chrono::sensor;
 using namespace chrono::hil;
+// =============================================================================
+// Quality of Service
+#include <fastdds/dds/domain/qos/DomainParticipantQos.hpp>
+#include <fastdds/rtps/transport/UDPv4TransportDescriptor.h>
+#include <fastdds/rtps/transport/UDPv6TransportDescriptor.h>
+
+using namespace eprosima::fastdds::dds;
+using namespace eprosima::fastdds::rtps;
+using namespace eprosima::fastrtps::rtps;
 // =============================================================================
 
 // Initial vehicle location and orientation
@@ -95,6 +108,7 @@ bool contact_vis = false;
 
 // Simulation step sizes
 double sim_time = 900.0;
+double heartbeat = 0.1;
 double step_size = 1e-3;
 double tire_step_size = 1e-4;
 
@@ -113,6 +127,17 @@ bool povray_output = false;
 std::string path_file(std::string(STRINGIFY(HIL_DATA_DIR)) + "/ring/ring.txt");
 
 const std::string out_dir = GetChronoOutputPath() + "ring_out";
+
+// =============================================================================
+void AddCommandLineOptions(ChCLI &cli) {
+  // DDS Specific
+  cli.AddOption<int>("DDS", "d,node_id", "ID for this Node", "1");
+  cli.AddOption<int>("DDS", "n,num_nodes", "Number of Nodes", "2");
+  cli.AddOption<double>("Simulation", "b,heartbeat", "Heartbeat",
+                        std::to_string(heartbeat));
+  cli.AddOption<std::vector<std::string>>(
+      "DDS", "ip", "IP Addresses for initialPeersList", "127.0.0.1");
+}
 
 // =============================================================================
 
@@ -136,16 +161,41 @@ int main(int argc, char *argv[]) {
   std::string speed_controller =
       std::string(STRINGIFY(HIL_DATA_DIR)) + "/ring/SpeedController.json";
 
+  ChCLI cli(argv[0]);
+  AddCommandLineOptions(cli);
+
+  if (!cli.Parse(argc, argv, true))
+    return 0;
+
+  const int node_id = cli.GetAsType<int>("node_id");
+  const int num_nodes = cli.GetAsType<int>("num_nodes");
+  const std::vector<std::string> ip_list =
+      cli.GetAsType<std::vector<std::string>>("ip");
+
   // -----------------------
   // Create SynChronoManager
   // -----------------------
-  auto communicator = chrono_types::make_shared<SynMPICommunicator>(argc, argv);
-  int node_id = communicator->GetRank();
-  int num_nodes = communicator->GetNumRanks();
+  // Use UDP4
+  DomainParticipantQos qos;
+  qos.name("/syn/node/" + std::to_string(node_id) + ".0");
+  qos.transport().user_transports.push_back(
+      std::make_shared<UDPv4TransportDescriptor>());
+
+  qos.transport().use_builtin_transports = false;
+  qos.wire_protocol().builtin.avoid_builtin_multicast = false;
+
+  // Set the initialPeersList
+  for (const auto &ip : ip_list) {
+    Locator_t locator;
+    locator.kind = LOCATOR_KIND_UDPv4;
+    IPLocator::setIPv4(locator, ip);
+    qos.wire_protocol().builtin.initialPeersList.push_back(locator);
+  }
+  auto communicator = chrono_types::make_shared<SynDDSCommunicator>(qos);
   SynChronoManager syn_manager(node_id, num_nodes, communicator);
 
   // Change SynChronoManager settings
-  syn_manager.SetHeartbeat(1e-2);
+  syn_manager.SetHeartbeat(heartbeat);
 
   // Decide Vehicle Locations
   float deg_sec = (CH_C_PI * 1.5) / num_nodes;
@@ -240,6 +290,9 @@ int main(int argc, char *argv[]) {
   manager->scene->EnableDynamicOrigin(true);
   manager->scene->SetOriginOffsetThreshold(500.f);
 
+  std::cout << "node_id:" << node_id << ", num_nodes:" << num_nodes
+            << std::endl;
+
   if (node_id == 0) {
     auto cam = chrono_types::make_shared<ChCameraSensor>(
         attached_body, // body camera is attached to
@@ -281,16 +334,14 @@ int main(int argc, char *argv[]) {
     cam2->PushFilter(chrono_types::make_shared<ChFilterSave>("cam2/"));
     manager->AddSensor(cam2);
 
-    
-
     auto cam3 = chrono_types::make_shared<ChCameraSensor>(
         my_vehicle.GetChassis()->GetBody(), // body camera is attached to
-        30,            // update rate in Hz
+        30,                                 // update rate in Hz
         chrono::ChFrame<double>(
             ChVector<>(-6.0, 0.0, 3.0),
             Q_from_Euler123(ChVector<>(0.0, 0.13, 0.0))), // offset pose
-        1920,                                            // image width
-        1080,                                            // image height
+        1920,                                             // image width
+        1080,                                             // image height
         1.608f,
         2); // fov, lag, exposure
     cam3->SetName("Camera Sensor 3");
@@ -351,9 +402,11 @@ int main(int argc, char *argv[]) {
 
   utils::ChRunningAverage RTF_filter(50);
 
-  double *all_x = new double[num_nodes];
-  double *all_y = new double[num_nodes];
-  double *all_speed = new double[num_nodes];
+  float *all_x = new float[num_nodes];
+  float *all_y = new float[num_nodes];
+  float *all_prev_x = new float[num_nodes];
+  float *all_prev_y = new float[num_nodes];
+  float *all_speed = new float[num_nodes];
 
   // csv labels
   csv << "time,";
@@ -369,23 +422,63 @@ int main(int argc, char *argv[]) {
 
   double time = 0.0;
 
+  // obtain and initiate all zombie instances
+  std::map<AgentKey, std::shared_ptr<SynAgent>> zombie_map =
+      syn_manager.GetZombies();
+  std::map<int, std::shared_ptr<SynWheeledVehicleAgent>> id_map;
+  for (std::map<AgentKey, std::shared_ptr<SynAgent>>::iterator it =
+           zombie_map.begin();
+       it != zombie_map.end(); ++it) {
+    std::shared_ptr<SynAgent> temp_ptr = it->second;
+    std::shared_ptr<SynWheeledVehicleAgent> converted_ptr =
+        std::dynamic_pointer_cast<SynWheeledVehicleAgent>(temp_ptr);
+    id_map.insert(std::make_pair(it->first.GetNodeID(), converted_ptr));
+  }
+
+  int lead_idx = (node_id + 1) % num_nodes;
+  float act_dis = 0;
+
   while (time <= sim_time) {
     time = my_vehicle.GetSystem()->GetChTime();
+
+    // update necessary zombie info for IDM
+    if (step_number % int(heartbeat / step_size) == 0) {
+      for (int i = 0; i < num_nodes && i != node_id; i++) {
+        ChVector<> temp_pos = id_map[i]->GetZombiePos();
+        all_x[i] = temp_pos.x();
+        all_y[i] = temp_pos.y();
+        all_speed[i] =
+            sqrt((all_x[i] - all_prev_x[i]) * (all_x[i] - all_prev_x[i]) +
+                 (all_y[i] - all_prev_y[i]) * (all_y[i] - all_prev_y[i])) /
+            heartbeat;
+        all_prev_x[i] = all_x[i];
+        all_prev_y[i] = all_y[i];
+      }
+
+      ChVector<> veh_pos = my_vehicle.GetPos();
+      all_x[node_id] = veh_pos.x();
+      all_y[node_id] = veh_pos.y();
+      all_speed[node_id] = my_vehicle.GetSpeed();
+
+      // Compute critical information
+      float raw_dis = sqrt((all_x[node_id] - all_x[lead_idx]) *
+                               (all_x[node_id] - all_x[lead_idx]) +
+                           (all_y[node_id] - all_y[lead_idx]) *
+                               (all_y[node_id] - all_y[lead_idx]));
+      float temp = 1 - (raw_dis * raw_dis) / (2.0 * 25.0 * 25.0);
+      if (temp > 1) {
+        temp = 1;
+      } else if (temp < -1) {
+        temp = -1;
+      }
+
+      float theta = abs(acos(temp));
+      act_dis = theta * 25.0;
+    }
+
     if (step_number % 20 == 0) {
       csv << std::to_string(time) + ",";
     }
-
-    // Gather position information in all ranks
-    ChVector<> veh_pos = my_vehicle.GetPos();
-    double veh_pos_x = veh_pos.x();
-    double veh_pos_y = veh_pos.y();
-    double veh_speed = my_vehicle.GetSpeed();
-    MPI_Allgather(&veh_pos_x, 1, MPI_DOUBLE, all_x, 1, MPI_DOUBLE,
-                  MPI_COMM_WORLD);
-    MPI_Allgather(&veh_pos_y, 1, MPI_DOUBLE, all_y, 1, MPI_DOUBLE,
-                  MPI_COMM_WORLD);
-    MPI_Allgather(&veh_speed, 1, MPI_DOUBLE, all_speed, 1, MPI_DOUBLE,
-                  MPI_COMM_WORLD);
 
     // End simulation
     if (time >= t_end)
@@ -413,22 +506,6 @@ int main(int argc, char *argv[]) {
 
     // Get driver inputs
     DriverInputs driver_inputs = driver.GetInputs();
-
-    // Compute critical information
-    int lead_idx = (node_id + 1) % num_nodes;
-    float raw_dis = sqrt((my_vehicle.GetPos().x() - all_x[lead_idx]) *
-                             (my_vehicle.GetPos().x() - all_x[lead_idx]) +
-                         (my_vehicle.GetPos().y() - all_y[lead_idx]) *
-                             (my_vehicle.GetPos().y() - all_y[lead_idx]));
-    float temp = 1 - (raw_dis * raw_dis) / (2.0 * 25.0 * 25.0);
-    if (temp > 1) {
-      temp = 1;
-    } else if (temp < -1) {
-      temp = -1;
-    }
-
-    float theta = abs(acos(temp));
-    float act_dis = theta * 25.0;
 
     // Update modules (process inputs from other modules)
     syn_manager.Synchronize(time);
