@@ -443,22 +443,25 @@ int main(int argc, char *argv[]) {
 
     // update necessary zombie info for IDM
     if (step_number % int(heartbeat / step_size) == 0) {
-      for (int i = 0; i < num_nodes && i != node_id; i++) {
-        ChVector<> temp_pos = id_map[i]->GetZombiePos();
-        all_x[i] = temp_pos.x();
-        all_y[i] = temp_pos.y();
+      for (int i = 0; i < num_nodes; i++) {
+        if (i != node_id) {
+          ChVector<> temp_pos = id_map[i]->GetZombiePos();
+          std::cout << "i: " << i << "  pos:" << temp_pos << std::endl;
+          all_x[i] = temp_pos.x();
+          all_y[i] = temp_pos.y();
 
-        if (step_number == 0) {
+          if (step_number == 0) {
+            all_prev_x[i] = all_x[i];
+            all_prev_y[i] = all_y[i];
+          }
+
+          all_speed[i] =
+              sqrt((all_x[i] - all_prev_x[i]) * (all_x[i] - all_prev_x[i]) +
+                   (all_y[i] - all_prev_y[i]) * (all_y[i] - all_prev_y[i])) /
+              heartbeat;
           all_prev_x[i] = all_x[i];
           all_prev_y[i] = all_y[i];
         }
-
-        all_speed[i] =
-            sqrt((all_x[i] - all_prev_x[i]) * (all_x[i] - all_prev_x[i]) +
-                 (all_y[i] - all_prev_y[i]) * (all_y[i] - all_prev_y[i])) /
-            heartbeat;
-        all_prev_x[i] = all_x[i];
-        all_prev_y[i] = all_y[i];
       }
 
       ChVector<> veh_pos = my_vehicle.GetPos();
