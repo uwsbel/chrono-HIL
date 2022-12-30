@@ -293,7 +293,7 @@ int main(int argc, char *argv[]) {
   manager->scene->EnableDynamicOrigin(true);
   manager->scene->SetOriginOffsetThreshold(500.f);
 
-  if (node_id == 0) {
+  if (render_scene) {
     auto cam = chrono_types::make_shared<ChCameraSensor>(
         attached_body, // body camera is attached to
         30,            // update rate in Hz
