@@ -63,6 +63,8 @@ using namespace chrono::geometry;
 using namespace chrono::synchrono;
 using namespace chrono::sensor;
 using namespace chrono::hil;
+
+using namespace std::chrono;
 // =============================================================================
 // Quality of Service
 #include <fastdds/dds/domain/qos/DomainParticipantQos.hpp>
@@ -108,7 +110,7 @@ bool contact_vis = false;
 
 // Simulation step sizes
 double sim_time = 900.0;
-double heartbeat = 0.1;
+double heartbeat = 0.02;
 double step_size = 1e-3;
 double tire_step_size = 1e-4;
 
@@ -428,10 +430,13 @@ int main(int argc, char *argv[]) {
   int lead_idx = (node_id + 1) % num_nodes;
   float act_dis = 0;
 
+  auto t0 = std::chrono::high_resolution_clock::now();
+  ChRealtimeCumulative realtime_timer;
+
+  my_vehicle.EnableRealtime(false);
+
   while (time <= sim_time && syn_manager.IsOk()) {
     time = my_vehicle.GetSystem()->GetChTime();
-
-    std::cout << "in sim" << std::endl;
 
     // obtain map
     if (step_number == 0) {
@@ -507,7 +512,7 @@ int main(int argc, char *argv[]) {
       render_frame++;
     }
 
-    if (node_id == 0 && step_number % 20 == 0) {
+    if (node_id == 0 && step_number % (int)(sim_time / heartbeat) == 0) {
       for (int j = 0; j < num_nodes; j++) {
         csv << std::to_string(all_x[j]) + ",";
         csv << std::to_string(all_y[j]) + ",";
@@ -533,6 +538,20 @@ int main(int argc, char *argv[]) {
     driver.Advance(step_size);
     terrain.Advance(step_size);
     my_vehicle.Advance(step_size);
+
+    if (step_number == 0) {
+      realtime_timer.Reset();
+      t0 = high_resolution_clock::now();
+    }
+
+    if (step_number % 10 == 0) {
+      realtime_timer.Spin(sim_time);
+
+      auto t1 = std::chrono::high_resolution_clock::now();
+      double real_time =
+          std::chrono::duration_cast<duration<double>>(t1 - t0).count();
+      std::cout << "RTF: " << sim_time / real_time << std::endl;
+    }
 
     // std::cout << my_sedan.GetVehicle().GetPos() << std::endl;
 
