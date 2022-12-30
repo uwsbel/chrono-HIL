@@ -120,11 +120,7 @@ double t_end = 1000;
 // Time interval between two render frames
 double render_step_size = 1.0 / 50; // FPS = 50
 
-// Debug logging
-double debug_step_size = 1.0 / 1; // FPS = 1
-
-// POV-Ray output
-bool povray_output = false;
+int render_scene = 0;
 
 std::string path_file(std::string(STRINGIFY(HIL_DATA_DIR)) + "/ring/ring.txt");
 
@@ -137,6 +133,8 @@ void AddCommandLineOptions(ChCLI &cli) {
   cli.AddOption<int>("DDS", "n,num_nodes", "Number of Nodes", "2");
   cli.AddOption<double>("Simulation", "b,heartbeat", "Heartbeat",
                         std::to_string(heartbeat));
+  cli.AddOption<int>("Render", "r,render", "whether_to_render",
+                     std::to_string(render_scene));
   cli.AddOption<std::vector<std::string>>(
       "DDS", "ip", "IP Addresses for initialPeersList", "127.0.0.1");
 }
@@ -173,6 +171,7 @@ int main(int argc, char *argv[]) {
   const int num_nodes = cli.GetAsType<int>("num_nodes");
   const std::vector<std::string> ip_list =
       cli.GetAsType<std::vector<std::string>>("ip");
+  render_scene = cli.GetAsType<int>("render");
 
   // -----------------------
   // Create SynChronoManager
@@ -430,13 +429,35 @@ int main(int argc, char *argv[]) {
   int lead_idx = (node_id + 1) % num_nodes;
   float act_dis = 0;
 
-  auto t0 = std::chrono::high_resolution_clock::now();
   ChRealtimeCumulative realtime_timer;
+  std::chrono::high_resolution_clock::time_point start =
+      std::chrono::high_resolution_clock::now();
+  double last_time = 0;
 
   my_vehicle.EnableRealtime(false);
 
   while (time <= sim_time && syn_manager.IsOk()) {
     time = my_vehicle.GetSystem()->GetChTime();
+
+    if (step_number == 0) {
+      realtime_timer.Reset();
+    }
+
+    if (step_number % 50 == 0) {
+      realtime_timer.Spin(time);
+    }
+
+    if (step_number % 500 == 0 && node_id == 0) {
+      std::chrono::high_resolution_clock::time_point end =
+          std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> wall_time =
+          std::chrono::duration_cast<std::chrono::duration<double>>(end -
+                                                                    start);
+
+      SynLog() << (wall_time.count()) / (time - last_time) << "\n";
+      last_time = time;
+      start = std::chrono::high_resolution_clock::now();
+    }
 
     // obtain map
     if (step_number == 0) {
@@ -506,13 +527,11 @@ int main(int argc, char *argv[]) {
       break;
 
     // Render scene and output POV-Ray data
-    if (node_id == 0 && (step_number % render_steps == 0)) {
+    if (render_scene == 1) {
       manager->Update();
-
-      render_frame++;
     }
 
-    if (node_id == 0 && step_number % (int)(sim_time / heartbeat) == 0) {
+    if (node_id == 0 && step_number % (int)(heartbeat / step_size) == 0) {
       for (int j = 0; j < num_nodes; j++) {
         csv << std::to_string(all_x[j]) + ",";
         csv << std::to_string(all_y[j]) + ",";
@@ -538,20 +557,6 @@ int main(int argc, char *argv[]) {
     driver.Advance(step_size);
     terrain.Advance(step_size);
     my_vehicle.Advance(step_size);
-
-    if (step_number == 0) {
-      realtime_timer.Reset();
-      t0 = high_resolution_clock::now();
-    }
-
-    if (step_number % 10 == 0) {
-      realtime_timer.Spin(sim_time);
-
-      auto t1 = std::chrono::high_resolution_clock::now();
-      double real_time =
-          std::chrono::duration_cast<duration<double>>(t1 - t0).count();
-      std::cout << "RTF: " << sim_time / real_time << std::endl;
-    }
 
     // std::cout << my_sedan.GetVehicle().GetPos() << std::endl;
 
