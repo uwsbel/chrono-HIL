@@ -192,6 +192,8 @@ int main(int argc, char *argv[]) {
     qos.wire_protocol().builtin.initialPeersList.push_back(locator);
   }
   auto communicator = chrono_types::make_shared<SynDDSCommunicator>(qos);
+  std::cout << "node_id: " << node_id << ", num_nodes:" << num_nodes
+            << std::endl;
   SynChronoManager syn_manager(node_id, num_nodes, communicator);
 
   // Change SynChronoManager settings
@@ -420,29 +422,39 @@ int main(int argc, char *argv[]) {
   double time = 0.0;
 
   // obtain and initiate all zombie instances
-  std::map<AgentKey, std::shared_ptr<SynAgent>> zombie_map =
-      syn_manager.GetZombies();
+  std::map<AgentKey, std::shared_ptr<SynAgent>> zombie_map;
   std::map<int, std::shared_ptr<SynWheeledVehicleAgent>> id_map;
-  for (std::map<AgentKey, std::shared_ptr<SynAgent>>::iterator it =
-           zombie_map.begin();
-       it != zombie_map.end(); ++it) {
-    std::shared_ptr<SynAgent> temp_ptr = it->second;
-    std::shared_ptr<SynWheeledVehicleAgent> converted_ptr =
-        std::dynamic_pointer_cast<SynWheeledVehicleAgent>(temp_ptr);
-    id_map.insert(std::make_pair(it->first.GetNodeID(), converted_ptr));
-  }
 
   int lead_idx = (node_id + 1) % num_nodes;
   float act_dis = 0;
 
-  while (time <= sim_time) {
+  while (time <= sim_time && syn_manager.IsOk()) {
     time = my_vehicle.GetSystem()->GetChTime();
+
+    std::cout << "in sim" << std::endl;
+
+    // obtain map
+    if (step_number == 0) {
+      zombie_map = syn_manager.GetZombies();
+      std::cout << "zombie size: " << zombie_map.size() << std::endl;
+      std::cout << "agent size: " << syn_manager.GetAgents().size()
+                << std::endl;
+      for (std::map<AgentKey, std::shared_ptr<SynAgent>>::iterator it =
+               zombie_map.begin();
+           it != zombie_map.end(); ++it) {
+        std::shared_ptr<SynAgent> temp_ptr = it->second;
+        std::shared_ptr<SynWheeledVehicleAgent> converted_ptr =
+            std::dynamic_pointer_cast<SynWheeledVehicleAgent>(temp_ptr);
+        std::cout << it->first.GetNodeID() << std::endl;
+        id_map.insert(std::make_pair(it->first.GetNodeID(), converted_ptr));
+      }
+    }
 
     // update necessary zombie info for IDM
     if (step_number % int(heartbeat / step_size) == 0) {
       for (int i = 0; i < num_nodes; i++) {
         if (i != node_id) {
-          ChVector<> temp_pos = id_map[i]->GetZombiePos();
+          ChVector<> temp_pos = id_map.at(i)->GetZombiePos();
           all_x[i] = temp_pos.x();
           all_y[i] = temp_pos.y();
 
@@ -450,7 +462,6 @@ int main(int argc, char *argv[]) {
             all_prev_x[i] = all_x[i];
             all_prev_y[i] = all_y[i];
           }
-
           all_speed[i] =
               sqrt((all_x[i] - all_prev_x[i]) * (all_x[i] - all_prev_x[i]) +
                    (all_y[i] - all_prev_y[i]) * (all_y[i] - all_prev_y[i])) /
@@ -528,7 +539,7 @@ int main(int argc, char *argv[]) {
     // Increment frame number
     step_number++;
 
-    if (syn_manager.IsOk()) {
+    if (!syn_manager.IsOk()) {
       syn_manager.QuitSimulation();
     }
   }
