@@ -110,8 +110,8 @@ bool contact_vis = false;
 
 // Simulation step sizes
 double sim_time = 900.0;
-double heartbeat = 0.025;
-double step_size = 1e-3;
+double heartbeat = 0.04;
+double step_size = 2e-3;
 double tire_step_size = 1e-4;
 
 // Simulation end time
@@ -315,7 +315,7 @@ int main(int argc, char *argv[]) {
     cam->PushFilter(chrono_types::make_shared<ChFilterSave>("cam1/"));
     manager->AddSensor(cam);
 
-    
+
         auto cam2 = chrono_types::make_shared<ChCameraSensor>(
             attached_body, // body camera is attached to
             30,            // update rate in Hz
@@ -337,26 +337,24 @@ int main(int argc, char *argv[]) {
         cam2->PushFilter(chrono_types::make_shared<ChFilterSave>("cam2/"));
         manager->AddSensor(cam2);
 */
-        auto cam3 = chrono_types::make_shared<ChCameraSensor>(
-            my_vehicle.GetChassis()->GetBody(), // body camera is attached to
-            40,                                 // update rate in Hz
-            chrono::ChFrame<double>(
-                ChVector<>(-6.0, 0.0, 3.0),
-                Q_from_Euler123(ChVector<>(0.0, 0.13, 0.0))), // offset pose
-            1920,                                             // image width
-            1080,                                             // image height
-            1.608f,
-            2); // fov, lag, exposure
-        cam3->SetName("Camera Sensor 3");
+    auto cam3 = chrono_types::make_shared<ChCameraSensor>(
+        my_vehicle.GetChassis()->GetBody(), // body camera is attached to
+        40,                                 // update rate in Hz
+        chrono::ChFrame<double>(
+            ChVector<>(-6.0, 0.0, 3.0),
+            Q_from_Euler123(ChVector<>(0.0, 0.13, 0.0))), // offset pose
+        1920,                                             // image width
+        1080,                                             // image height
+        1.608f,
+        2); // fov, lag, exposure
+    cam3->SetName("Camera Sensor 3");
 
-     cam3->PushFilter(
-       chrono_types::make_shared<ChFilterVisualize>(1920, 1080, "fov",
-        false));
+    cam3->PushFilter(
+        chrono_types::make_shared<ChFilterVisualize>(1920, 1080, "fov", false));
     //  Provide the host access to the RGBA8 buffer
     cam3->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
-    //cam3->PushFilter(chrono_types::make_shared<ChFilterSave>("cam3/"));
+    // cam3->PushFilter(chrono_types::make_shared<ChFilterSave>("cam3/"));
     manager->AddSensor(cam3);
-    
   }
 
   // -----------------
@@ -535,6 +533,7 @@ int main(int argc, char *argv[]) {
       manager->Update();
     }
 
+    /*
     if (node_id == 0 && step_number % (int)(heartbeat / step_size) == 0) {
       for (int j = 0; j < num_nodes; j++) {
         csv << std::to_string(all_x[j]) + ",";
@@ -547,7 +546,7 @@ int main(int argc, char *argv[]) {
       csv << std::endl;
       csv.write_to_file(out_dir + "/ring_save.csv");
     }
-
+    */
     // Get driver inputs
     DriverInputs driver_inputs = driver.GetInputs();
 
