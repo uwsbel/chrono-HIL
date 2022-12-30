@@ -339,7 +339,7 @@ int main(int argc, char *argv[]) {
 */
     auto cam3 = chrono_types::make_shared<ChCameraSensor>(
         my_vehicle.GetChassis()->GetBody(), // body camera is attached to
-        40,                                 // update rate in Hz
+        25,                                 // update rate in Hz
         chrono::ChFrame<double>(
             ChVector<>(-6.0, 0.0, 3.0),
             Q_from_Euler123(ChVector<>(0.0, 0.13, 0.0))), // offset pose
