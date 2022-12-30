@@ -443,9 +443,7 @@ int main(int argc, char *argv[]) {
 
     if (step_number == 0) {
       realtime_timer.Reset();
-    }
-
-    if (step_number % 50 == 0) {
+    } else {
       realtime_timer.Spin(time);
     }
 
