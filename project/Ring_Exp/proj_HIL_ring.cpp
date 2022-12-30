@@ -314,37 +314,39 @@ int main(int argc, char *argv[]) {
     cam->PushFilter(chrono_types::make_shared<ChFilterSave>("cam1/"));
     manager->AddSensor(cam);
 
-    auto cam2 = chrono_types::make_shared<ChCameraSensor>(
-        attached_body, // body camera is attached to
-        30,            // update rate in Hz
-        chrono::ChFrame<double>(
-            ChVector<>(0.0, 0.0, 15.0),
-            Q_from_Euler123(ChVector<>(0.0, 0.5, 0.0))), // offset pose
-        1920,                                            // image width
-        1080,                                            // image height
-        1.608f,
-        2); // fov, lag, exposure
-    cam2->SetName("Camera Sensor 2");
+    /*
+        auto cam2 = chrono_types::make_shared<ChCameraSensor>(
+            attached_body, // body camera is attached to
+            30,            // update rate in Hz
+            chrono::ChFrame<double>(
+                ChVector<>(0.0, 0.0, 15.0),
+                Q_from_Euler123(ChVector<>(0.0, 0.5, 0.0))), // offset pose
+            1920,                                            // image width
+            1080,                                            // image height
+            1.608f,
+            2); // fov, lag, exposure
+        cam2->SetName("Camera Sensor 2");
 
-    // cam2->PushFilter(
-    //    chrono_types::make_shared<ChFilterVisualize>(1920, 1080, "fov",
-    //    false));
-    //  Provide the host access to the RGBA8 buffer
-    cam2->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
-    cam2->PushFilter(chrono_types::make_shared<ChFilterSave>("cam2/"));
-    manager->AddSensor(cam2);
 
-    auto cam3 = chrono_types::make_shared<ChCameraSensor>(
-        my_vehicle.GetChassis()->GetBody(), // body camera is attached to
-        30,                                 // update rate in Hz
-        chrono::ChFrame<double>(
-            ChVector<>(-6.0, 0.0, 3.0),
-            Q_from_Euler123(ChVector<>(0.0, 0.13, 0.0))), // offset pose
-        1920,                                             // image width
-        1080,                                             // image height
-        1.608f,
-        2); // fov, lag, exposure
-    cam3->SetName("Camera Sensor 3");
+        // cam2->PushFilter(
+        //    chrono_types::make_shared<ChFilterVisualize>(1920, 1080, "fov",
+        //    false));
+        //  Provide the host access to the RGBA8 buffer
+        cam2->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+        cam2->PushFilter(chrono_types::make_shared<ChFilterSave>("cam2/"));
+        manager->AddSensor(cam2);
+
+        auto cam3 = chrono_types::make_shared<ChCameraSensor>(
+            my_vehicle.GetChassis()->GetBody(), // body camera is attached to
+            30,                                 // update rate in Hz
+            chrono::ChFrame<double>(
+                ChVector<>(-6.0, 0.0, 3.0),
+                Q_from_Euler123(ChVector<>(0.0, 0.13, 0.0))), // offset pose
+            1920,                                             // image width
+            1080,                                             // image height
+            1.608f,
+            2); // fov, lag, exposure
+        cam3->SetName("Camera Sensor 3");
 
     // cam2->PushFilter(
     //    chrono_types::make_shared<ChFilterVisualize>(1920, 1080, "fov",
@@ -353,6 +355,7 @@ int main(int argc, char *argv[]) {
     cam3->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
     cam3->PushFilter(chrono_types::make_shared<ChFilterSave>("cam3/"));
     manager->AddSensor(cam3);
+    */
   }
 
   // -----------------
