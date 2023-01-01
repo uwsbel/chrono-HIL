@@ -76,8 +76,10 @@ using namespace eprosima::fastdds::rtps;
 using namespace eprosima::fastrtps::rtps;
 // =============================================================================
 
+float radius = 35.f;
+
 // Initial vehicle location and orientation
-ChVector<> initLoc(0, 25.0, 0.5);
+ChVector<> initLoc(0, radius, 0.5);
 ChQuaternion<> initRot = Q_from_AngZ(0);
 
 enum DriverMode { DEFAULT, RECORD, PLAYBACK };
@@ -122,7 +124,8 @@ double render_step_size = 1.0 / 50; // FPS = 50
 
 int render_scene = 0;
 
-std::string path_file(std::string(STRINGIFY(HIL_DATA_DIR)) + "/ring/ring.txt");
+std::string path_file(std::string(STRINGIFY(HIL_DATA_DIR)) +
+                      "/ring/1231terrain/35ring.txt");
 
 const std::string out_dir = GetChronoOutputPath() + "ring_out";
 
@@ -203,8 +206,8 @@ int main(int argc, char *argv[]) {
   // Decide Vehicle Locations
   float deg_sec = (CH_C_PI * 1.5) / num_nodes;
 
-  initLoc = ChVector<>(25.0 * cos(deg_sec * node_id),
-                       25.0 * sin(deg_sec * node_id), 0.5);
+  initLoc = ChVector<>(radius * cos(deg_sec * node_id),
+                       radius * sin(deg_sec * node_id), 0.5);
   float rot_deg = deg_sec * node_id + CH_C_PI_2;
   if (rot_deg > CH_C_2PI) {
     rot_deg = rot_deg - CH_C_2PI;
@@ -253,7 +256,7 @@ int main(int argc, char *argv[]) {
   // add terrain with weighted textures
   auto terrain_mesh = chrono_types::make_shared<ChTriangleMeshConnected>();
   terrain_mesh->LoadWavefrontMesh(std::string(STRINGIFY(HIL_DATA_DIR)) +
-                                      "/ring/ring_terrain.obj",
+                                      "/ring/1231terrain/ring_1231.obj",
                                   false, true);
   terrain_mesh->Transform(ChVector<>(0, 0, 0),
                           ChMatrix33<>(1)); // scale to a different size
@@ -509,7 +512,7 @@ int main(int argc, char *argv[]) {
                                (all_x[node_id] - all_x[lead_idx]) +
                            (all_y[node_id] - all_y[lead_idx]) *
                                (all_y[node_id] - all_y[lead_idx]));
-      float temp = 1 - (raw_dis * raw_dis) / (2.0 * 25.0 * 25.0);
+      float temp = 1 - (raw_dis * raw_dis) / (2.0 * radius * radius);
       if (temp > 1) {
         temp = 1;
       } else if (temp < -1) {
@@ -517,7 +520,7 @@ int main(int argc, char *argv[]) {
       }
 
       float theta = abs(acos(temp));
-      act_dis = theta * 25.0;
+      act_dis = theta * radius;
     }
 
     if (step_number % 20 == 0) {
