@@ -112,7 +112,7 @@ bool contact_vis = false;
 
 // Simulation step sizes
 double sim_time = 900.0;
-double heartbeat = 0.01;
+double heartbeat = 0.02;
 double step_size = 2e-3;
 double tire_step_size = 1e-4;
 
@@ -345,7 +345,7 @@ int main(int argc, char *argv[]) {
         my_vehicle.GetChassis()->GetBody(), // body camera is attached to
         fps,                                // update rate in Hz
         chrono::ChFrame<double>(
-            ChVector<>(-9.0, 0.0, 3.0),
+            ChVector<>(-12.0, 0.0, 3.0),
             Q_from_Euler123(ChVector<>(0.0, 0.13, 0.0))), // offset pose
         5760,                                             // image width
         1080,                                             // image height
