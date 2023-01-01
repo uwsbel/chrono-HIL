@@ -112,7 +112,7 @@ bool contact_vis = false;
 
 // Simulation step sizes
 double sim_time = 900.0;
-double heartbeat = 0.04;
+double heartbeat = 0.01;
 double step_size = 2e-3;
 double tire_step_size = 1e-4;
 
@@ -372,7 +372,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  utils::CSV_writer csv(" ");
+  // tils::CSV_writer csv(" ");
 
   // ------------------------
   // Create the driver system
@@ -415,16 +415,17 @@ int main(int argc, char *argv[]) {
   float *all_speed = new float[num_nodes];
 
   // csv labels
-  csv << "time,";
-  for (int j = 0; j < num_nodes; j++) {
-    csv << "x_" + std::to_string(j) + ",";
-    csv << "y_" + std::to_string(j) + ",";
-    csv << "speed_" + std::to_string(j);
-    if (j != num_nodes - 1) {
-      csv << ",";
-    }
-  }
-  csv << std::endl;
+  // csv << "time,";
+  // for (int j = 0; j < num_nodes; j++) {
+  //  csv << "x_" + std::to_string(j) + ",";
+  //  csv << "y_" + std::to_string(j) + ",";
+  //  csv << "speed_" + std::to_string(j);
+  //  if (j != num_nodes - 1) {
+  //    csv << ",";
+  //  }
+
+  //}
+  // csv << std::endl;
 
   double time = 0.0;
 
@@ -524,9 +525,9 @@ int main(int argc, char *argv[]) {
       act_dis = theta * radius;
     }
 
-    if (step_number % 20 == 0) {
-      csv << std::to_string(time) + ",";
-    }
+    // if (step_number % 20 == 0) {
+    //   csv << std::to_string(time) + ",";
+    // }
 
     // End simulation
     if (time >= t_end)
