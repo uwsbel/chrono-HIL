@@ -123,6 +123,7 @@ double t_end = 1000;
 double render_step_size = 1.0 / 50; // FPS = 50
 
 int render_scene = 0;
+int fps = 25;
 
 std::string path_file(std::string(STRINGIFY(HIL_DATA_DIR)) +
                       "/ring/1231terrain/35ring.txt");
@@ -342,11 +343,11 @@ int main(int argc, char *argv[]) {
 */
     auto cam3 = chrono_types::make_shared<ChCameraSensor>(
         my_vehicle.GetChassis()->GetBody(), // body camera is attached to
-        25,                                 // update rate in Hz
+        fps,                                // update rate in Hz
         chrono::ChFrame<double>(
             ChVector<>(-6.0, 0.0, 3.0),
             Q_from_Euler123(ChVector<>(0.0, 0.13, 0.0))), // offset pose
-        1920,                                             // image width
+        5760,                                             // image width
         1080,                                             // image height
         1.608f,
         2); // fov, lag, exposure
@@ -532,7 +533,7 @@ int main(int argc, char *argv[]) {
       break;
 
     // Render scene and output POV-Ray data
-    if (render_scene == 1 && step_number % 40 == 0) {
+    if (render_scene == 1 && step_number % fps == 0) {
       manager->Update();
     }
 
