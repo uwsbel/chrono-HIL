@@ -124,9 +124,10 @@ double render_step_size = 1.0 / 50; // FPS = 50
 
 int render_scene = 0;
 int fps = 25;
+int output = 0;
 
 std::string path_file(std::string(STRINGIFY(HIL_DATA_DIR)) +
-                      "/ring/1231terrain/35ring_closed.txt");
+                      "/ring/1231terrain/35ring.txt");
 
 const std::string out_dir = GetChronoOutputPath() + "ring_out";
 
@@ -494,7 +495,7 @@ int main(int argc, char *argv[]) {
   // ------------------------
 
   // read from a bezier curve, and form a closed loop
-  auto path = ChBezierCurve::read(path_file, true);
+  auto path = ChBezierCurve::read(path_file, false);
 
   // idm parameters
   std::vector<double> followerParam;
