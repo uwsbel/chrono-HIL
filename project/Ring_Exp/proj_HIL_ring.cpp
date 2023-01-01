@@ -45,6 +45,7 @@
 #include "chrono_thirdparty/filesystem/path.h"
 
 #include "chrono_hil/driver/ChIDM_Follower.h"
+#include "chrono_hil/driver/ChSDLInterface.h"
 #include "chrono_hil/timer/ChRealtimeCumulative.h"
 
 #include "chrono_thirdparty/cxxopts/ChCLI.h"
@@ -111,10 +112,9 @@ ChContactMethod contact_method = ChContactMethod::SMC;
 bool contact_vis = false;
 
 // Simulation step sizes
-double sim_time = 900.0;
+double sim_time = 1800.0;
 double heartbeat = 0.04;
 double step_size = 2e-3;
-double tire_step_size = 1e-4;
 
 // Simulation end time
 double t_end = 1000;
@@ -126,7 +126,7 @@ int render_scene = 0;
 int fps = 25;
 
 std::string path_file(std::string(STRINGIFY(HIL_DATA_DIR)) +
-                      "/ring/1231terrain/35ring.txt");
+                      "/ring/1231terrain/35ring_closed.txt");
 
 const std::string out_dir = GetChronoOutputPath() + "ring_out";
 
@@ -135,6 +135,14 @@ void AddCommandLineOptions(ChCLI &cli) {
   // DDS Specific
   cli.AddOption<int>("DDS", "d,node_id", "ID for this Node", "1");
   cli.AddOption<int>("DDS", "n,num_nodes", "Number of Nodes", "2");
+  cli.AddOption<int>("Simulation", "v,vehicle",
+                     "Vehicle Type: 1-sedan, 2-audi, 3-hmmwv",
+                     "must have this number");
+  cli.AddOption<int>("Simulation", "s,use_sdl", "whether to use SDL",
+                     "use 1 to indicate SDL usage");
+  cli.AddOption<int>("Simulation", "i,idm",
+                     "idm Type: 1-normal, 2-aggressive, 3-conservative",
+                     "must have this number");
   cli.AddOption<double>("Simulation", "b,heartbeat", "Heartbeat",
                         std::to_string(heartbeat));
   cli.AddOption<int>("Render", "r,render", "whether_to_render",
@@ -148,6 +156,15 @@ void AddCommandLineOptions(ChCLI &cli) {
 int main(int argc, char *argv[]) {
   GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: "
            << CHRONO_VERSION << "\n\n";
+  ChCLI cli(argv[0]);
+  AddCommandLineOptions(cli);
+
+  if (!cli.Parse(argc, argv, true))
+    return 0;
+
+  const int vehicle_type = cli.GetAsType<int>("vehicle");
+  const int idm_type = cli.GetAsType<int>("idm");
+  const int sdl_use = cli.GetAsType<int>("use_sdl");
 
   SetChronoDataPath(CHRONO_DATA_DIR);
   vehicle::SetDataPath(CHRONO_DATA_DIR + std::string("vehicle/"));
@@ -160,16 +177,25 @@ int main(int argc, char *argv[]) {
   std::string tire_filename =
       vehicle::GetDataFile("sedan/tire/Sedan_TMeasyTire.json");
   std::string zombie_filename = synchrono::GetDataFile("vehicle/Sedan.json");
+
+  if (vehicle_type == 1) {
+    vehicle_filename = vehicle::GetDataFile("sedan/vehicle/Sedan_Vehicle.json");
+    tire_filename = vehicle::GetDataFile("sedan/tire/Sedan_TMeasyTire.json");
+    zombie_filename = synchrono::GetDataFile("vehicle/Sedan.json");
+  } else if (vehicle_type == 2) {
+    vehicle_filename = vehicle::GetDataFile("audi/json/audi_Vehicle.json");
+    tire_filename = vehicle::GetDataFile("audi/json/audi_TMeasyTire.json");
+    zombie_filename = synchrono::GetDataFile("vehicle/audi.json");
+  } else if (vehicle_type == 3) {
+    vehicle_filename = vehicle::GetDataFile("hmmwv/vehicle/HMMWV_Vehicle.json");
+    tire_filename = vehicle::GetDataFile("hmmwv/tire/HMMWV_TMeasyTire.json");
+    zombie_filename = synchrono::GetDataFile("vehicle/HMMWV.json");
+  }
+
   std::string steer_controller =
       std::string(STRINGIFY(HIL_DATA_DIR)) + "/ring/SteeringController.json";
   std::string speed_controller =
       std::string(STRINGIFY(HIL_DATA_DIR)) + "/ring/SpeedController.json";
-
-  ChCLI cli(argv[0]);
-  AddCommandLineOptions(cli);
-
-  if (!cli.Parse(argc, argv, true))
-    return 0;
 
   const int node_id = cli.GetAsType<int>("node_id");
   const int num_nodes = cli.GetAsType<int>("num_nodes");
@@ -297,68 +323,157 @@ int main(int argc, char *argv[]) {
   manager->scene->EnableDynamicOrigin(true);
   manager->scene->SetOriginOffsetThreshold(500.f);
 
-  if (render_scene) {
-    /*
+  if (render_scene == 1) {
+
     auto cam = chrono_types::make_shared<ChCameraSensor>(
         attached_body, // body camera is attached to
         30,            // update rate in Hz
         chrono::ChFrame<double>(
-            ChVector<>(0.0, 0.0, 50.0),
+            ChVector<>(0.0, 0.0, 80.0),
             Q_from_Euler123(ChVector<>(0.0, CH_C_PI_2, 0.0))), // offset pose
-        1920,                                                  // image width
-        1080,                                                  // image height
+        1280,                                                  // image width
+        720,                                                   // image height
         1.608f,
-        2); // fov, lag, exposure
+        1); // fov, lag, exposure
     cam->SetName("Camera Sensor");
 
     // cam->PushFilter(
     //     chrono_types::make_shared<ChFilterVisualize>(1280, 720, "fov",
     //     false));
     //  Provide the host access to the RGBA8 buffer
-    cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
-    cam->PushFilter(chrono_types::make_shared<ChFilterSave>("cam1/"));
+    cam->PushFilter(
+        chrono_types::make_shared<ChFilterVisualize>(1280, 720, "fov", false));
+    // cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+    // cam->PushFilter(chrono_types::make_shared<ChFilterSave>("cam1/"));
     manager->AddSensor(cam);
 
+    /*
+            auto cam2 = chrono_types::make_shared<ChCameraSensor>(
+                attached_body, // body camera is attached to
+                30,            // update rate in Hz
+                chrono::ChFrame<double>(
+                    ChVector<>(0.0, 0.0, 15.0),
+                    Q_from_Euler123(ChVector<>(0.0, 0.5, 0.0))), // offset pose
+                1920,                                            // image width
+                1080,                                            // image height
+                1.608f,
+                2); // fov, lag, exposure
+            cam2->SetName("Camera Sensor 2");
 
-        auto cam2 = chrono_types::make_shared<ChCameraSensor>(
-            attached_body, // body camera is attached to
-            30,            // update rate in Hz
-            chrono::ChFrame<double>(
-                ChVector<>(0.0, 0.0, 15.0),
-                Q_from_Euler123(ChVector<>(0.0, 0.5, 0.0))), // offset pose
-            1920,                                            // image width
-            1080,                                            // image height
-            1.608f,
-            2); // fov, lag, exposure
-        cam2->SetName("Camera Sensor 2");
 
+            // cam2->PushFilter(
+            //    chrono_types::make_shared<ChFilterVisualize>(1920, 1080,
+       "fov",
+            //    false));
+            //  Provide the host access to the RGBA8 buffer
+            cam2->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+            cam2->PushFilter(chrono_types::make_shared<ChFilterSave>("cam2/"));
+            manager->AddSensor(cam2);
+    */
+  } else if (render_scene == 2) {
+    // mirrors position and rotations
+    ChVector<> mirror_rearview_pos = {0.253, 0.0, 1.10};
+    ChQuaternion<> mirror_rearview_rot = Q_from_Euler123(
+        ChVector<>(2.0 * 0.01745, -6.0 * 0.01745, -12.0 * 0.01745));
+    ChVector<> mirror_wingleft_pos = {0.47, 0.945, 0.815};
+    ChQuaternion<> mirror_wingleft_rot =
+        Q_from_Euler123(ChVector<>(0.0, 5.0 * 0.01745, 17.0 * 0.01745));
+    ChVector<> mirror_wingright_pos = {0.4899, -0.95925, 0.80857};
+    ChQuaternion<> mirror_wingright_rot =
+        Q_from_Euler123(ChVector<>(0.0, 3.5 * 0.01745, -28.0 * 0.01745));
 
-        // cam2->PushFilter(
-        //    chrono_types::make_shared<ChFilterVisualize>(1920, 1080, "fov",
-        //    false));
-        //  Provide the host access to the RGBA8 buffer
-        cam2->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
-        cam2->PushFilter(chrono_types::make_shared<ChFilterSave>("cam2/"));
-        manager->AddSensor(cam2);
-*/
-    auto cam3 = chrono_types::make_shared<ChCameraSensor>(
-        my_vehicle.GetChassis()->GetBody(), // body camera is attached to
-        fps,                                // update rate in Hz
-        chrono::ChFrame<double>(
-            ChVector<>(-12.0, 0.0, 3.0),
-            Q_from_Euler123(ChVector<>(0.0, 0.13, 0.0))), // offset pose
-        5760,                                             // image width
-        1080,                                             // image height
+    // change the ego vehicle vis out for windowless audi
+    my_vehicle.GetChassisBody()->GetVisualModel()->Clear();
+
+    auto audi_mesh = chrono_types::make_shared<ChTriangleMeshConnected>();
+    audi_mesh->LoadWavefrontMesh(
+        std::string(STRINGIFY(HIL_DATA_DIR)) +
+            "/Environments/Iowa/vehicles/audi_chassis_windowless_2.obj",
+        false, true);
+    audi_mesh->Transform(ChVector<>(0, 0, 0),
+                         ChMatrix33<>(1)); // scale to a different size
+    auto audi_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+    audi_shape->SetMesh(audi_mesh);
+    audi_shape->SetName("Windowless Audi");
+    audi_shape->SetMutable(false);
+    // audi_shape->SetStatic(true);
+    my_vehicle.GetChassisBody()->AddVisualShape(audi_shape);
+
+    // add rearview mirror
+    auto mirror_mesh = chrono_types::make_shared<ChTriangleMeshConnected>();
+    mirror_mesh->LoadWavefrontMesh(
+        std::string(STRINGIFY(HIL_DATA_DIR)) +
+            "/Environments/Iowa/vehicles/audi_rearview_mirror.obj",
+        false, true);
+    mirror_mesh->Transform(ChVector<>(0, 0, 0),
+                           ChMatrix33<>(1)); // scale to a different size
+
+    auto mirror_mat = chrono_types::make_shared<ChVisualMaterial>();
+    mirror_mat->SetDiffuseColor({0.2f, 0.2f, 0.2f});
+    mirror_mat->SetRoughness(0.f);
+    mirror_mat->SetMetallic(1.0f);
+    mirror_mat->SetUseSpecularWorkflow(false);
+
+    auto rvw_mirror_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+    rvw_mirror_shape->SetMesh(mirror_mesh);
+    rvw_mirror_shape->SetName("Windowless Audi");
+    rvw_mirror_shape->SetMutable(false);
+    rvw_mirror_shape->SetScale({1, 1.8, 1.2});
+    rvw_mirror_shape->GetMaterials()[0] = mirror_mat;
+    my_vehicle.GetChassisBody()->AddVisualShape(
+        rvw_mirror_shape, ChFrame<>(mirror_rearview_pos, mirror_rearview_rot));
+
+    // add left wing mirror
+    auto lwm_mesh = chrono_types::make_shared<ChTriangleMeshConnected>();
+    lwm_mesh->LoadWavefrontMesh(
+        std::string(STRINGIFY(HIL_DATA_DIR)) +
+            "/Environments/Iowa/vehicles/audi_left_wing_mirror.obj",
+        false, true);
+    lwm_mesh->Transform(ChVector<>(0, 0, 0),
+                        ChMatrix33<>(1)); // scale to a different size
+
+    auto lwm_mirror_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+    lwm_mirror_shape->SetMesh(lwm_mesh);
+    lwm_mirror_shape->SetName("Windowless Audi");
+    lwm_mirror_shape->GetMaterials()[0] = mirror_mat;
+    lwm_mirror_shape->SetMutable(false);
+    my_vehicle.GetChassisBody()->AddVisualShape(
+        lwm_mirror_shape, ChFrame<>(mirror_wingleft_pos, mirror_wingleft_rot));
+
+    // add left wing mirror
+    auto rwm_mesh = chrono_types::make_shared<ChTriangleMeshConnected>();
+    rwm_mesh->LoadWavefrontMesh(
+        std::string(STRINGIFY(HIL_DATA_DIR)) +
+            "/Environments/Iowa/vehicles/audi_right_wing_mirror.obj",
+        false, true);
+    rwm_mesh->Transform(ChVector<>(0, 0, 0),
+                        ChMatrix33<>(1)); // scale to a different size
+
+    auto rwm_mirror_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+    rwm_mirror_shape->SetMesh(rwm_mesh);
+    rwm_mirror_shape->SetName("Windowless Audi");
+    rwm_mirror_shape->SetScale({1, .98, .98});
+    rwm_mirror_shape->GetMaterials()[0] = mirror_mat;
+    rwm_mirror_shape->SetMutable(false);
+    my_vehicle.GetChassisBody()->AddVisualShape(
+        rwm_mirror_shape,
+        ChFrame<>(mirror_wingright_pos, mirror_wingright_rot));
+
+    auto cam = chrono_types::make_shared<ChCameraSensor>(
+        my_vehicle.GetChassisBody(), // body camera is attached to
+        fps,                         // update rate in Hz
+        chrono::ChFrame<double>(ChVector<>(-.3, .4, .98),
+                                Q_from_AngAxis(0, {1, 0, 0})), // offset pose
+        1920,                                                  // image width
+        1080,                                                  // image height
         1.608f,
         1); // fov, lag, exposure
-    cam3->SetName("Camera Sensor 3");
+    cam->SetName("Camera Sensor");
+    cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
+        1920, 1080, "Driver View", false));
 
-    cam3->PushFilter(
-        chrono_types::make_shared<ChFilterVisualize>(1920, 1080, "fov", false));
-    //  Provide the host access to the RGBA8 buffer
-    //cam3->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
-    // cam3->PushFilter(chrono_types::make_shared<ChFilterSave>("cam3/"));
-    manager->AddSensor(cam3);
+    // add sensor to the manager
+    manager->AddSensor(cam);
   }
 
   // -----------------
@@ -379,21 +494,46 @@ int main(int argc, char *argv[]) {
   // ------------------------
 
   // read from a bezier curve, and form a closed loop
-  auto path = ChBezierCurve::read(path_file, false);
+  auto path = ChBezierCurve::read(path_file, true);
 
   // idm parameters
   std::vector<double> followerParam;
-  followerParam.push_back(8.9408);
-  followerParam.push_back(1.5);
-  followerParam.push_back(2.0);
-  followerParam.push_back(2.0);
-  followerParam.push_back(2.0);
-  followerParam.push_back(4.0);
-  followerParam.push_back(4.8895);
+  if (idm_type == 1) {
+    followerParam.push_back(8.9408);
+    followerParam.push_back(1.5);
+    followerParam.push_back(2.0);
+    followerParam.push_back(2.0);
+    followerParam.push_back(2.0);
+    followerParam.push_back(4.0);
+    followerParam.push_back(4.8895);
+  } else if (idm_type == 2) {
+    followerParam.push_back(8.9408);
+    followerParam.push_back(0.1);
+    followerParam.push_back(5.0);
+    followerParam.push_back(3.5);
+    followerParam.push_back(2.5);
+    followerParam.push_back(4.0);
+    followerParam.push_back(4.86);
+  } else if (idm_type == 3) {
+    followerParam.push_back(8.9408);
+    followerParam.push_back(0.7);
+    followerParam.push_back(8.0);
+    followerParam.push_back(2.5);
+    followerParam.push_back(1.5);
+    followerParam.push_back(4.0);
+    followerParam.push_back(4.86);
+  }
 
   ChIDMFollower driver(my_vehicle, steer_controller, speed_controller, path,
                        "road", 20.0 * MPH_TO_MS, followerParam);
+  ChSDLInterface SDLDriver;
   driver.Initialize();
+
+  if (sdl_use == 1) {
+    SDLDriver.Initialize();
+    SDLDriver.SetJoystickConfigFile(std::string(STRINGIFY(HIL_DATA_DIR)) +
+                                    "/joystick/controller_G27.json");
+  }
 
   // ---------------
   // Simulation loop
@@ -534,7 +674,7 @@ int main(int argc, char *argv[]) {
       break;
 
     // Render scene and output POV-Ray data
-    if (render_scene == 1 && (step_number % 20) == 0) {
+    if (render_scene != 0 && (step_number % 20) == 0) {
       manager->Update();
     }
 
@@ -554,10 +694,14 @@ int main(int argc, char *argv[]) {
     */
     // Get driver inputs
     DriverInputs driver_inputs = driver.GetInputs();
+    if (sdl_use == 1) {
+      driver_inputs.m_throttle = SDLDriver.GetThrottle();
+      driver_inputs.m_steering = SDLDriver.GetSteering();
+      driver_inputs.m_braking = SDLDriver.GetBraking();
+    }
 
     // Update modules (process inputs from other modules)
     syn_manager.Synchronize(time);
-    //syn_manager.PrintStepStatistics(std::cout);
     driver.Synchronize(time, step_size, act_dis, all_speed[lead_idx]);
     terrain.Synchronize(time);
     my_vehicle.Synchronize(time, driver_inputs, terrain);
@@ -566,6 +710,12 @@ int main(int argc, char *argv[]) {
     driver.Advance(step_size);
     terrain.Advance(step_size);
     my_vehicle.Advance(step_size);
+
+    if (sdl_use == 1 && (step_number % 20) == 0) {
+      if (SDLDriver.Synchronize() == 1) {
+        break;
+      }
+    }
 
     // std::cout << my_sedan.GetVehicle().GetPos() << std::endl;
 
