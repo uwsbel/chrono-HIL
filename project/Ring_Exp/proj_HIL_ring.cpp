@@ -112,7 +112,7 @@ bool contact_vis = false;
 
 // Simulation step sizes
 double sim_time = 900.0;
-double heartbeat = 0.02;
+double heartbeat = 0.04;
 double step_size = 2e-3;
 double tire_step_size = 1e-4;
 
@@ -350,13 +350,13 @@ int main(int argc, char *argv[]) {
         5760,                                             // image width
         1080,                                             // image height
         1.608f,
-        2); // fov, lag, exposure
+        1); // fov, lag, exposure
     cam3->SetName("Camera Sensor 3");
 
     cam3->PushFilter(
         chrono_types::make_shared<ChFilterVisualize>(1920, 1080, "fov", false));
     //  Provide the host access to the RGBA8 buffer
-    cam3->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+    //cam3->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
     // cam3->PushFilter(chrono_types::make_shared<ChFilterSave>("cam3/"));
     manager->AddSensor(cam3);
   }
@@ -534,7 +534,7 @@ int main(int argc, char *argv[]) {
       break;
 
     // Render scene and output POV-Ray data
-    if (render_scene == 1 && step_number % fps == 0) {
+    if (render_scene == 1 && (step_number % 20) == 0) {
       manager->Update();
     }
 
@@ -557,6 +557,7 @@ int main(int argc, char *argv[]) {
 
     // Update modules (process inputs from other modules)
     syn_manager.Synchronize(time);
+    //syn_manager.PrintStepStatistics(std::cout);
     driver.Synchronize(time, step_size, act_dis, all_speed[lead_idx]);
     terrain.Synchronize(time);
     my_vehicle.Synchronize(time, driver_inputs, terrain);
