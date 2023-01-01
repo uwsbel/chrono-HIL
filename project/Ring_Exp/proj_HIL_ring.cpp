@@ -112,7 +112,7 @@ bool contact_vis = false;
 
 // Simulation step sizes
 double sim_time = 900.0;
-double heartbeat = 0.04;
+double heartbeat = 0.08;
 double step_size = 1e-3;
 double tire_step_size = 1e-4;
 
