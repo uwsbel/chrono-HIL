@@ -113,7 +113,7 @@ bool contact_vis = false;
 // Simulation step sizes
 double sim_time = 900.0;
 double heartbeat = 0.04;
-double step_size = 1e-3;
+double step_size = 2e-3;
 double tire_step_size = 1e-4;
 
 // Simulation end time
@@ -450,7 +450,7 @@ int main(int argc, char *argv[]) {
     if (step_number == 0) {
       realtime_timer.Reset();
     } else {
-      // realtime_timer.Spin(time);
+      realtime_timer.Spin(time);
     }
 
     if (step_number % 500 == 0 && node_id == 0) {
