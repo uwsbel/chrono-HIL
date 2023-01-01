@@ -345,7 +345,7 @@ int main(int argc, char *argv[]) {
         my_vehicle.GetChassis()->GetBody(), // body camera is attached to
         fps,                                // update rate in Hz
         chrono::ChFrame<double>(
-            ChVector<>(-6.0, 0.0, 3.0),
+            ChVector<>(-9.0, 0.0, 3.0),
             Q_from_Euler123(ChVector<>(0.0, 0.13, 0.0))), // offset pose
         5760,                                             // image width
         1080,                                             // image height
@@ -379,7 +379,7 @@ int main(int argc, char *argv[]) {
   // ------------------------
 
   // read from a bezier curve, and form a closed loop
-  auto path = ChBezierCurve::read(path_file, true);
+  auto path = ChBezierCurve::read(path_file, false);
 
   // idm parameters
   std::vector<double> followerParam;
@@ -450,7 +450,7 @@ int main(int argc, char *argv[]) {
     if (step_number == 0) {
       realtime_timer.Reset();
     } else {
-      realtime_timer.Spin(time);
+      // realtime_timer.Spin(time);
     }
 
     if (step_number % 500 == 0 && node_id == 0) {
