@@ -463,15 +463,15 @@ int main(int argc, char *argv[]) {
     auto cam = chrono_types::make_shared<ChCameraSensor>(
         my_vehicle.GetChassisBody(), // body camera is attached to
         fps,                         // update rate in Hz
-        chrono::ChFrame<double>(ChVector<>(-.3, .4, .98),
+        chrono::ChFrame<double>(ChVector<>(-.8, .4, .98),
                                 Q_from_AngAxis(0, {1, 0, 0})), // offset pose
-        1920,                                                  // image width
+        1920 * 3,                                              // image width
         1080,                                                  // image height
         1.608f,
         1); // fov, lag, exposure
     cam->SetName("Camera Sensor");
     cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
-        1920, 1080, "Driver View", false));
+        1920 * 3, 1080, "Driver View", false));
 
     // add sensor to the manager
     manager->AddSensor(cam);
@@ -537,7 +537,7 @@ int main(int argc, char *argv[]) {
   if (sdl_use == 1) {
     SDLDriver.Initialize();
     SDLDriver.SetJoystickConfigFile(std::string(STRINGIFY(HIL_DATA_DIR)) +
-                                    "/joystick/controller_G27.json");
+                                    "/joystick/controller_G29.json");
   }
 
   // ---------------
