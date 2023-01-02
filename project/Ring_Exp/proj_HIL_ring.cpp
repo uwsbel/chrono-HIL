@@ -127,7 +127,7 @@ int fps = 25;
 int output = 0;
 
 std::string path_file(std::string(STRINGIFY(HIL_DATA_DIR)) +
-                      "/ring/1231terrain/35ring.txt");
+                      "/ring/1231terrain/35ring_closed.txt");
 
 const std::string out_dir = GetChronoOutputPath() + "ring_out";
 
@@ -262,7 +262,7 @@ int main(int argc, char *argv[]) {
   for (auto &axle : my_vehicle.GetAxles()) {
     for (auto &wheel : axle->GetWheels()) {
       auto tire = ReadTireJSON(tire_filename);
-      tire->SetStepsize(step_size / 20);
+      tire->SetStepsize(step_size / 2);
       my_vehicle.InitializeTire(tire, wheel, tire_vis_type);
     }
   }
@@ -495,7 +495,7 @@ int main(int argc, char *argv[]) {
   // ------------------------
 
   // read from a bezier curve, and form a closed loop
-  auto path = ChBezierCurve::read(path_file, false);
+  auto path = ChBezierCurve::read(path_file, true);
 
   // idm parameters
   std::vector<double> followerParam;
@@ -527,6 +527,10 @@ int main(int argc, char *argv[]) {
 
   ChIDMFollower driver(my_vehicle, steer_controller, speed_controller, path,
                        "road", 20.0 * MPH_TO_MS, followerParam);
+  // ChPathFollowerDriver driver(my_vehicle, path, "my_path", 20.0 * MPH_TO_MS);
+  driver.GetSteeringController().SetLookAheadDistance(5);
+  driver.GetSteeringController().SetGains(0.8, 0, 0);
+  driver.GetSpeedController().SetGains(0.4, 0, 0);
   ChSDLInterface SDLDriver;
   driver.Initialize();
 
@@ -704,6 +708,7 @@ int main(int argc, char *argv[]) {
     // Update modules (process inputs from other modules)
     syn_manager.Synchronize(time);
     driver.Synchronize(time, step_size, act_dis, all_speed[lead_idx]);
+    // driver.Synchronize(time);
     terrain.Synchronize(time);
     my_vehicle.Synchronize(time, driver_inputs, terrain);
 
