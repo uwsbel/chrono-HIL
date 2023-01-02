@@ -148,6 +148,8 @@ void AddCommandLineOptions(ChCLI &cli) {
                         std::to_string(heartbeat));
   cli.AddOption<int>("Render", "r,render", "whether_to_render",
                      std::to_string(render_scene));
+  cli.AddOption<int>("Simulation", "realtime", "run real time", "0");
+  cli.AddOption<int>("Simulation", "record", "record driver input", "0");
   cli.AddOption<std::vector<std::string>>(
       "DDS", "ip", "IP Addresses for initialPeersList", "127.0.0.1");
 }
@@ -166,6 +168,9 @@ int main(int argc, char *argv[]) {
   const int vehicle_type = cli.GetAsType<int>("vehicle");
   const int idm_type = cli.GetAsType<int>("idm");
   const int sdl_use = cli.GetAsType<int>("use_sdl");
+
+  const int real_time = cli.GetAsType<int>("realtime");
+  const int record = cli.GetAsType<int>("record");
 
   SetChronoDataPath(CHRONO_DATA_DIR);
   vehicle::SetDataPath(CHRONO_DATA_DIR + std::string("vehicle/"));
@@ -463,11 +468,11 @@ int main(int argc, char *argv[]) {
     auto cam = chrono_types::make_shared<ChCameraSensor>(
         my_vehicle.GetChassisBody(), // body camera is attached to
         fps,                         // update rate in Hz
-        chrono::ChFrame<double>(ChVector<>(-.8, .4, .98),
+        chrono::ChFrame<double>(ChVector<>(-.3, .4, .98),
                                 Q_from_AngAxis(0, {1, 0, 0})), // offset pose
         1920 * 3,                                              // image width
         1080,                                                  // image height
-        1.608f,
+        3.2f,
         1); // fov, lag, exposure
     cam->SetName("Camera Sensor");
     cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
@@ -487,6 +492,10 @@ int main(int argc, char *argv[]) {
     std::cout << "Error creating directory " << out_dir << std::endl;
     return 1;
   }
+
+  std::string record_file_path = "./record.csv";
+  std::ofstream record_filestream = std::ofstream(record_file_path);
+  std::stringstream record_buffer;
 
   // tils::CSV_writer csv(" ");
 
@@ -593,10 +602,12 @@ int main(int argc, char *argv[]) {
   while (time <= sim_time && syn_manager.IsOk()) {
     time = my_vehicle.GetSystem()->GetChTime();
 
-    if (step_number == 0) {
+    if (step_number == 1) {
       realtime_timer.Reset();
-    } else {
-      // realtime_timer.Spin(time);
+    } else if (step_number != 1 && step_number != 0) {
+      if (real_time == 1) {
+        realtime_timer.Spin(time);
+      }
     }
 
     if (step_number % 500 == 0 && node_id == 0) {
@@ -703,6 +714,18 @@ int main(int argc, char *argv[]) {
       driver_inputs.m_throttle = SDLDriver.GetThrottle();
       driver_inputs.m_steering = SDLDriver.GetSteering();
       driver_inputs.m_braking = SDLDriver.GetBraking();
+    }
+
+    if (record == 1) {
+      record_buffer << std::to_string(driver_inputs.m_throttle) + ",";
+      record_buffer << std::to_string(driver_inputs.m_braking) + ",";
+      record_buffer << std::to_string(driver_inputs.m_steering);
+      record_buffer << std::endl;
+      if (step_number % 5000 == 0) {
+        SynLog() << ("Writing to record file...") << "\n";
+        record_filestream << record_buffer.rdbuf();
+        record_buffer.str("");
+      }
     }
 
     // Update modules (process inputs from other modules)
