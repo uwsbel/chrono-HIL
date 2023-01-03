@@ -13,7 +13,12 @@
 #include "chrono/core/ChStream.h"
 #include "chrono/utils/ChFilters.h"
 #include "chrono/utils/ChUtilsInputOutput.h"
+#include <fstream>
+#include <iostream>
 #include <map>
+#include <sstream>
+#include <string>
+#include <vector>
 
 #include "chrono_sensor/ChSensorManager.h"
 #include "chrono_sensor/filters/ChFilterAccess.h"
@@ -131,6 +136,11 @@ std::string path_file(std::string(STRINGIFY(HIL_DATA_DIR)) +
 
 const std::string out_dir = GetChronoOutputPath() + "ring_out";
 
+// reply data file
+std::vector<float> throttles;
+std::vector<float> brakes;
+std::vector<float> steerings;
+
 // =============================================================================
 void AddCommandLineOptions(ChCLI &cli) {
   // DDS Specific
@@ -139,8 +149,9 @@ void AddCommandLineOptions(ChCLI &cli) {
   cli.AddOption<int>("Simulation", "v,vehicle",
                      "Vehicle Type: 1-sedan, 2-audi, 3-hmmwv",
                      "must have this number");
-  cli.AddOption<int>("Simulation", "s,use_sdl", "whether to use SDL",
-                     "use 1 to indicate SDL usage");
+  cli.AddOption<int>("Simulation", "s,drive_type",
+                     "drive type: 0-idm 1-sdl 2-readfrom file",
+                     "must have this number");
   cli.AddOption<int>("Simulation", "i,idm",
                      "idm Type: 1-normal, 2-aggressive, 3-conservative",
                      "must have this number");
@@ -150,8 +161,39 @@ void AddCommandLineOptions(ChCLI &cli) {
                      std::to_string(render_scene));
   cli.AddOption<int>("Simulation", "realtime", "run real time", "0");
   cli.AddOption<int>("Simulation", "record", "record driver input", "0");
+  cli.AddOption<int>("Simulation", "output", "output exp data", "0");
   cli.AddOption<std::vector<std::string>>(
       "DDS", "ip", "IP Addresses for initialPeersList", "127.0.0.1");
+}
+
+void readvectors(std::vector<float> &throttle_ref,
+                 std::vector<float> &brakes_ref,
+                 std::vector<float> &steerings_ref) {
+  std::vector<std::vector<std::string>> content;
+  std::vector<std::string> row;
+  std::string line, word;
+
+  std::fstream file("input.csv", std::ios::in);
+  if (file.is_open()) {
+    while (getline(file, line)) {
+      row.clear();
+
+      std::stringstream str(line);
+
+      while (getline(str, word, ','))
+        row.push_back(word);
+      content.push_back(row);
+    }
+  } else
+    std::cout << "Could not open the file\n";
+
+  for (int i = 0; i < content.size(); i++) {
+    throttle_ref.push_back(std::stof(content[i][0]));
+    brakes_ref.push_back(std::stof(content[i][1]));
+    steerings_ref.push_back(std::stof(content[i][2]));
+  }
+
+  std::cout << "done reading records" << std::endl;
 }
 
 // =============================================================================
@@ -167,10 +209,15 @@ int main(int argc, char *argv[]) {
 
   const int vehicle_type = cli.GetAsType<int>("vehicle");
   const int idm_type = cli.GetAsType<int>("idm");
-  const int sdl_use = cli.GetAsType<int>("use_sdl");
+  const int drive_type = cli.GetAsType<int>("drive_type");
 
   const int real_time = cli.GetAsType<int>("realtime");
   const int record = cli.GetAsType<int>("record");
+  const int output = cli.GetAsType<int>("output");
+
+  if (drive_type == 2) {
+    readvectors(throttles, brakes, steerings);
+  }
 
   SetChronoDataPath(CHRONO_DATA_DIR);
   vehicle::SetDataPath(CHRONO_DATA_DIR + std::string("vehicle/"));
@@ -359,12 +406,11 @@ int main(int argc, char *argv[]) {
                 30,            // update rate in Hz
                 chrono::ChFrame<double>(
                     ChVector<>(0.0, 0.0, 15.0),
-                    Q_from_Euler123(ChVector<>(0.0, 0.5, 0.0))), // offset pose
-                1920,                                            // image width
-                1080,                                            // image height
-                1.608f,
-                2); // fov, lag, exposure
-            cam2->SetName("Camera Sensor 2");
+                    Q_from_Euler123(ChVector<>(0.0, 0.5, 0.0))), // offset
+       pose 1920,                                            // image width
+                1080,                                            // image
+       height 1.608f, 2); // fov, lag, exposure cam2->SetName("Camera Sensor
+       2");
 
 
             // cam2->PushFilter(
@@ -497,7 +543,9 @@ int main(int argc, char *argv[]) {
   std::ofstream record_filestream = std::ofstream(record_file_path);
   std::stringstream record_buffer;
 
-  // tils::CSV_writer csv(" ");
+  std::string output_file_path = "./output.csv";
+  std::ofstream output_filestream = std::ofstream(output_file_path);
+  std::stringstream output_buffer;
 
   // ------------------------
   // Create the driver system
@@ -536,14 +584,15 @@ int main(int argc, char *argv[]) {
 
   ChIDMFollower driver(my_vehicle, steer_controller, speed_controller, path,
                        "road", 20.0 * MPH_TO_MS, followerParam);
-  // ChPathFollowerDriver driver(my_vehicle, path, "my_path", 20.0 * MPH_TO_MS);
+  // ChPathFollowerDriver driver(my_vehicle, path, "my_path", 20.0 *
+  // MPH_TO_MS);
   driver.GetSteeringController().SetLookAheadDistance(5);
   driver.GetSteeringController().SetGains(0.8, 0, 0);
   driver.GetSpeedController().SetGains(0.4, 0, 0);
   ChSDLInterface SDLDriver;
   driver.Initialize();
 
-  if (sdl_use == 1) {
+  if (drive_type == 1) {
     SDLDriver.Initialize();
     SDLDriver.SetJoystickConfigFile(std::string(STRINGIFY(HIL_DATA_DIR)) +
                                     "/joystick/controller_G29.json");
@@ -567,19 +616,6 @@ int main(int argc, char *argv[]) {
   float *all_prev_x = new float[num_nodes];
   float *all_prev_y = new float[num_nodes];
   float *all_speed = new float[num_nodes];
-
-  // csv labels
-  // csv << "time,";
-  // for (int j = 0; j < num_nodes; j++) {
-  //  csv << "x_" + std::to_string(j) + ",";
-  //  csv << "y_" + std::to_string(j) + ",";
-  //  csv << "speed_" + std::to_string(j);
-  //  if (j != num_nodes - 1) {
-  //    csv << ",";
-  //  }
-
-  //}
-  // csv << std::endl;
 
   double time = 0.0;
 
@@ -681,10 +717,6 @@ int main(int argc, char *argv[]) {
       act_dis = theta * radius;
     }
 
-    // if (step_number % 20 == 0) {
-    //   csv << std::to_string(time) + ",";
-    // }
-
     // End simulation
     if (time >= t_end)
       break;
@@ -694,26 +726,18 @@ int main(int argc, char *argv[]) {
       manager->Update();
     }
 
-    /*
-    if (node_id == 0 && step_number % (int)(heartbeat / step_size) == 0) {
-      for (int j = 0; j < num_nodes; j++) {
-        csv << std::to_string(all_x[j]) + ",";
-        csv << std::to_string(all_y[j]) + ",";
-        csv << std::to_string(all_speed[j]);
-        if (j != num_nodes - 1) {
-          csv << ",";
-        }
-      }
-      csv << std::endl;
-      csv.write_to_file(out_dir + "/ring_save.csv");
-    }
-    */
     // Get driver inputs
     DriverInputs driver_inputs = driver.GetInputs();
-    if (sdl_use == 1) {
+    if (drive_type == 1) {
       driver_inputs.m_throttle = SDLDriver.GetThrottle();
       driver_inputs.m_steering = SDLDriver.GetSteering();
       driver_inputs.m_braking = SDLDriver.GetBraking();
+    }
+
+    if (drive_type == 2) {
+      driver_inputs.m_throttle = throttles[step_number];
+      driver_inputs.m_steering = steerings[step_number];
+      driver_inputs.m_braking = brakes[step_number];
     }
 
     if (record == 1) {
@@ -725,6 +749,28 @@ int main(int argc, char *argv[]) {
         SynLog() << ("Writing to record file...") << "\n";
         record_filestream << record_buffer.rdbuf();
         record_buffer.str("");
+      }
+    }
+
+    // record ring experiment output data
+    if (output == 1) {
+      if (step_number % 100 == 0) {
+        output_buffer << time << ",";
+        for (int j = 0; j < num_nodes; j++) {
+          output_buffer << std::to_string(all_x[j]) + ",";
+          output_buffer << std::to_string(all_y[j]) + ",";
+          output_buffer << std::to_string(all_speed[j]);
+          if (j != num_nodes - 1) {
+            output_buffer << ",";
+          }
+        }
+        output_buffer << std::endl;
+      }
+
+      if (step_number % 10000 == 0) {
+        SynLog() << ("Writing to output file...") << "\n";
+        output_filestream << output_buffer.rdbuf();
+        output_buffer.str("");
       }
     }
 
@@ -740,7 +786,7 @@ int main(int argc, char *argv[]) {
     terrain.Advance(step_size);
     my_vehicle.Advance(step_size);
 
-    if (sdl_use == 1 && (step_number % 20) == 0) {
+    if (drive_type == 1 && (step_number % 20) == 0) {
       if (SDLDriver.Synchronize() == 1) {
         break;
       }
