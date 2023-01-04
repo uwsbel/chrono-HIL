@@ -284,7 +284,7 @@ int main(int argc, char *argv[]) {
   syn_manager.SetHeartbeat(heartbeat);
 
   // Decide Vehicle Locations
-  float deg_sec = (CH_C_PI * 1.5) / num_nodes;
+  float deg_sec = (CH_C_PI * 2.0) / num_nodes;
 
   initLoc = ChVector<>(radius * cos(deg_sec * node_id),
                        radius * sin(deg_sec * node_id), 0.5);
