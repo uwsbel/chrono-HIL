@@ -117,12 +117,9 @@ ChContactMethod contact_method = ChContactMethod::SMC;
 bool contact_vis = false;
 
 // Simulation step sizes
-double sim_time = 1800.0;
+double sim_time = 1200.0;
 double heartbeat = 0.04;
 double step_size = 2e-3;
-
-// Simulation end time
-double t_end = 1000;
 
 // Time interval between two render frames
 double render_step_size = 1.0 / 50; // FPS = 50
@@ -406,28 +403,6 @@ int main(int argc, char *argv[]) {
     // cam->PushFilter(chrono_types::make_shared<ChFilterSave>("cam1/"));
     manager->AddSensor(cam);
 
-    /*
-            auto cam2 = chrono_types::make_shared<ChCameraSensor>(
-                attached_body, // body camera is attached to
-                30,            // update rate in Hz
-                chrono::ChFrame<double>(
-                    ChVector<>(0.0, 0.0, 15.0),
-                    Q_from_Euler123(ChVector<>(0.0, 0.5, 0.0))), // offset
-       pose 1920,                                            // image width
-                1080,                                            // image
-       height 1.608f, 2); // fov, lag, exposure cam2->SetName("Camera Sensor
-       2");
-
-
-            // cam2->PushFilter(
-            //    chrono_types::make_shared<ChFilterVisualize>(1920, 1080,
-       "fov",
-            //    false));
-            //  Provide the host access to the RGBA8 buffer
-            cam2->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
-            cam2->PushFilter(chrono_types::make_shared<ChFilterSave>("cam2/"));
-            manager->AddSensor(cam2);
-    */
   } else if (render_scene == 2) {
     // mirrors position and rotations
     ChVector<> mirror_rearview_pos = {0.253, 0.0, 1.10};
@@ -532,6 +507,65 @@ int main(int argc, char *argv[]) {
 
     // add sensor to the manager
     manager->AddSensor(cam);
+  } else if (render_scene == 3) {
+    /*
+    auto cam = chrono_types::make_shared<ChCameraSensor>(
+        attached_body, // body camera is attached to
+        30,            // update rate in Hz
+        chrono::ChFrame<double>(
+            ChVector<>(0.0, 0.0, 100.0),
+            Q_from_Euler123(ChVector<>(0.0, CH_C_PI_2, 0.0))), // offset pose
+        1920,                                                  // image width
+        1080,                                                  // image height
+        1.608f,
+        1); // fov, lag, exposure
+    cam->SetName("Camera Sensor");
+
+    // cam->PushFilter(
+    //     chrono_types::make_shared<ChFilterVisualize>(1280, 720, "fov",
+    //     false));
+    //  Provide the host access to the RGBA8 buffer
+    cam->PushFilter(
+        chrono_types::make_shared<ChFilterVisualize>(1920, 1080, "fov", false));
+    cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+    cam->PushFilter(chrono_types::make_shared<ChFilterSave>("cam1/"));
+    manager->AddSensor(cam);
+
+    auto cam2 = chrono_types::make_shared<ChCameraSensor>(
+        my_vehicle.GetChassisBody(), // body camera is attached to
+        30,                          // update rate in Hz
+        chrono::ChFrame<double>(
+            ChVector<>(-6.0, 0.0, 2.5),
+            Q_from_Euler123(ChVector<>(0.0, 0.3, 0.0))), // offset
+        1920,                                            // image width
+        1080,                                            // image
+        1.608f, 1); // fov, lag, exposure cam2->SetName("Camera Sensor
+
+    cam2->PushFilter(
+        chrono_types::make_shared<ChFilterVisualize>(1920, 1080, "fov", false));
+    //  Provide the host access to the RGBA8 buffer
+    cam2->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+    cam2->PushFilter(chrono_types::make_shared<ChFilterSave>("cam2/"));
+    manager->AddSensor(cam2);
+
+
+*/
+    auto cam3 = chrono_types::make_shared<ChCameraSensor>(
+        attached_body, // body camera is attached to
+        30,            // update rate in Hz
+        chrono::ChFrame<double>(
+            ChVector<>(55.0, -55.0, 9.0),
+            Q_from_Euler123(ChVector<>(0.0, 0.3, CH_C_PI * 5 / 6))), // offset
+        1920,     // image width
+        1080,     // image
+        1.3f, 1); // fov, lag, exposure cam2->SetName("Camera Sensor
+
+    cam3->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
+        1920, 1080, "stand", false));
+    //  Provide the host access to the RGBA8 buffer
+    cam3->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+    cam3->PushFilter(chrono_types::make_shared<ChFilterSave>("cam3/"));
+    manager->AddSensor(cam3);
   }
 
   // -----------------
@@ -723,10 +757,6 @@ int main(int argc, char *argv[]) {
       float theta = abs(acos(temp));
       act_dis = theta * radius;
     }
-
-    // End simulation
-    if (time >= t_end)
-      break;
 
     // Render scene and output POV-Ray data
     if (render_scene != 0 && (step_number % 20) == 0) {
