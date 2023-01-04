@@ -564,12 +564,12 @@ int main(int argc, char *argv[]) {
   std::vector<double> followerParam;
   if (idm_type == 1) {
     followerParam.push_back(8.9408);
-    followerParam.push_back(1.5);
-    followerParam.push_back(2.0);
-    followerParam.push_back(2.0);
-    followerParam.push_back(2.0);
+    followerParam.push_back(0.2);
     followerParam.push_back(4.0);
-    followerParam.push_back(4.8895);
+    followerParam.push_back(3.8);
+    followerParam.push_back(3.0);
+    followerParam.push_back(4.0);
+    followerParam.push_back(4.86);
   } else if (idm_type == 2) {
     followerParam.push_back(8.9408);
     followerParam.push_back(0.1);
