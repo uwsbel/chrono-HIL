@@ -508,17 +508,17 @@ int main(int argc, char *argv[]) {
     // add sensor to the manager
     manager->AddSensor(cam);
   } else if (render_scene == 3) {
-    /*
+
     auto cam = chrono_types::make_shared<ChCameraSensor>(
         attached_body, // body camera is attached to
-        30,            // update rate in Hz
+        fps,           // update rate in Hz
         chrono::ChFrame<double>(
             ChVector<>(0.0, 0.0, 100.0),
             Q_from_Euler123(ChVector<>(0.0, CH_C_PI_2, 0.0))), // offset pose
         1920,                                                  // image width
         1080,                                                  // image height
         1.608f,
-        1); // fov, lag, exposure
+        2); // fov, lag, exposure
     cam->SetName("Camera Sensor");
 
     // cam->PushFilter(
@@ -533,13 +533,13 @@ int main(int argc, char *argv[]) {
 
     auto cam2 = chrono_types::make_shared<ChCameraSensor>(
         my_vehicle.GetChassisBody(), // body camera is attached to
-        30,                          // update rate in Hz
+        fps,                         // update rate in Hz
         chrono::ChFrame<double>(
             ChVector<>(-6.0, 0.0, 2.5),
             Q_from_Euler123(ChVector<>(0.0, 0.3, 0.0))), // offset
         1920,                                            // image width
         1080,                                            // image
-        1.608f, 1); // fov, lag, exposure cam2->SetName("Camera Sensor
+        1.608f, 2); // fov, lag, exposure cam2->SetName("Camera Sensor
 
     cam2->PushFilter(
         chrono_types::make_shared<ChFilterVisualize>(1920, 1080, "fov", false));
@@ -548,17 +548,15 @@ int main(int argc, char *argv[]) {
     cam2->PushFilter(chrono_types::make_shared<ChFilterSave>("cam2/"));
     manager->AddSensor(cam2);
 
-
-*/
     auto cam3 = chrono_types::make_shared<ChCameraSensor>(
         attached_body, // body camera is attached to
-        30,            // update rate in Hz
+        fps,           // update rate in Hz
         chrono::ChFrame<double>(
             ChVector<>(55.0, -55.0, 9.0),
             Q_from_Euler123(ChVector<>(0.0, 0.3, CH_C_PI * 5 / 6))), // offset
         1920,     // image width
         1080,     // image
-        1.3f, 1); // fov, lag, exposure cam2->SetName("Camera Sensor
+        1.3f, 2); // fov, lag, exposure cam2->SetName("Camera Sensor
 
     cam3->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
         1920, 1080, "stand", false));
