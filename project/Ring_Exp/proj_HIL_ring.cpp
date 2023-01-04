@@ -82,7 +82,7 @@ using namespace eprosima::fastdds::rtps;
 using namespace eprosima::fastrtps::rtps;
 // =============================================================================
 
-float radius = 35.f;
+float radius = 50.f;
 
 // Initial vehicle location and orientation
 ChVector<> initLoc(0, radius, 0.5);
@@ -132,7 +132,7 @@ int fps = 25;
 int output = 0;
 
 std::string path_file(std::string(STRINGIFY(HIL_DATA_DIR)) +
-                      "/ring/1231terrain/35ring_closed.txt");
+                      "/ring/terrain0103/ring50_closed.txt");
 
 const std::string out_dir = GetChronoOutputPath() + "ring_out";
 
@@ -336,7 +336,7 @@ int main(int argc, char *argv[]) {
   // add terrain with weighted textures
   auto terrain_mesh = chrono_types::make_shared<ChTriangleMeshConnected>();
   terrain_mesh->LoadWavefrontMesh(std::string(STRINGIFY(HIL_DATA_DIR)) +
-                                      "/ring/1231terrain/ring_1231.obj",
+                                      "/ring/terrain0103/ring_terrain_50.obj",
                                   false, true);
   terrain_mesh->Transform(ChVector<>(0, 0, 0),
                           ChMatrix33<>(1)); // scale to a different size
@@ -382,7 +382,7 @@ int main(int argc, char *argv[]) {
         attached_body, // body camera is attached to
         30,            // update rate in Hz
         chrono::ChFrame<double>(
-            ChVector<>(0.0, 0.0, 80.0),
+            ChVector<>(0.0, 0.0, 100.0),
             Q_from_Euler123(ChVector<>(0.0, CH_C_PI_2, 0.0))), // offset pose
         1280,                                                  // image width
         720,                                                   // image height
