@@ -525,9 +525,10 @@ int main(int argc, char *argv[]) {
     //     chrono_types::make_shared<ChFilterVisualize>(1280, 720, "fov",
     //     false));
     //  Provide the host access to the RGBA8 buffer
-    cam->PushFilter(
-        chrono_types::make_shared<ChFilterVisualize>(1920, 1080, "fov", false));
-    cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+    // cam->PushFilter(
+    //    chrono_types::make_shared<ChFilterVisualize>(1920, 1080, "fov",
+    //    false));
+    // cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
     cam->PushFilter(chrono_types::make_shared<ChFilterSave>("cam1/"));
     manager->AddSensor(cam);
 
@@ -541,10 +542,11 @@ int main(int argc, char *argv[]) {
         1080,                                            // image
         1.608f, 2); // fov, lag, exposure cam2->SetName("Camera Sensor
 
-    cam2->PushFilter(
-        chrono_types::make_shared<ChFilterVisualize>(1920, 1080, "fov", false));
-    //  Provide the host access to the RGBA8 buffer
-    cam2->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+    // cam2->PushFilter(
+    //     chrono_types::make_shared<ChFilterVisualize>(1920, 1080, "fov",
+    //     false));
+    //   Provide the host access to the RGBA8 buffer
+    // cam2->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
     cam2->PushFilter(chrono_types::make_shared<ChFilterSave>("cam2/"));
     manager->AddSensor(cam2);
 
@@ -558,10 +560,10 @@ int main(int argc, char *argv[]) {
         1080,     // image
         1.3f, 2); // fov, lag, exposure cam2->SetName("Camera Sensor
 
-    cam3->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
-        1920, 1080, "stand", false));
-    //  Provide the host access to the RGBA8 buffer
-    cam3->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+    // cam3->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
+    //     1920, 1080, "stand", false));
+    //   Provide the host access to the RGBA8 buffer
+    // cam3->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
     cam3->PushFilter(chrono_types::make_shared<ChFilterSave>("cam3/"));
     manager->AddSensor(cam3);
   }
