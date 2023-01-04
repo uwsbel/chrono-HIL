@@ -234,14 +234,20 @@ int main(int argc, char *argv[]) {
   if (vehicle_type == 1) {
     vehicle_filename = vehicle::GetDataFile("sedan/vehicle/Sedan_Vehicle.json");
     tire_filename = vehicle::GetDataFile("sedan/tire/Sedan_TMeasyTire.json");
+    powertrain_filename =
+        vehicle::GetDataFile("sedan/powertrain/Sedan_SimpleMapPowertrain.json");
     zombie_filename = synchrono::GetDataFile("vehicle/Sedan.json");
   } else if (vehicle_type == 2) {
     vehicle_filename = vehicle::GetDataFile("audi/json/audi_Vehicle.json");
     tire_filename = vehicle::GetDataFile("audi/json/audi_TMeasyTire.json");
+    powertrain_filename =
+        vehicle::GetDataFile("audi/json/audi_SimpleMapPowertrain.json");
     zombie_filename = synchrono::GetDataFile("vehicle/audi.json");
   } else if (vehicle_type == 3) {
     vehicle_filename = vehicle::GetDataFile("hmmwv/vehicle/HMMWV_Vehicle.json");
     tire_filename = vehicle::GetDataFile("hmmwv/tire/HMMWV_TMeasyTire.json");
+    powertrain_filename =
+        vehicle::GetDataFile("hmmwv/powertrain/HMMWV_ShaftsPowertrain.json");
     zombie_filename = synchrono::GetDataFile("vehicle/HMMWV.json");
   }
 
@@ -284,7 +290,7 @@ int main(int argc, char *argv[]) {
   syn_manager.SetHeartbeat(heartbeat);
 
   // Decide Vehicle Locations
-  float deg_sec = (CH_C_PI * 2.0) / num_nodes;
+  float deg_sec = (CH_C_PI * 1.6) / num_nodes;
 
   initLoc = ChVector<>(radius * cos(deg_sec * node_id),
                        radius * sin(deg_sec * node_id), 0.5);
