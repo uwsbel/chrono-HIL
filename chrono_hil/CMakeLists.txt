@@ -28,8 +28,12 @@ set(SOUND_FILES
 source_group("sound" FILES ${SOUND_FILES})
 
 set(ROM_FILES
-    ROM/SimplifiedVehicle_2DOF.h
-    ROM/SimplifiedVehicle_2DOF.cpp
+    ROM/rom_Eightdof.h
+    ROM/rom_Eightdof.cpp
+    ROM/rom_TMeasy.h
+    ROM/rom_TMeasy.cpp
+    ROM/rom_utils.h
+    ROM/rom_utils.cpp
 )
 source_group("rom" FILES ${ROM_FILES})
 
