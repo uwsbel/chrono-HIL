@@ -34,6 +34,8 @@ set(ROM_FILES
     ROM/rom_TMeasy.cpp
     ROM/rom_utils.h
     ROM/rom_utils.cpp
+    ROM/Ch_8DOF_vehicle.h
+    ROM/Ch_8DOF_vehicle.cpp
 )
 source_group("rom" FILES ${ROM_FILES})
 
