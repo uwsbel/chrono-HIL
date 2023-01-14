@@ -62,55 +62,6 @@ int main(int argc, char *argv[]) {
 
   terrain.Initialize();
 
-  std::string suv_mesh_name = "/vehicles/Nissan_Patrol/FullPatrol.obj";
-  auto suv_mmesh = chrono_types::make_shared<ChTriangleMeshConnected>();
-  suv_mmesh->LoadWavefrontMesh(
-      std::string(STRINGIFY(HIL_DATA_DIR)) + suv_mesh_name, false, true);
-  suv_mmesh->RepairDuplicateVertexes(1e-9);
-
-  auto suv_trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
-  suv_trimesh_shape->SetMesh(suv_mmesh);
-  suv_trimesh_shape->SetMutable(false);
-
-  auto vehicle_shell = chrono_types::make_shared<ChBodyAuxRef>();
-  vehicle_shell->SetCollide(false);
-  vehicle_shell->SetPos(ChVector<>(0, 0.0, 0.3));
-
-  ChQuaternion<> initRot = ChQuaternion<>(0, 0, 0, 0);
-  vehicle_shell->SetRot(initRot);
-
-  vehicle_shell->SetBodyFixed(true);
-  vehicle_shell->AddVisualShape(suv_trimesh_shape);
-  sys.Add(vehicle_shell);
-
-  // Create the camera sensor
-  auto manager = chrono_types::make_shared<ChSensorManager>(&sys);
-  float intensity = 1.2;
-  manager->scene->AddPointLight({0, 0, 1e8}, {intensity, intensity, intensity},
-                                1e12);
-  manager->scene->SetAmbientLight({.1, .1, .1});
-  manager->scene->SetSceneEpsilon(1e-3);
-  manager->scene->EnableDynamicOrigin(true);
-  manager->scene->SetOriginOffsetThreshold(500.f);
-
-  auto cam = chrono_types::make_shared<ChCameraSensor>(
-      vehicle_shell, // body camera is attached to
-      35,            // update rate in Hz
-      chrono::ChFrame<double>(
-          ChVector<>(-16, 0.0, 4.0),
-          Q_from_Euler123(ChVector<>(0.0, 0.15, 0.0))), // offset pose
-      1280,                                             // image width
-      720,                                              // image height
-      1.608f,
-      1); // fov, lag, exposure
-  cam->SetName("Camera Sensor");
-
-  cam->PushFilter(
-      chrono_types::make_shared<ChFilterVisualize>(1280, 720, "test", false));
-  // Provide the host access to the RGBA8 buffer
-  cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
-  manager->AddSensor(cam);
-
   ChSDLInterface SDLDriver;
   // Set the time response for steering and throttle keyboard inputs.
 
@@ -128,12 +79,65 @@ int main(int argc, char *argv[]) {
   std::string tireParamsJSON =
       std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/TMeasy.json";
 
-  Ch_8DOF_vehicle rom_veh(vehParamsJSON, tireParamsJSON, 0.35);
+  Ch_8DOF_vehicle rom_veh(vehParamsJSON, tireParamsJSON, 0.45);
+
+  std::string suv_mesh_name = std::string(STRINGIFY(HIL_DATA_DIR)) +
+                              "/vehicles/hmmwv/hmmwv_chassis.obj";
+  std::string wheel_mesh_name = std::string(STRINGIFY(HIL_DATA_DIR)) +
+                                "/vehicles/hmmwv/hmmwv_tire_left.obj";
+
+  rom_veh.InitializeVisualization(suv_mesh_name, wheel_mesh_name, &sys);
 
   // now lets run our simulation
   float time = 0;
   int step_number = 0; // time step counter
   float step_size = rom_veh.GetStepSize();
+
+  // Create the camera sensor
+  auto manager = chrono_types::make_shared<ChSensorManager>(&sys);
+  float intensity = 1.2;
+  manager->scene->AddPointLight({0, 0, 1e8}, {intensity, intensity, intensity},
+                                1e12);
+  manager->scene->SetAmbientLight({.1, .1, .1});
+  manager->scene->SetSceneEpsilon(1e-3);
+  manager->scene->EnableDynamicOrigin(true);
+  manager->scene->SetOriginOffsetThreshold(500.f);
+
+  auto cam = chrono_types::make_shared<ChCameraSensor>(
+      rom_veh.GetChassisBody(), // body camera is attached to
+      35,                       // update rate in Hz
+      chrono::ChFrame<double>(
+          ChVector<>(-10, 0.0, 4.0),
+          Q_from_Euler123(ChVector<>(0.0, 0.15, 0.0))), // offset pose
+      640,                                              // image width
+      320,                                              // image height
+      1.608f,
+      1); // fov, lag, exposure
+  cam->SetName("Camera Sensor");
+
+  cam->PushFilter(
+      chrono_types::make_shared<ChFilterVisualize>(1280, 720, "test", false));
+  // Provide the host access to the RGBA8 buffer
+  // cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+  // manager->AddSensor(cam);
+
+  auto cam2 = chrono_types::make_shared<ChCameraSensor>(
+      rom_veh.GetChassisBody(), // body camera is attached to
+      35,                       // update rate in Hz
+      chrono::ChFrame<double>(
+          ChVector<>(0.0, 8.0, 3.0),
+          Q_from_Euler123(ChVector<>(0.0, 0.15, -C_PI / 2))), // offset pose
+      1280,                                                   // image width
+      720,                                                    // image height
+      1.608f,
+      1); // fov, lag, exposure
+  cam2->SetName("Camera Sensor");
+
+  cam2->PushFilter(
+      chrono_types::make_shared<ChFilterVisualize>(1280, 720, "test", false));
+  // Provide the host access to the RGBA8 buffer
+  // cam2->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+  manager->AddSensor(cam2);
 
   ChRealtimeCumulative realtime_timer;
 
@@ -153,10 +157,6 @@ int main(int argc, char *argv[]) {
     driver_inputs.m_braking = SDLDriver.GetBraking();
 
     rom_veh.Advance(time, driver_inputs);
-
-    vehicle_shell->SetPos(rom_veh.GetPos());
-
-    vehicle_shell->SetRot(rom_veh.GetRot());
 
     // std::cout << "x: " << veh1_st._x << ",y:" << veh1_st._y << std::endl;
 
