@@ -179,11 +179,6 @@ void Ch_8DOF_vehicle::InitializeVisualization(std::string chassis_obj_path,
 
   sys->AddBody(chassis_body);
 
-  wheels_offset_pos[0] = ChVector<>(1.6, 1.0, 0.0);   // LF
-  wheels_offset_pos[1] = ChVector<>(1.6, -1.0, 0.0);  // RF
-  wheels_offset_pos[2] = ChVector<>(-1.7, 1.0, 0.0);  // LR
-  wheels_offset_pos[3] = ChVector<>(-1.7, -1.0, 0.0); // RR
-
   // Express relative frame in global
   ChFrame<> X_LF = chassis_body->GetFrame_REF_to_abs() *
                    ChFrame<>(wheels_offset_pos[0], wheels_offset_rot[0]);

@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
   SDLDriver.SetJoystickConfigFile(joystick_file);
 
   std::string hmmwv_rom_json =
-      std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/hmmwv/hmmwv_rom.json";
+      std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/patrol/patrol_rom.json";
 
   Ch_8DOF_vehicle rom_veh(hmmwv_rom_json, 0.45);
 
@@ -92,24 +92,25 @@ int main(int argc, char *argv[]) {
   manager->scene->SetSceneEpsilon(1e-3);
   manager->scene->EnableDynamicOrigin(true);
   manager->scene->SetOriginOffsetThreshold(500.f);
+  /*
+    auto cam = chrono_types::make_shared<ChCameraSensor>(
+        rom_veh.GetChassisBody(), // body camera is attached to
+        35,                       // update rate in Hz
+        chrono::ChFrame<double>(
+            ChVector<>(0.0, -8.0, 3.0),
+            Q_from_Euler123(ChVector<>(0.0, 0.15, C_PI / 2))), // offset pose
+        1280,                                                  // image width
+        720,                                                   // image height
+        1.608f,
+        1); // fov, lag, exposure
+    cam->SetName("Camera Sensor");
 
-  auto cam = chrono_types::make_shared<ChCameraSensor>(
-      rom_veh.GetChassisBody(), // body camera is attached to
-      35,                       // update rate in Hz
-      chrono::ChFrame<double>(
-          ChVector<>(0.0, -8.0, 3.0),
-          Q_from_Euler123(ChVector<>(0.0, 0.15, C_PI / 2))), // offset pose
-      1280,                                                  // image width
-      720,                                                   // image height
-      1.608f,
-      1); // fov, lag, exposure
-  cam->SetName("Camera Sensor");
-
-  cam->PushFilter(
-      chrono_types::make_shared<ChFilterVisualize>(1280, 720, "test", false));
-  // Provide the host access to the RGBA8 buffer
-  // cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
-  manager->AddSensor(cam);
+    cam->PushFilter(
+        chrono_types::make_shared<ChFilterVisualize>(1280, 720, "test", false));
+    // Provide the host access to the RGBA8 buffer
+    // cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+    manager->AddSensor(cam);
+    */
 
   auto cam2 = chrono_types::make_shared<ChCameraSensor>(
       rom_veh.GetChassisBody(), // body camera is attached to
@@ -128,7 +129,6 @@ int main(int argc, char *argv[]) {
   // Provide the host access to the RGBA8 buffer
   // cam2->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
   manager->AddSensor(cam2);
-
   ChRealtimeCumulative realtime_timer;
 
   manager->Update();
