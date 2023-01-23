@@ -4,13 +4,44 @@ using namespace chrono;
 using namespace chrono::vehicle;
 using namespace chrono::geometry;
 
-Ch_8DOF_vehicle::Ch_8DOF_vehicle(std::string vehicle_json,
-                                 std::string tire_json, float z_plane) {
+Ch_8DOF_vehicle::Ch_8DOF_vehicle(std::string rom_json, float z_plane) {
 
   rom_z_plane = z_plane;
 
+  rapidjson::Document d;
+  vehicle::ReadFileJSON(rom_json, d);
+
+  if (d.HasParseError()) {
+    std::cout << "Error with 8DOF Json file:" << std::endl
+              << d.GetParseError() << std::endl;
+  }
+
+  vehicle_dyn_json =
+      std::string(STRINGIFY(HIL_DATA_DIR)) + d["Dynamic_File"].GetString();
+
+  tire_json = std::string(STRINGIFY(HIL_DATA_DIR)) + d["Tire_File"].GetString();
+
+  chassis_mesh =
+      std::string(STRINGIFY(HIL_DATA_DIR)) + d["Chassis_Mesh"].GetString();
+  wheel_mesh =
+      std::string(STRINGIFY(HIL_DATA_DIR)) + d["Wheel_Mesh"].GetString();
+
+  wheels_offset_pos[0] = vehicle::ReadVectorJSON(d["Wheel_Pos_0"]);
+  wheels_offset_pos[1] = vehicle::ReadVectorJSON(d["Wheel_Pos_1"]);
+  wheels_offset_pos[2] = vehicle::ReadVectorJSON(d["Wheel_Pos_2"]);
+  wheels_offset_pos[3] = vehicle::ReadVectorJSON(d["Wheel_Pos_3"]);
+
+  wheels_offset_rot[0].Q_from_Euler123(
+      vehicle::ReadVectorJSON(d["Wheel_Rot_0"]));
+  wheels_offset_rot[1].Q_from_Euler123(
+      vehicle::ReadVectorJSON(d["Wheel_Rot_1"]));
+  wheels_offset_rot[2].Q_from_Euler123(
+      vehicle::ReadVectorJSON(d["Wheel_Rot_2"]));
+  wheels_offset_rot[3].Q_from_Euler123(
+      vehicle::ReadVectorJSON(d["Wheel_Rot_3"]));
+
   // Set vehicle parameters from JSON file
-  setVehParamsJSON(veh1_param, vehicle_json);
+  setVehParamsJSON(veh1_param, vehicle_dyn_json);
   vehInit(veh1_st, veh1_param);
 
   // set the tire parameters from a JSON file
@@ -18,6 +49,10 @@ Ch_8DOF_vehicle::Ch_8DOF_vehicle(std::string vehicle_json,
 
   // now we initialize each of our parameters
   tireInit(tire_param);
+}
+
+void Ch_8DOF_vehicle::Initialize(ChSystem &sys) {
+  InitializeVisualization(chassis_mesh, wheel_mesh, &sys);
 }
 
 void Ch_8DOF_vehicle::Advance(float time, DriverInputs inputs) {
@@ -146,8 +181,8 @@ void Ch_8DOF_vehicle::InitializeVisualization(std::string chassis_obj_path,
 
   wheels_offset_pos[0] = ChVector<>(1.6, 1.0, 0.0);   // LF
   wheels_offset_pos[1] = ChVector<>(1.6, -1.0, 0.0);  // RF
-  wheels_offset_pos[2] = ChVector<>(-1.8, 1.0, 0.0);  // LR
-  wheels_offset_pos[3] = ChVector<>(-1.8, -1.0, 0.0); // RR
+  wheels_offset_pos[2] = ChVector<>(-1.7, 1.0, 0.0);  // LR
+  wheels_offset_pos[3] = ChVector<>(-1.7, -1.0, 0.0); // RR
 
   // Express relative frame in global
   ChFrame<> X_LF = chassis_body->GetFrame_REF_to_abs() *

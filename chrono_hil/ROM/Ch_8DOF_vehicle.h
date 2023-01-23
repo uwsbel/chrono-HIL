@@ -9,6 +9,7 @@
 #include "chrono/physics/ChSystem.h"
 #include "chrono_vehicle/ChSubsysDefs.h"
 #include "rom_Eightdof.h"
+
 #include <string>
 
 using namespace chrono;
@@ -17,11 +18,10 @@ using namespace chrono::vehicle;
 class Ch_8DOF_vehicle {
 
 public:
-  Ch_8DOF_vehicle(std::string vehicle_json, std::string tire_json,
-                  float z_plane);
+  Ch_8DOF_vehicle(std::string rom_json, float z_plane);
 
-  void InitializeVisualization(std::string chassis_obj_path,
-                               std::string wheel_obj_path, ChSystem *sys);
+  void Initialize(ChSystem &sys);
+
   void Advance(float time, DriverInputs inputs);
 
   ChVector<> GetPos();
@@ -31,7 +31,16 @@ public:
   std::shared_ptr<ChBodyAuxRef> GetChassisBody();
 
 private:
+  void InitializeVisualization(std::string chassis_obj_path,
+                               std::string wheel_obj_path, ChSystem *sys);
+
   float rom_z_plane;
+
+  std::string vehicle_dyn_json;
+  std::string tire_json;
+
+  std::string chassis_mesh;
+  std::string wheel_mesh;
 
   VehicleState veh1_st;
   VehicleParam veh1_param;
