@@ -28,8 +28,11 @@
 
 #include "chrono_vehicle/terrain/RigidTerrain.h"
 
+#include "chrono_hil/ROM/driver/Ch_ROM_PathFollowerDriver.h"
 #include "chrono_hil/ROM/veh/Ch_8DOF_vehicle.h"
 #include "chrono_hil/timer/ChRealtimeCumulative.h"
+
+#include "chrono/core/ChBezierCurve.h"
 
 // Use the namespaces of Chrono
 using namespace chrono;
@@ -62,26 +65,33 @@ int main(int argc, char *argv[]) {
 
   terrain.Initialize();
 
-  ChSDLInterface SDLDriver;
-  // Set the time response for steering and throttle keyboard inputs.
-
-  SDLDriver.Initialize();
-
-  std::string joystick_file =
-      (STRINGIFY(HIL_DATA_DIR)) + std::string("/joystick/controller_G27.json");
-  SDLDriver.SetJoystickConfigFile(joystick_file);
-
   std::string hmmwv_rom_json =
       std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/patrol/patrol_rom.json";
 
-  Ch_8DOF_vehicle rom_veh(hmmwv_rom_json, 0.45);
+  std::shared_ptr<Ch_8DOF_vehicle> rom_veh =
+      chrono_types::make_shared<Ch_8DOF_vehicle>(hmmwv_rom_json, 0.45);
 
-  rom_veh.Initialize(sys);
+  rom_veh->SetInitPos(ChVector<>(50.0, 0.0, 0.0));
+  rom_veh->Initialize(sys);
+
+  std::shared_ptr<ChBezierCurve> path = ChBezierCurve::read(
+      STRINGIFY(HIL_DATA_DIR) +
+          std::string("/ring/terrain0103/ring50_closed.txt"),
+      true);
+
+  Ch_ROM_PathFollowerDriver driver(rom_veh, path, ChVector<>(0, 0, 1), 10.0,
+                                   10.0, 0.1, 0.0, 0.0, 0.3, 0.0, 0.0);
+
+  auto attached_body = std::make_shared<ChBody>();
+  sys.AddBody(attached_body);
+  attached_body->SetPos(ChVector<>(0.0, 0.0, 0.0));
+  attached_body->SetCollide(false);
+  attached_body->SetBodyFixed(true);
 
   // now lets run our simulation
   float time = 0;
   int step_number = 0; // time step counter
-  float step_size = rom_veh.GetStepSize();
+  float step_size = rom_veh->GetStepSize();
 
   // Create the camera sensor
   auto manager = chrono_types::make_shared<ChSensorManager>(&sys);
@@ -94,8 +104,8 @@ int main(int argc, char *argv[]) {
   manager->scene->SetOriginOffsetThreshold(500.f);
   /*
     auto cam = chrono_types::make_shared<ChCameraSensor>(
-        rom_veh.GetChassisBody(), // body camera is attached to
-        35,                       // update rate in Hz
+        rom_veh->GetChassisBody(), // body camera is attached to
+        35,                        // update rate in Hz
         chrono::ChFrame<double>(
             ChVector<>(0.0, -8.0, 3.0),
             Q_from_Euler123(ChVector<>(0.0, 0.15, C_PI / 2))), // offset pose
@@ -110,29 +120,26 @@ int main(int argc, char *argv[]) {
     // Provide the host access to the RGBA8 buffer
     // cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
     manager->AddSensor(cam);
-    */
-
+  */
   auto cam2 = chrono_types::make_shared<ChCameraSensor>(
-      rom_veh.GetChassisBody(), // body camera is attached to
-      35,                       // update rate in Hz
+      attached_body, // body camera is attached to
+      35,            // update rate in Hz
       chrono::ChFrame<double>(
-          ChVector<>(0.0, 8.0, 3.0),
-          Q_from_Euler123(ChVector<>(0.0, 0.15, -C_PI / 2))), // offset pose
-      1280,                                                   // image width
-      720,                                                    // image height
-      1.608f,
-      1); // fov, lag, exposure
-  cam2->SetName("Camera Sensor");
+          ChVector<>(0.0, 0.0, 100.0),
+          Q_from_Euler123(ChVector<>(0.0, C_PI / 2, 0.0))), // offset pose
+      1280,                                                 // image width
+      720,                                                  // image
+      1.608f, 1); // fov, lag, exposure cam2->SetName("Camera Sensor");
 
   cam2->PushFilter(
       chrono_types::make_shared<ChFilterVisualize>(1280, 720, "test", false));
   // Provide the host access to the RGBA8 buffer
   // cam2->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
   manager->AddSensor(cam2);
-  ChRealtimeCumulative realtime_timer;
 
   manager->Update();
 
+  ChRealtimeCumulative realtime_timer;
   while (true) {
 
     if (step_number == 0) {
@@ -142,11 +149,9 @@ int main(int argc, char *argv[]) {
     // get the controls for this time step
     // Driver inputs
     DriverInputs driver_inputs;
-    driver_inputs.m_steering = SDLDriver.GetSteering();
-    driver_inputs.m_throttle = SDLDriver.GetThrottle();
-    driver_inputs.m_braking = SDLDriver.GetBraking();
-
-    rom_veh.Advance(time, driver_inputs);
+    driver.Advance(step_size);
+    driver_inputs = driver.GetDriverInput();
+    rom_veh->Advance(time, driver_inputs);
 
     // std::cout << "x: " << veh1_st._x << ",y:" << veh1_st._y << std::endl;
 

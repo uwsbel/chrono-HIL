@@ -2,7 +2,7 @@
 #ifndef CH_EIGHT_ROM_H
 #define CH_EIGHT_ROM_H
 
-#include "../ChApiHil.h"
+#include "../../ChApiHil.h"
 #include "chrono/core/ChQuaternion.h"
 #include "chrono/core/ChVector.h"
 #include "chrono/physics/ChBodyAuxRef.h"
@@ -22,11 +22,17 @@ public:
 
   void Initialize(ChSystem &sys);
 
+  void SetInitPos(ChVector<> init_pos);
+
   void Advance(float time, DriverInputs inputs);
+
+  void SetMaxSteerRate(float max_steer_rate);
 
   ChVector<> GetPos();
   ChQuaternion<> GetRot();
   float GetStepSize();
+
+  ChVector<> GetVel();
 
   std::shared_ptr<ChBodyAuxRef> GetChassisBody();
 
@@ -56,6 +62,9 @@ private:
   // so only one parameter structure
   TMeasyParam tire_param;
 
+  // cached previous input
+  DriverInputs m_inputs;
+
   std::shared_ptr<ChBodyAuxRef> chassis_body;
   std::shared_ptr<ChBodyAuxRef> wheels_body[4];
 
@@ -63,6 +72,8 @@ private:
   ChQuaternion<> wheels_offset_rot[4];
 
   float prev_tire_rotation;
+
+  float m_max_steer_rate = 1.2f;
 };
 
 #endif

@@ -28,14 +28,17 @@ set(SOUND_FILES
 source_group("sound" FILES ${SOUND_FILES})
 
 set(ROM_FILES
-    ROM/rom_Eightdof.h
-    ROM/rom_Eightdof.cpp
-    ROM/rom_TMeasy.h
-    ROM/rom_TMeasy.cpp
-    ROM/rom_utils.h
-    ROM/rom_utils.cpp
-    ROM/Ch_8DOF_vehicle.h
-    ROM/Ch_8DOF_vehicle.cpp
+    ROM/veh/rom_Eightdof.h
+    ROM/veh/rom_Eightdof.cpp
+    ROM/veh/rom_TMeasy.h
+    ROM/veh/rom_TMeasy.cpp
+    ROM/veh/rom_utils.h
+    ROM/veh/rom_utils.cpp
+    ROM/veh/Ch_8DOF_vehicle.h
+    ROM/veh/Ch_8DOF_vehicle.cpp
+
+    ROM/driver/Ch_ROM_PathFollowerDriver.h
+    ROM/driver/Ch_ROM_PathFollowerDriver.cpp
 )
 source_group("rom" FILES ${ROM_FILES})
 

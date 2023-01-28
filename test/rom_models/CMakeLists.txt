@@ -10,6 +10,7 @@
 set(DEMOS
 	#test_HIL_2dof
   test_HIL_8dof
+  test_HIL_8dof_pf
 )
 
 #--------------------------------------------------------------

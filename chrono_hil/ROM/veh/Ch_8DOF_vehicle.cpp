@@ -56,12 +56,28 @@ void Ch_8DOF_vehicle::Initialize(ChSystem &sys) {
 }
 
 void Ch_8DOF_vehicle::Advance(float time, DriverInputs inputs) {
+
+  // limitation boundary
+
+  if (abs(inputs.m_steering - m_inputs.m_steering) >
+      (m_max_steer_rate * GetStepSize())) {
+    inputs.m_steering = m_inputs.m_steering + ChSignum(inputs.m_steering) *
+                                                  m_max_steer_rate *
+                                                  GetStepSize();
+  }
+
+  ChClampValue(inputs.m_steering, -1.0, 1.0);
+
   std::vector<double> controls(4, 0);
 
   controls[0] = time;
   controls[1] = inputs.m_steering;
   controls[2] = inputs.m_throttle;
   controls[3] = inputs.m_braking;
+
+  m_inputs.m_steering = inputs.m_steering;
+  m_inputs.m_throttle = inputs.m_throttle;
+  m_inputs.m_braking = inputs.m_braking;
 
   // transform velocities and other needed quantities from
   // vehicle frame to tire frame
@@ -236,8 +252,21 @@ ChQuaternion<> Ch_8DOF_vehicle::GetRot() {
   return ret_rot;
 }
 
+ChVector<> Ch_8DOF_vehicle::GetVel() {
+  return ChVector<>(veh1_st._u, veh1_st._v, 0.0);
+}
+
 float Ch_8DOF_vehicle::GetStepSize() { return veh1_param._step; }
 
 std::shared_ptr<ChBodyAuxRef> Ch_8DOF_vehicle::GetChassisBody() {
   return chassis_body;
+}
+
+void Ch_8DOF_vehicle::SetInitPos(ChVector<> init_pos) {
+  veh1_st._x = init_pos.x();
+  veh1_st._y = init_pos.y();
+}
+
+void Ch_8DOF_vehicle::SetMaxSteerRate(float max_steer_rate) {
+  m_max_steer_rate = max_steer_rate;
 }
