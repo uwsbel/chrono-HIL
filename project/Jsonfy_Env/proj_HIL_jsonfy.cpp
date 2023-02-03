@@ -30,7 +30,7 @@
 #include "chrono_vehicle/ChVehicleModelData.h"
 #include "chrono_vehicle/ChWorldFrame.h"
 #include "chrono_vehicle/driver/ChDataDriver.h"
-#include "chrono_vehicle/driver/ChIrrGuiDriver.h"
+#include "chrono_vehicle/driver/ChInteractiveDriverIRR.h"
 #include "chrono_vehicle/terrain/RigidTerrain.h"
 
 #include <irrlicht.h>
@@ -48,8 +48,7 @@
 #include "chrono_sensor/sensors/ChSegmentationCamera.h"
 #include "chrono_thirdparty/cxxopts/ChCLI.h"
 #include "chrono_thirdparty/filesystem/path.h"
-#include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
-
+#include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
 //#include "chrono_vehicle/driver/ChPathFollowerDriver.h"
 
 #include "chrono_hil/driver/ChCSLDriver.h"

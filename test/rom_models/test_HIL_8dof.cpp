@@ -10,8 +10,8 @@
 
 #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 
-#include "chrono_vehicle/driver/ChIrrGuiDriver.h"
-#include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/driver/ChInteractiveDriverIRR.h"
+#include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
 
 #include "chrono_models/vehicle/sedan/Sedan.h"
 

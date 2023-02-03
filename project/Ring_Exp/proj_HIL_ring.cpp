@@ -44,7 +44,7 @@
 #include "chrono_vehicle/driver/ChPathFollowerDriver.h"
 #include "chrono_vehicle/terrain/RigidTerrain.h"
 #include "chrono_vehicle/utils/ChUtilsJSON.h"
-#include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
 #include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
 
 #include "chrono_thirdparty/filesystem/path.h"

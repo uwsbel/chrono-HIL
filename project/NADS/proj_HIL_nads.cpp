@@ -37,10 +37,10 @@
 #include "chrono_vehicle/ChConfigVehicle.h"
 #include "chrono_vehicle/ChVehicleModelData.h"
 #include "chrono_vehicle/driver/ChDataDriver.h"
-#include "chrono_vehicle/driver/ChIrrGuiDriver.h"
+#include "chrono_vehicle/driver/ChInteractiveDriverIRR.h"
 #include "chrono_vehicle/terrain/RigidTerrain.h"
 #include "chrono_vehicle/utils/ChUtilsJSON.h"
-#include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
 #include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
 
 #include "chrono_models/vehicle/sedan/Sedan.h"
@@ -253,7 +253,7 @@ int main(int argc, char *argv[]) {
 
   auto cam = chrono_types::make_shared<ChCameraSensor>(
       attached_body, // body camera is attached to
-      30,                                 // update rate in Hz
+      30,            // update rate in Hz
       chrono::ChFrame<double>(
           ChVector<>(-12.0, 0.0, 2.0),
           Q_from_Euler123(ChVector<>(0.0, 0.11, 0.0))), // offset pose
