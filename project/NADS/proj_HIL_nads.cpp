@@ -257,14 +257,14 @@ int main(int argc, char *argv[]) {
       chrono::ChFrame<double>(
           ChVector<>(-12.0, 0.0, 2.0),
           Q_from_Euler123(ChVector<>(0.0, 0.11, 0.0))), // offset pose
-      5760,                                             // image width
-      1080,                                             // image height
+      1280,                                             // image width
+      720,                                              // image height
       1.408f,
       2); // fov, lag, exposure
   cam->SetName("Camera Sensor");
 
   cam->PushFilter(
-      chrono_types::make_shared<ChFilterVisualize>(5760, 1080, "hwwmv", false));
+      chrono_types::make_shared<ChFilterVisualize>(1280, 720, "hwwmv", false));
   // Provide the host access to the RGBA8 buffer
   cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
   manager->AddSensor(cam);
