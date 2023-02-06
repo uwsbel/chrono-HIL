@@ -7,6 +7,7 @@ if(ENABLE_PROJECTS)
   add_subdirectory(NADS)
   add_subdirectory(Jsonfy_Env)
   add_subdirectory(Ring_Exp)
+  add_subdirectory(Rom_Models)
 
   #---------------
   string(FIND "${CHRONO_LIBRARIES}" "fastcdr" matchres)
