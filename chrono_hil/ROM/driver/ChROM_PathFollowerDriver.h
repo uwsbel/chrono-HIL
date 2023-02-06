@@ -17,18 +17,18 @@
 using namespace chrono;
 using namespace chrono::vehicle;
 
-class Ch_ROM_PathFollowerDriver {
+class ChROM_PathFollowerDriver {
 
 public:
-  Ch_ROM_PathFollowerDriver(std::shared_ptr<Ch_8DOF_vehicle> m_rom,
-                            std::shared_ptr<ChBezierCurve> curve,
-                            ChVector<> vertical_up, float target_speed,
-                            double look_ahead_dist, float PID_st_kp,
-                            float PID_st_ki, float PID_st_kd, float PID_sp_kp,
-                            float PID_sp_ki, float PID_sp_kd);
+  ChROM_PathFollowerDriver(std::shared_ptr<Ch_8DOF_vehicle> m_rom,
+                           std::shared_ptr<ChBezierCurve> curve,
+                           float target_speed, double look_ahead_dist,
+                           float PID_st_kp, float PID_st_ki, float PID_st_kd,
+                           float PID_sp_kp, float PID_sp_ki, float PID_sp_kd);
 
   void Advance(float step);
   DriverInputs GetDriverInput();
+  void SetCruiseSpeed(float target_speed);
 
 private:
   std::shared_ptr<ChBezierCurve> m_curve;
@@ -60,7 +60,6 @@ private:
 
   // look ahead distance
   double m_dist;
-  ChVector<> m_up_vec;
 
   DriverInputs m_inputs;
 };

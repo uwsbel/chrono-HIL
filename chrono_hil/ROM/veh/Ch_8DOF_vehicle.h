@@ -24,10 +24,9 @@ public:
 
   void SetInitPos(ChVector<> init_pos);
 
+  void SetInitRot(float yaw);
+
   void Advance(float time, DriverInputs inputs);
-
-  void SetMaxSteerRate(float max_steer_rate);
-
   ChVector<> GetPos();
   ChQuaternion<> GetRot();
   float GetStepSize();
@@ -72,8 +71,6 @@ private:
   ChQuaternion<> wheels_offset_rot[4];
 
   float prev_tire_rotation;
-
-  float m_max_steer_rate = 1.2f;
 };
 
 #endif

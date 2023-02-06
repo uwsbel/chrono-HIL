@@ -37,9 +37,11 @@ set(ROM_FILES
     ROM/veh/Ch_8DOF_vehicle.h
     ROM/veh/Ch_8DOF_vehicle.cpp
 
-    ROM/driver/Ch_ROM_PathFollowerDriver.h
-    ROM/driver/Ch_ROM_PathFollowerDriver.cpp
-)
+    ROM/driver/ChROM_PathFollowerDriver.h
+    ROM/driver/ChROM_PathFollowerDriver.cpp
+    ROM/driver/ChROM_IDMFollower.h
+    ROM/driver/ChROM_IDMFollower.cpp
+    )
 source_group("rom" FILES ${ROM_FILES})
 
 set(CXX_FLAGS ${CH_CXX_FLAGS})

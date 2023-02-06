@@ -58,16 +58,6 @@ void Ch_8DOF_vehicle::Initialize(ChSystem &sys) {
 void Ch_8DOF_vehicle::Advance(float time, DriverInputs inputs) {
 
   // limitation boundary
-
-  if (abs(inputs.m_steering - m_inputs.m_steering) >
-      (m_max_steer_rate * GetStepSize())) {
-    inputs.m_steering = m_inputs.m_steering + ChSignum(inputs.m_steering) *
-                                                  m_max_steer_rate *
-                                                  GetStepSize();
-  }
-
-  ChClampValue(inputs.m_steering, -1.0, 1.0);
-
   std::vector<double> controls(4, 0);
 
   controls[0] = time;
@@ -267,6 +257,4 @@ void Ch_8DOF_vehicle::SetInitPos(ChVector<> init_pos) {
   veh1_st._y = init_pos.y();
 }
 
-void Ch_8DOF_vehicle::SetMaxSteerRate(float max_steer_rate) {
-  m_max_steer_rate = max_steer_rate;
-}
+void Ch_8DOF_vehicle::SetInitRot(float yaw) { veh1_st._psi = yaw; }

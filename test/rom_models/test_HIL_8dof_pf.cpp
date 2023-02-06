@@ -28,7 +28,8 @@
 
 #include "chrono_vehicle/terrain/RigidTerrain.h"
 
-#include "chrono_hil/ROM/driver/Ch_ROM_PathFollowerDriver.h"
+#include "chrono_hil/ROM/driver/ChROM_IDMFollower.h"
+#include "chrono_hil/ROM/driver/ChROM_PathFollowerDriver.h"
 #include "chrono_hil/ROM/veh/Ch_8DOF_vehicle.h"
 #include "chrono_hil/timer/ChRealtimeCumulative.h"
 
@@ -46,6 +47,11 @@ int main(int argc, char *argv[]) {
 
   // Create a ChronoENGINE physical system
   ChSystemSMC sys;
+  std::vector<std::shared_ptr<Ch_8DOF_vehicle>> rom_vec; // rom vehicle vector
+  std::vector<std::shared_ptr<ChROM_PathFollowerDriver>>
+      driver_vec; // rom driver vector
+  std::vector<std::shared_ptr<ChROM_IDMFollower>> idm_vec;
+  int num_rom = 25;
 
   // Create the terrain
   RigidTerrain terrain(&sys);
@@ -68,19 +74,57 @@ int main(int argc, char *argv[]) {
   std::string hmmwv_rom_json =
       std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/patrol/patrol_rom.json";
 
-  std::shared_ptr<Ch_8DOF_vehicle> rom_veh =
-      chrono_types::make_shared<Ch_8DOF_vehicle>(hmmwv_rom_json, 0.45);
+  for (int i = 0; i < num_rom; i++) {
+    std::shared_ptr<Ch_8DOF_vehicle> rom_veh =
+        chrono_types::make_shared<Ch_8DOF_vehicle>(hmmwv_rom_json, 0.45);
 
-  rom_veh->SetInitPos(ChVector<>(50.0, 0.0, 0.0));
-  rom_veh->Initialize(sys);
+    // determine initial position and initial orientation
+    float deg_sec = (CH_C_PI * 1.6) / num_rom;
+    ChVector<> initLoc =
+        ChVector<>(50.0 * cos(deg_sec * i), 50.0 * sin(deg_sec * i), 0.5);
+    float rot_deg = deg_sec * i + CH_C_PI_2;
+    if (rot_deg > CH_C_2PI) {
+      rot_deg = rot_deg - CH_C_2PI;
+    }
+    rom_veh->SetInitPos(initLoc);
+    rom_veh->SetInitRot(rot_deg);
+    rom_veh->Initialize(sys);
+    rom_vec.push_back(rom_veh);
 
-  std::shared_ptr<ChBezierCurve> path = ChBezierCurve::read(
-      STRINGIFY(HIL_DATA_DIR) +
-          std::string("/ring/terrain0103/ring50_closed.txt"),
-      true);
+    // initialize driver
+    std::shared_ptr<ChBezierCurve> path = ChBezierCurve::read(
+        STRINGIFY(HIL_DATA_DIR) +
+            std::string("/ring/terrain0103/ring50_closed.txt"),
+        true);
 
-  Ch_ROM_PathFollowerDriver driver(rom_veh, path, ChVector<>(0, 0, 1), 10.0,
-                                   10.0, 0.1, 0.0, 0.0, 0.3, 0.0, 0.0);
+    std::shared_ptr<ChROM_PathFollowerDriver> driver =
+        chrono_types::make_shared<ChROM_PathFollowerDriver>(
+            rom_veh, path, 8.0, 6.0, 0.2, 0.0, 0.0, 0.2, 0.0, 0.0);
+    driver_vec.push_back(driver);
+
+    // initialize idm control
+    std::vector<double> params;
+    if (i % 2 == 0) {
+      params.push_back(8.9408);
+      params.push_back(0.1);
+      params.push_back(5.0);
+      params.push_back(3.5);
+      params.push_back(2.5);
+      params.push_back(4.0);
+      params.push_back(5.5);
+    } else if (i % 2 == 1) {
+      params.push_back(8.9408);
+      params.push_back(0.7);
+      params.push_back(8.0);
+      params.push_back(2.5);
+      params.push_back(1.5);
+      params.push_back(4.0);
+      params.push_back(5.5);
+    }
+    std::shared_ptr<ChROM_IDMFollower> idm_controller =
+        chrono_types::make_shared<ChROM_IDMFollower>(rom_veh, driver, params);
+    idm_vec.push_back(idm_controller);
+  }
 
   auto attached_body = std::make_shared<ChBody>();
   sys.AddBody(attached_body);
@@ -91,7 +135,7 @@ int main(int argc, char *argv[]) {
   // now lets run our simulation
   float time = 0;
   int step_number = 0; // time step counter
-  float step_size = rom_veh->GetStepSize();
+  float step_size = rom_vec[0]->GetStepSize();
 
   // Create the camera sensor
   auto manager = chrono_types::make_shared<ChSensorManager>(&sys);
@@ -149,11 +193,27 @@ int main(int argc, char *argv[]) {
     // get the controls for this time step
     // Driver inputs
     DriverInputs driver_inputs;
-    driver.Advance(step_size);
-    driver_inputs = driver.GetDriverInput();
-    rom_veh->Advance(time, driver_inputs);
+    for (int i = 0; i < num_rom; i++) {
+      // update idm
+      int ld_idx = (i + 1) % num_rom;
 
-    // std::cout << "x: " << veh1_st._x << ",y:" << veh1_st._y << std::endl;
+      // Compute critical information
+      float raw_dis =
+          (rom_vec[ld_idx]->GetPos() - rom_vec[i]->GetPos()).Length();
+      float temp = 1 - (raw_dis * raw_dis) / (2.0 * 50.f * 50.f);
+      if (temp > 1) {
+        temp = 1;
+      } else if (temp < -1) {
+        temp = -1;
+      }
+
+      float theta = abs(acos(temp));
+      float act_dis = theta * 50.f;
+      idm_vec[i]->Synchronize(time, step_size, act_dis,
+                              (rom_vec[ld_idx]->GetVel()).Length());
+      driver_inputs = driver_vec[i]->GetDriverInput();
+      rom_vec[i]->Advance(time, driver_inputs);
+    }
 
     time += step_size;
     step_number += 1;

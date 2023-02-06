@@ -1,9 +1,9 @@
-#include "Ch_ROM_PathFollowerDriver.h"
-Ch_ROM_PathFollowerDriver::Ch_ROM_PathFollowerDriver(
+#include "ChROM_PathFollowerDriver.h"
+ChROM_PathFollowerDriver::ChROM_PathFollowerDriver(
     std::shared_ptr<Ch_8DOF_vehicle> rom, std::shared_ptr<ChBezierCurve> curve,
-    ChVector<> vertical_up, float target_speed, double look_ahead_dist,
-    float PID_st_kp, float PID_st_ki, float PID_st_kd, float PID_sp_kp,
-    float PID_sp_ki, float PID_sp_kd) {
+    float target_speed, double look_ahead_dist, float PID_st_kp,
+    float PID_st_ki, float PID_st_kd, float PID_sp_kp, float PID_sp_ki,
+    float PID_sp_kd) {
   m_dist = look_ahead_dist;
   m_target_speed = target_speed;
 
@@ -19,14 +19,13 @@ Ch_ROM_PathFollowerDriver::Ch_ROM_PathFollowerDriver(
 
   m_curve = curve;
   m_rom = rom;
-  m_up_vec = vertical_up;
 
   m_tracker = chrono_types::make_shared<ChBezierCurveTracker>(m_curve);
 }
 
-DriverInputs Ch_ROM_PathFollowerDriver::GetDriverInput() { return m_inputs; }
+DriverInputs ChROM_PathFollowerDriver::GetDriverInput() { return m_inputs; }
 
-void Ch_ROM_PathFollowerDriver::Advance(float time_step) {
+void ChROM_PathFollowerDriver::Advance(float time_step) {
   ChVector<> cur_pos = m_rom->GetPos(); // current vehicle position
   ChVector<> cur_vel = m_rom->GetVel(); // current vehicle velocity
 
@@ -60,11 +59,8 @@ void Ch_ROM_PathFollowerDriver::Advance(float time_step) {
 
   ChClampValue(m_inputs.m_steering, -1.0, 1.0);
 
-  std::cout << "steering:" << m_inputs.m_steering << std::endl;
-
   // control speed of the vehicle
   float cur_speed = cur_vel.Length();
-  std::cout << "cur_speed:" << cur_speed << std::endl;
 
   double sp_err = m_target_speed - cur_speed;
 
@@ -88,4 +84,8 @@ void Ch_ROM_PathFollowerDriver::Advance(float time_step) {
     m_inputs.m_braking = 0.0;
     m_inputs.m_throttle = temp;
   }
+}
+
+void ChROM_PathFollowerDriver::SetCruiseSpeed(float target_speed) {
+  m_target_speed = target_speed;
 }
