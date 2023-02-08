@@ -31,6 +31,7 @@
 #include "chrono_sensor/filters/ChFilterSave.h"
 #include "chrono_sensor/filters/ChFilterVisualize.h"
 #include "chrono_sensor/sensors/ChSegmentationCamera.h"
+#include "chrono_vehicle/driver/ChPathFollowerDriver.h"
 
 #include "chrono_hil/timer/ChRealtimeCumulative.h"
 
@@ -59,7 +60,7 @@ using namespace chrono::hil;
 // =============================================================================
 
 // Initial vehicle location and orientation
-ChVector<> initLoc(0, 0, 1.0);
+ChVector<> initLoc(-91.788, 98.647, 0.4);
 ChQuaternion<> initRot(1, 0, 0, 0);
 
 enum DriverMode { DEFAULT, RECORD, PLAYBACK };
@@ -92,7 +93,7 @@ bool contact_vis = false;
 
 // Simulation step sizes
 double step_size = 1e-3;
-double tire_step_size = 1e-4;
+double tire_step_size = 1e-5;
 
 // Simulation end time
 double t_end = 1000;
@@ -147,7 +148,7 @@ int main(int argc, char *argv[]) {
   for (auto &axle : my_vehicle.GetAxles()) {
     for (auto &wheel : axle->GetWheels()) {
       auto tire = ReadTireJSON(tire_filename);
-      tire->SetStepsize(step_size / 100);
+      tire->SetStepsize(tire_step_size);
       my_vehicle.InitializeTire(tire, wheel, tire_vis_type);
     }
   }
@@ -222,6 +223,14 @@ int main(int argc, char *argv[]) {
 
   ChSDLInterface SDLDriver;
   // Set the time response for steering and throttle keyboard inputs.
+  std::string path_file(std::string(STRINGIFY(HIL_DATA_DIR)) +
+                        "/Environments/nads/nads_path_5.txt");
+  auto path = ChBezierCurve::read(path_file, true);
+  ChPathFollowerDriver driver(my_vehicle, path, "my_path", 20.0);
+  driver.GetSteeringController().SetLookAheadDistance(15);
+  driver.GetSteeringController().SetGains(0.8, 0, 0.0);
+  driver.GetSpeedController().SetGains(0.4, 0, 0);
+  driver.Initialize();
 
   SDLDriver.Initialize();
 
@@ -310,16 +319,19 @@ int main(int argc, char *argv[]) {
 
     // Get driver inputs
     DriverInputs driver_inputs;
-    driver_inputs.m_throttle = SDLDriver.GetThrottle();
-    driver_inputs.m_steering = SDLDriver.GetSteering();
-    driver_inputs.m_braking = SDLDriver.GetBraking();
+    // driver_inputs.m_throttle = SDLDriver.GetThrottle();
+    // driver_inputs.m_steering = SDLDriver.GetSteering();
+    // driver_inputs.m_braking = SDLDriver.GetBraking();
+    driver_inputs = driver.GetInputs();
 
     // Update modules (process inputs from other modules)
+    driver.Synchronize(time);
     terrain.Synchronize(time);
     my_vehicle.Synchronize(time, driver_inputs, terrain);
     // vis->Synchronize(driver.GetInputModeAsString(), driver_inputs);
 
     // Advance simulation for one timestep for all modules
+    driver.Advance(step_size);
     terrain.Advance(step_size);
     my_vehicle.Advance(step_size);
     // vis->Advance(step_size);
