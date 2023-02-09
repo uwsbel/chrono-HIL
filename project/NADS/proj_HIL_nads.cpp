@@ -63,9 +63,6 @@ using namespace chrono::hil;
 ChVector<> initLoc(-91.788, 98.647, 0.4);
 ChQuaternion<> initRot(1, 0, 0, 0);
 
-enum DriverMode { DEFAULT, RECORD, PLAYBACK };
-DriverMode driver_mode = DEFAULT;
-
 // Visualization type for vehicle parts (PRIMITIVES, MESH, or NONE)
 VisualizationType chassis_vis_type = VisualizationType::MESH;
 VisualizationType suspension_vis_type = VisualizationType::PRIMITIVES;
@@ -111,6 +108,9 @@ double debug_step_size = 1.0 / 1; // FPS = 1
 
 // POV-Ray output
 bool povray_output = false;
+
+// Driving mode
+int driver_mode = 0; // 0 for human driven, 1 for self drive
 
 // =============================================================================
 
@@ -228,8 +228,8 @@ int main(int argc, char *argv[]) {
   auto path = ChBezierCurve::read(path_file, true);
   ChPathFollowerDriver driver(my_vehicle, path, "my_path", 20.0);
   driver.GetSteeringController().SetLookAheadDistance(15);
-  driver.GetSteeringController().SetGains(0.8, 0, 0.0);
-  driver.GetSpeedController().SetGains(0.4, 0, 0);
+  driver.GetSteeringController().SetGains(0.1, 0, 0.02);
+  driver.GetSpeedController().SetGains(0.3, 0, 0);
   driver.Initialize();
 
   SDLDriver.Initialize();
@@ -237,6 +237,7 @@ int main(int argc, char *argv[]) {
   SDLDriver.SetJoystickConfigFile(std::string(STRINGIFY(HIL_DATA_DIR)) +
                                   std::string("/joystick/controller_G29.json"));
 
+  SDLDriver.AddCallbackButtons(6); // enable button callback
   // ---------------
   // Simulation loop
   // ---------------
@@ -319,10 +320,32 @@ int main(int argc, char *argv[]) {
 
     // Get driver inputs
     DriverInputs driver_inputs;
-    // driver_inputs.m_throttle = SDLDriver.GetThrottle();
-    // driver_inputs.m_steering = SDLDriver.GetSteering();
-    // driver_inputs.m_braking = SDLDriver.GetBraking();
-    driver_inputs = driver.GetInputs();
+
+    if (driver_mode == 0) {
+      driver_inputs.m_throttle = SDLDriver.GetThrottle();
+      driver_inputs.m_steering = SDLDriver.GetSteering();
+      driver_inputs.m_braking = SDLDriver.GetBraking();
+    } else if (driver_mode == 1) {
+      driver_inputs = driver.GetInputs();
+    }
+
+    // temp section to check button reg
+    std::vector<int> check_button_idx;
+    std::vector<int> check_button_val;
+    SDLDriver.GetButtonStatus(check_button_idx, check_button_val);
+    if (check_button_val[0] == 1) {
+      static auto last_invoked =
+          std::chrono::system_clock::now().time_since_epoch();
+      auto current_invoke = std::chrono::system_clock::now().time_since_epoch();
+      if (std::chrono::duration_cast<std::chrono::seconds>(current_invoke -
+                                                           last_invoked)
+              .count() > 1.0) {
+        driver_mode = (driver_mode + 1) % 2;
+        last_invoked = current_invoke;
+      }
+    }
+
+    std::cout << "driver_mode:" << driver_mode << std::endl;
 
     // Update modules (process inputs from other modules)
     driver.Synchronize(time);

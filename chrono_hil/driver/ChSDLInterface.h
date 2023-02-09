@@ -23,6 +23,7 @@
 #define CH_SDL_INTERFACE_H
 
 #include <string>
+#include <vector>
 
 #include "../ChApiHil.h"
 #include <SDL2/SDL.h>
@@ -56,6 +57,10 @@ public:
 
   void SetJoystickConfigFile(std::string config_filename);
 
+  void AddCallbackButtons(int button);
+
+  void GetButtonStatus(std::vector<int> &ref_idx, std::vector<int> &ref_val);
+
   float GetThrottle();
 
   float GetBraking();
@@ -70,6 +75,9 @@ private:
   SDLAxis m_throttle_axis;
   SDLAxis m_braking_axis;
   SDLAxis m_steering_axis;
+
+  std::vector<int> m_active_buttons_idx;
+  std::vector<int> m_active_buttons_val;
 };
 
 } // namespace hil

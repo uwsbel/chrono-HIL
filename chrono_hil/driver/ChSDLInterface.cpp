@@ -124,6 +124,21 @@ float ChSDLInterface::GetBraking() {
          m_braking_axis.scaled_max;
 }
 
+void ChSDLInterface::AddCallbackButtons(int button) {
+  m_active_buttons_idx.push_back(button);
+  m_active_buttons_val.push_back(false);
+}
+
+void ChSDLInterface::GetButtonStatus(std::vector<int> &ref_idx,
+                                     std::vector<int> &ref_val) {
+  for (int i = 0; i < m_active_buttons_idx.size(); i++) {
+    m_active_buttons_val[i] =
+        SDL_JoystickGetButton(m_joystick, m_active_buttons_idx[i]);
+  }
+  ref_idx = m_active_buttons_idx;
+  ref_val = m_active_buttons_val;
+}
+
 int ChSDLInterface::Synchronize() {
   if (SDL_QuitRequested()) {
     return 1;
