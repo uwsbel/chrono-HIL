@@ -45,13 +45,13 @@ using namespace chrono::sensor;
 
 int main(int argc, char *argv[]) {
 
-  // Create a ChronoENGINE physical system
+  // Create a physical system
   ChSystemSMC sys;
   std::vector<std::shared_ptr<Ch_8DOF_vehicle>> rom_vec; // rom vehicle vector
   std::vector<std::shared_ptr<ChROM_PathFollowerDriver>>
       driver_vec; // rom driver vector
   std::vector<std::shared_ptr<ChROM_IDMFollower>> idm_vec;
-  int num_rom = 20;
+  int num_rom = 25;
 
   // Create the terrain
   RigidTerrain terrain(&sys);
@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
         chrono_types::make_shared<Ch_8DOF_vehicle>(hmmwv_rom_json, 0.45);
 
     // determine initial position and initial orientation
-    float deg_sec = (CH_C_PI * 1.6) / num_rom;
+    float deg_sec = (CH_C_PI * 1.2) / num_rom;
     ChVector<> initLoc =
         ChVector<>(50.0 * cos(deg_sec * i), 50.0 * sin(deg_sec * i), 0.5);
     float rot_deg = deg_sec * i + CH_C_PI_2;
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
 
     std::shared_ptr<ChROM_PathFollowerDriver> driver =
         chrono_types::make_shared<ChROM_PathFollowerDriver>(
-            rom_veh, path, 8.0, 6.0, 0.2, 0.0, 0.0, 0.2, 0.0, 0.0);
+            rom_vec[i], path, 8.0, 6.0, 0.4, 0.0, 0.0, 0.4, 0.0, 0.0);
     driver_vec.push_back(driver);
 
     // initialize idm control
@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
       params.push_back(3.5);
       params.push_back(2.5);
       params.push_back(4.0);
-      params.push_back(5.5);
+      params.push_back(5.0);
     } else if (i % 2 == 1) {
       params.push_back(8.9408);
       params.push_back(0.7);
@@ -119,10 +119,11 @@ int main(int argc, char *argv[]) {
       params.push_back(2.5);
       params.push_back(1.5);
       params.push_back(4.0);
-      params.push_back(5.5);
+      params.push_back(5.0);
     }
     std::shared_ptr<ChROM_IDMFollower> idm_controller =
-        chrono_types::make_shared<ChROM_IDMFollower>(rom_veh, driver, params);
+        chrono_types::make_shared<ChROM_IDMFollower>(rom_vec[i], driver_vec[i],
+                                                     params);
     idm_vec.push_back(idm_controller);
   }
 
@@ -192,7 +193,7 @@ int main(int argc, char *argv[]) {
 
     // get the controls for this time step
     // Driver inputs
-    DriverInputs driver_inputs;
+
     for (int i = 0; i < num_rom; i++) {
       // update idm
       int ld_idx = (i + 1) % num_rom;
@@ -211,6 +212,8 @@ int main(int argc, char *argv[]) {
       float act_dis = theta * 50.f;
       idm_vec[i]->Synchronize(time, step_size, act_dis,
                               (rom_vec[ld_idx]->GetVel()).Length());
+
+      DriverInputs driver_inputs;
       driver_inputs = driver_vec[i]->GetDriverInput();
       rom_vec[i]->Advance(time, driver_inputs);
     }
@@ -221,8 +224,8 @@ int main(int argc, char *argv[]) {
     sys.DoStepDynamics(step_size);
     manager->Update();
 
-    realtime_timer.Spin(time);
-    std::cout << "t:" << time << std::endl;
+    // enforce soft real time if needed
+    // realtime_timer.Spin(time);
   }
   return 0;
 }

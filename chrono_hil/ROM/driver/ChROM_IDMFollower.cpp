@@ -17,6 +17,7 @@ void ChROM_IDMFollower::Synchronize(double time, double step,
   // [miles], end [miles], v0 desired v [m/s], T desired time headway [s],
   // desired space headway [m], a: accel reate a [m/s^2], b: comfort decel
   // [m/s^2], delta: accel exponent
+
   dist += (m_rom->GetPos() - previousPos).Length();
   previousPos = m_rom->GetPos();
 

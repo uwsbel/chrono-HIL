@@ -63,30 +63,8 @@ using namespace chrono::hil;
 ChVector<> initLoc(-91.788, 98.647, 0.4);
 ChQuaternion<> initRot(1, 0, 0, 0);
 
-// Visualization type for vehicle parts (PRIMITIVES, MESH, or NONE)
-VisualizationType chassis_vis_type = VisualizationType::MESH;
-VisualizationType suspension_vis_type = VisualizationType::PRIMITIVES;
-VisualizationType steering_vis_type = VisualizationType::PRIMITIVES;
-VisualizationType wheel_vis_type = VisualizationType::MESH;
-VisualizationType tire_vis_type = VisualizationType::MESH;
-
-// Collision type for chassis (PRIMITIVES, MESH, or NONE)
-CollisionType chassis_collision_type = CollisionType::NONE;
-
-// Type of tire model (RIGID, TMEASY, PAC02)
-TireModelType tire_model = TireModelType::TMEASY;
-
-// Rigid terrain
-double terrainHeight = 0;     // terrain height (FLAT terrain only)
-double terrainLength = 100.0; // size in X direction
-double terrainWidth = 100.0;  // size in Y direction
-
-// Point on chassis tracked by the camera
-ChVector<> trackPoint(0.0, 0.0, 1.75);
-
 // Contact method
 ChContactMethod contact_method = ChContactMethod::SMC;
-bool contact_vis = false;
 
 // Simulation step sizes
 double step_size = 1e-3;
@@ -95,19 +73,9 @@ double tire_step_size = 1e-5;
 // Simulation end time
 double t_end = 1000;
 
-// Time interval between two render frames
-double render_step_size = 1.0 / 50; // FPS = 50
-
-// Output directories
-const std::string out_dir = GetChronoOutputPath() + "Sedan";
-const std::string pov_dir = out_dir + "/POVRAY";
-
 // Debug logging
 bool debug_output = false;
 double debug_step_size = 1.0 / 1; // FPS = 1
-
-// POV-Ray output
-bool povray_output = false;
 
 // Driving mode
 int driver_mode = 0; // 0 for human driven, 1 for self drive
@@ -149,7 +117,7 @@ int main(int argc, char *argv[]) {
     for (auto &wheel : axle->GetWheels()) {
       auto tire = ReadTireJSON(tire_filename);
       tire->SetStepsize(tire_step_size);
-      my_vehicle.InitializeTire(tire, wheel, tire_vis_type);
+      my_vehicle.InitializeTire(tire, wheel, VisualizationType::MESH);
     }
   }
 
@@ -169,7 +137,6 @@ int main(int argc, char *argv[]) {
 
   std::shared_ptr<RigidTerrain::Patch> patch;
 
-  // patch = terrain.AddPatch(patch_mat, CSYSNORM, terrainLength, terrainWidth);
   patch = terrain.AddPatch(patch_mat, CSYSNORM,
                            std::string(STRINGIFY(HIL_DATA_DIR)) +
                                "/Environments/nads/newnads/terrain.obj");
@@ -198,25 +165,6 @@ int main(int argc, char *argv[]) {
   terrain_body->SetCollide(false);
   my_vehicle.GetSystem()->Add(terrain_body);
 
-  // -----------------
-  // Initialize output
-  // -----------------
-
-  if (!filesystem::create_directory(filesystem::path(out_dir))) {
-    std::cout << "Error creating directory " << out_dir << std::endl;
-    return 1;
-  }
-  if (povray_output) {
-    if (!filesystem::create_directory(filesystem::path(pov_dir))) {
-      std::cout << "Error creating directory " << pov_dir << std::endl;
-      return 1;
-    }
-    terrain.ExportMeshPovray(out_dir);
-  }
-
-  std::string driver_file = out_dir + "/driver_inputs.txt";
-  utils::CSV_writer driver_csv(" ");
-
   // ------------------------
   // Create the driver system
   // ------------------------
@@ -243,13 +191,8 @@ int main(int argc, char *argv[]) {
   // ---------------
   std::cout << "\nVehicle mass: " << my_vehicle.GetMass() << std::endl;
 
-  // Number of simulation steps between miscellaneous events
-  int render_steps = (int)std::ceil(render_step_size / step_size);
-  int debug_steps = (int)std::ceil(debug_step_size / step_size);
-
   // Initialize simulation frame counters
   int step_number = 0;
-  int render_frame = 0;
 
   // Create the camera sensor
   auto manager =
@@ -304,19 +247,6 @@ int main(int argc, char *argv[]) {
     // End simulation
     if (time >= t_end)
       break;
-
-    // Render scene and output POV-Ray data
-    if (step_number % render_steps == 0) {
-
-      if (povray_output) {
-        char filename[100];
-        sprintf(filename, "%s/data_%03d.dat", pov_dir.c_str(),
-                render_frame + 1);
-        utils::WriteVisualizationAssets(my_vehicle.GetSystem(), filename);
-      }
-
-      render_frame++;
-    }
 
     // Get driver inputs
     DriverInputs driver_inputs;

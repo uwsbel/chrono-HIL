@@ -8,7 +8,7 @@
 #define MS_TO_MPH 2.23694
 #define MPH_TO_MS 0.44704
 #define AUDI_LENGTH 4.86
-#define SUV_LENGTH 5.86
+#define SUV_LENGTH 5.56
 #define M_TO_MILE 0.000621371
 #define MILE_TO_M 1609.34449789
 namespace chrono {

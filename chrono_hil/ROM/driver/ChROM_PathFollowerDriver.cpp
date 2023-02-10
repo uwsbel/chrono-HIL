@@ -15,7 +15,7 @@ ChROM_PathFollowerDriver::ChROM_PathFollowerDriver(
   // speed PID controller parameter
   m_sp_kp = PID_sp_kp;
   m_sp_ki = PID_sp_ki;
-  m_st_kd = PID_sp_kd;
+  m_sp_kd = PID_sp_kd;
 
   m_curve = curve;
   m_rom = rom;
@@ -63,6 +63,7 @@ void ChROM_PathFollowerDriver::Advance(float time_step) {
   float cur_speed = cur_vel.Length();
 
   double sp_err = m_target_speed - cur_speed;
+  // std::cout << "sp_err:" << sp_err << std::endl;
 
   m_sp_err_d = (sp_err - m_sp_err) / time_step;
 
@@ -72,6 +73,7 @@ void ChROM_PathFollowerDriver::Advance(float time_step) {
 
   double sp_res =
       m_sp_kp * m_sp_err + m_sp_ki * m_sp_err_i + m_sp_kd * m_sp_err_d;
+  // std::cout << "sp_res:" << sp_res << std::endl;
 
   if (sp_res < 0) {
     double temp = abs(sp_res);
