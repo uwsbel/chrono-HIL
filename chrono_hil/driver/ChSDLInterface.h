@@ -67,7 +67,7 @@ public:
 
   float GetSteering();
 
-  int Synchronize();
+  int Synchronize(); // Synchronize function to detect exit signal
 
 private:
   SDL_Joystick *m_joystick;

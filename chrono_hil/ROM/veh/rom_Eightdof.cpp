@@ -1,3 +1,22 @@
+// =============================================================================
+// PROJECT CHRONO - http://projectchrono.org
+//
+// Copyright (c) 2014 projectchrono.org
+// All rights reserved.
+//
+// Use of this source code is governed by a BSD-style license that can be found
+// in the LICENSE file at the top level of the distribution and at
+// http://projectchrono.org/license-chrono.txt.
+//
+// =============================================================================
+// Authors: Huzaifa Mustafa Unjhawala, Jason Zhou
+// =============================================================================
+//
+// The 8dof vehicle model base class
+// The class includes 8dof vehicle dynamics computation
+//
+// =============================================================================
+
 #include "rom_Eightdof.h"
 
 using namespace chrono;

@@ -9,7 +9,7 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-//
+// This is a stream-based input driver interface based on boost UDP networking
 // =============================================================================
 
 #include "ChBoostStreamInterface.h"

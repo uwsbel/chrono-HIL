@@ -9,7 +9,7 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Radu Serban, Justin Madsen, Conlain Kelly, Aaron Young
+// Authors: Radu Serban, Justin Madsen, Conlain Kelly, Aaron Young, Jason Zhou
 // =============================================================================
 //
 // Interactive driver for a vehicle. This class implements the

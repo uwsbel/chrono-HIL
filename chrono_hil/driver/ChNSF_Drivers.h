@@ -9,7 +9,7 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Simone Benatti
+// Authors: Jason Zhou
 // =============================================================================
 //
 // Custom drivers for the NSF project.

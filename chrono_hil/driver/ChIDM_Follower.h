@@ -9,13 +9,12 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Simone Benatti
+// Authors: Simone Benatti, Jason Zhou
 // =============================================================================
 //
-// Custom drivers for the NSF project.
-// Both are specialization of ChPathFollowerDriver
-// The leader will adjust its behavior depending on the traveled distance
-// The follower will adjust the speed to reach a target gap with the leader
+// This is an IDM follower driver designed to not to accept a vehicle as an
+// argument
+// The driver definition is Intelligence Driver Model (IDM)
 //
 // =============================================================================
 
