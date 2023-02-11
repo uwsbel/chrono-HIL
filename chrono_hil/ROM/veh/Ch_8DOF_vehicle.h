@@ -60,6 +60,7 @@ private:
 
   std::string vehicle_dyn_json;
   std::string tire_json;
+  std::string engine_json;
 
   std::string chassis_mesh;
   std::string wheel_mesh;

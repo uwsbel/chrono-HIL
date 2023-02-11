@@ -37,6 +37,8 @@ Ch_8DOF_vehicle::Ch_8DOF_vehicle(std::string rom_json, float z_plane) {
       std::string(STRINGIFY(HIL_DATA_DIR)) + d["Dynamic_File"].GetString();
 
   tire_json = std::string(STRINGIFY(HIL_DATA_DIR)) + d["Tire_File"].GetString();
+  engine_json =
+      std::string(STRINGIFY(HIL_DATA_DIR)) + d["Engine_File"].GetString();
 
   chassis_mesh =
       std::string(STRINGIFY(HIL_DATA_DIR)) + d["Chassis_Mesh"].GetString();
@@ -59,6 +61,8 @@ Ch_8DOF_vehicle::Ch_8DOF_vehicle(std::string rom_json, float z_plane) {
 
   // Set vehicle parameters from JSON file
   setVehParamsJSON(veh1_param, vehicle_dyn_json);
+  setEngParamsJSON(veh1_param, engine_json);
+
   vehInit(veh1_st, veh1_param);
 
   // set the tire parameters from a JSON file
@@ -105,12 +109,12 @@ void Ch_8DOF_vehicle::Advance(float time, DriverInputs inputs) {
                      veh1_param, controls);
 
   // copy the useful stuff that needs to be passed onto the vehicle
-  std::vector<double> fx = {tirelf_st._fx, tirerf_st._fx, tirelr_st._fx,
-                            tirerr_st._fx};
-  std::vector<double> fy = {tirelf_st._fy, tirerf_st._fy, tirelr_st._fy,
-                            tirerr_st._fy};
-  double huf = tirelf_st._rStat;
-  double hur = tirerr_st._rStat;
+  std::vector<double> fx = {tirelf_st.m_fx, tirerf_st.m_fx, tirelr_st.m_fx,
+                            tirerr_st.m_fx};
+  std::vector<double> fy = {tirelf_st.m_fy, tirerf_st.m_fy, tirelr_st.m_fy,
+                            tirerr_st.m_fy};
+  double huf = tirelf_st.m_rStat;
+  double hur = tirerr_st.m_rStat;
 
   vehAdv(veh1_st, veh1_param, fx, fy, huf, hur);
 
@@ -134,15 +138,15 @@ void Ch_8DOF_vehicle::Advance(float time, DriverInputs inputs) {
 
   // front tire - 2 - steer rotation
   ChQuaternion<> temp = ChQuaternion<>(1, 0, 0, 0);
-  temp.Q_from_AngZ(inputs.m_steering * veh1_param._maxSteer);
+  temp.Q_from_AngZ(inputs.m_steering * veh1_param.m_maxSteer);
   f_steer_rot = f_steer_rot * temp;
 
   // front tire - 3 - take into tire rotation
   temp = ChQuaternion<>(1, 0, 0, 0);
   temp.Q_from_AngY(prev_tire_rotation +
-                   veh1_param._step * (tirelf_st._omega / 180.f * C_PI));
-  prev_tire_rotation =
-      prev_tire_rotation + veh1_param._step * (tirelf_st._omega / 180.f * C_PI);
+                   veh1_param.m_step * (tirelf_st.m_omega / 180.f * C_PI));
+  prev_tire_rotation = prev_tire_rotation +
+                       veh1_param.m_step * (tirelf_st.m_omega / 180.f * C_PI);
   if (prev_tire_rotation > C_2PI) {
     prev_tire_rotation = 0.f;
   }
@@ -152,11 +156,11 @@ void Ch_8DOF_vehicle::Advance(float time, DriverInputs inputs) {
   ChQuaternion<> r_steer_rot = chassis_body_fr.GetRot();
   temp = ChQuaternion<>(1, 0, 0, 0);
   temp.Q_from_AngY(prev_tire_rotation +
-                   veh1_param._step * (tirelf_st._omega / 180.f * C_PI));
+                   veh1_param.m_step * (tirelf_st.m_omega / 180.f * C_PI));
   r_steer_rot = r_steer_rot * temp;
 
-  prev_tire_rotation =
-      prev_tire_rotation + veh1_param._step * (tirelf_st._omega / 180.f * C_PI);
+  prev_tire_rotation = prev_tire_rotation +
+                       veh1_param.m_step * (tirelf_st.m_omega / 180.f * C_PI);
   if (prev_tire_rotation > C_2PI) {
     prev_tire_rotation = 0.f;
   }
@@ -250,28 +254,28 @@ void Ch_8DOF_vehicle::InitializeVisualization(std::string chassis_obj_path,
 }
 
 ChVector<> Ch_8DOF_vehicle::GetPos() {
-  return ChVector<>(veh1_st._x, veh1_st._y, rom_z_plane);
+  return ChVector<>(veh1_st.m_x, veh1_st.m_y, rom_z_plane);
 }
 
 ChQuaternion<> Ch_8DOF_vehicle::GetRot() {
   ChQuaternion ret_rot = ChQuaternion<>(1, 0, 0, 0);
-  ret_rot.Q_from_Euler123(ChVector<>(veh1_st._phi, 0, veh1_st._psi));
+  ret_rot.Q_from_Euler123(ChVector<>(veh1_st.m_phi, 0, veh1_st.m_psi));
   return ret_rot;
 }
 
 ChVector<> Ch_8DOF_vehicle::GetVel() {
-  return ChVector<>(veh1_st._u, veh1_st._v, 0.0);
+  return ChVector<>(veh1_st.m_u, veh1_st.m_v, 0.0);
 }
 
-float Ch_8DOF_vehicle::GetStepSize() { return veh1_param._step; }
+float Ch_8DOF_vehicle::GetStepSize() { return veh1_param.m_step; }
 
 std::shared_ptr<ChBodyAuxRef> Ch_8DOF_vehicle::GetChassisBody() {
   return chassis_body;
 }
 
 void Ch_8DOF_vehicle::SetInitPos(ChVector<> init_pos) {
-  veh1_st._x = init_pos.x();
-  veh1_st._y = init_pos.y();
+  veh1_st.m_x = init_pos.x();
+  veh1_st.m_y = init_pos.y();
 }
 
-void Ch_8DOF_vehicle::SetInitRot(float yaw) { veh1_st._psi = yaw; }
+void Ch_8DOF_vehicle::SetInitRot(float yaw) { veh1_st.m_psi = yaw; }

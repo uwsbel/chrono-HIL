@@ -22,6 +22,8 @@
 using namespace chrono;
 using namespace chrono::vehicle;
 
+const double rpm2rads = CH_C_PI / 30;
+
 /*
 Code for the Eight dof model implemented in cpp
 */
@@ -29,33 +31,33 @@ Code for the Eight dof model implemented in cpp
 // sets the vertical forces based on the vehicle weight
 void vehInit(VehicleState &v_state, const VehicleParam &v_param) {
   double weight_split =
-      ((v_param._m * G * v_param._b) / (2 * (v_param._a + v_param._b)) +
-       v_param._muf * G);
-  v_state._fzlf = v_state._fzrf = weight_split;
+      ((v_param.m_m * G * v_param.m_b) / (2 * (v_param.m_a + v_param.m_b)) +
+       v_param.m_muf * G);
+  v_state.m_fzlf = v_state.m_fzrf = weight_split;
 
   weight_split =
-      ((v_param._m * G * v_param._b) / (2 * (v_param._a + v_param._b)) +
-       v_param._mur * G);
+      ((v_param.m_m * G * v_param.m_b) / (2 * (v_param.m_a + v_param.m_b)) +
+       v_param.m_mur * G);
 
-  v_state._fzlr = v_state._fzrr = weight_split;
+  v_state.m_fzlr = v_state.m_fzrr = weight_split;
 }
 
 // returns drive toruqe at a given omega
 double driveTorque(const VehicleParam &v_params, const double throttle,
                    const double omega) {
 
-  double motor_speed = omega / v_params._gearRatio;
+  double motor_speed = omega / v_params.m_gearRatio;
   double motor_torque =
-      v_params._maxTorque -
-      (motor_speed * (v_params._maxTorque / v_params._maxSpeed));
+      v_params.m_maxTorque -
+      (motor_speed * (v_params.m_maxTorque / v_params.m_maxSpeed));
 
   motor_torque =
-      motor_torque * throttle - v_params._c1 * motor_speed - v_params._c0;
+      motor_torque * throttle - v_params.m_c1 * motor_speed - v_params.m_c0;
 
   if (motor_torque < 0) {
     motor_torque = 0;
   }
-  return motor_torque / v_params._gearRatio;
+  return motor_torque / v_params.m_gearRatio;
 }
 
 /*
@@ -77,122 +79,126 @@ void vehAdv(VehicleState &v_states, const VehicleParam &v_params,
 
   // get the total mass of the vehicle and the vertical distance from the sprung
   // mass C.M. to the vehicle
-  double mt = v_params._m + 2 * (v_params._muf + v_params._mur);
-  double hrc = (v_params._hrcf * v_params._b + v_params._hrcr * v_params._a) /
-               (v_params._a + v_params._b);
+  double mt = v_params.m_m + 2 * (v_params.m_muf + v_params.m_mur);
+  double hrc =
+      (v_params.m_hrcf * v_params.m_b + v_params.m_hrcr * v_params.m_a) /
+      (v_params.m_a + v_params.m_b);
 
   // a bunch of varaibles to simplify the formula
   double E1 =
-      -mt * v_states._wz * v_states._u + (fy[0] + fy[1] + fy[2] + fy[3]);
+      -mt * v_states.m_wz * v_states.m_u + (fy[0] + fy[1] + fy[2] + fy[3]);
 
-  double E2 = (fy[0] + fy[1]) * v_params._a - (fy[2] + fy[3]) * v_params._b +
-              (fx[1] - fx[0]) * v_params._cf / 2 +
-              (fx[3] - fx[2]) * v_params._cr / 2 +
-              (-v_params._muf * v_params._a + v_params._mur * v_params._b) *
-                  v_states._wz * v_states._u;
+  double E2 = (fy[0] + fy[1]) * v_params.m_a - (fy[2] + fy[3]) * v_params.m_b +
+              (fx[1] - fx[0]) * v_params.m_cf / 2 +
+              (fx[3] - fx[2]) * v_params.m_cr / 2 +
+              (-v_params.m_muf * v_params.m_a + v_params.m_mur * v_params.m_b) *
+                  v_states.m_wz * v_states.m_u;
 
-  double E3 = v_params._m * G * hrc * v_states._phi -
-              (v_params._krof + v_params._kror) * v_states._phi -
-              (v_params._brof + v_params._bror) * v_states._wx +
-              hrc * v_params._m * v_states._wz * v_states._u;
+  double E3 = v_params.m_m * G * hrc * v_states.m_phi -
+              (v_params.m_krof + v_params.m_kror) * v_states.m_phi -
+              (v_params.m_brof + v_params.m_bror) * v_states.m_wx +
+              hrc * v_params.m_m * v_states.m_wz * v_states.m_u;
 
-  double A1 = v_params._mur * v_params._b - v_params._muf * v_params._a;
+  double A1 = v_params.m_mur * v_params.m_b - v_params.m_muf * v_params.m_a;
 
-  double A2 = v_params._jx + v_params._m * std::pow(hrc, 2);
+  double A2 = v_params.m_jx + v_params.m_m * std::pow(hrc, 2);
 
-  double A3 = hrc * v_params._m;
+  double A3 = hrc * v_params.m_m;
 
   // Integration using half implicit - level 2 variables found first in next
   // time step
 
   // update the acceleration states - level 2 variables
 
-  v_states._udot =
-      v_states._wz * v_states._v +
-      (1 / mt) * ((fx[0] + fx[1] + fx[2] + fx[3]) +
-                  (-v_params._mur * v_params._b + v_params._muf * v_params._a) *
-                      std::pow(v_states._wz, 2) -
-                  2. * hrc * v_params._m * v_states._wz * v_states._wx);
+  v_states.m_udot =
+      v_states.m_wz * v_states.m_v +
+      (1 / mt) *
+          ((fx[0] + fx[1] + fx[2] + fx[3]) +
+           (-v_params.m_mur * v_params.m_b + v_params.m_muf * v_params.m_a) *
+               std::pow(v_states.m_wz, 2) -
+           2. * hrc * v_params.m_m * v_states.m_wz * v_states.m_wx);
 
   // common denominator
-  double denom = (A2 * std::pow(A1, 2) - 2. * A1 * A3 * v_params._jxz +
-                  v_params._jz * std::pow(A3, 2) +
-                  mt * std::pow(v_params._jxz, 2) - A2 * v_params._jz * mt);
+  double denom = (A2 * std::pow(A1, 2) - 2. * A1 * A3 * v_params.m_jxz +
+                  v_params.m_jz * std::pow(A3, 2) +
+                  mt * std::pow(v_params.m_jxz, 2) - A2 * v_params.m_jz * mt);
 
-  v_states._vdot = (E1 * std::pow(v_params._jxz, 2) - A1 * A2 * E2 +
-                    A1 * E3 * v_params._jxz + A3 * E2 * v_params._jxz -
-                    A2 * E1 * v_params._jz - A3 * E3 * v_params._jz) /
-                   denom;
-
-  v_states._wxdot = (std::pow(A1, 2) * E3 - A1 * A3 * E2 +
-                     A1 * E1 * v_params._jxz - A3 * E1 * v_params._jz +
-                     E2 * v_params._jxz * mt - E3 * v_params._jz * mt) /
+  v_states.m_vdot = (E1 * std::pow(v_params.m_jxz, 2) - A1 * A2 * E2 +
+                     A1 * E3 * v_params.m_jxz + A3 * E2 * v_params.m_jxz -
+                     A2 * E1 * v_params.m_jz - A3 * E3 * v_params.m_jz) /
                     denom;
 
-  v_states._wzdot =
+  v_states.m_wxdot = (std::pow(A1, 2) * E3 - A1 * A3 * E2 +
+                      A1 * E1 * v_params.m_jxz - A3 * E1 * v_params.m_jz +
+                      E2 * v_params.m_jxz * mt - E3 * v_params.m_jz * mt) /
+                     denom;
+
+  v_states.m_wzdot =
       (std::pow(A3, 2) * E2 - A1 * A2 * E1 - A1 * A3 * E3 +
-       A3 * E1 * v_params._jxz - A2 * E2 * mt + E3 * v_params._jxz * mt) /
+       A3 * E1 * v_params.m_jxz - A2 * E2 * mt + E3 * v_params.m_jxz * mt) /
       denom;
 
   // update the level 1 varaibles using the next time step level 2 variable
-  v_states._u = v_states._u + v_params._step * v_states._udot;
-  v_states._v = v_states._v + v_params._step * v_states._vdot;
-  v_states._wx = v_states._wx + v_params._step * v_states._wxdot;
-  v_states._wz = v_states._wz + v_params._step * v_states._wzdot;
+  v_states.m_u = v_states.m_u + v_params.m_step * v_states.m_udot;
+  v_states.m_v = v_states.m_v + v_params.m_step * v_states.m_vdot;
+  v_states.m_wx = v_states.m_wx + v_params.m_step * v_states.m_wxdot;
+  v_states.m_wz = v_states.m_wz + v_params.m_step * v_states.m_wzdot;
 
   // update the level 0 varaibles using the next time step level 1 varibales
   // over here still using the old psi and phi.. should we update psi and phi
   // first and then use those????
 
-  v_states._x =
-      v_states._x + v_params._step * (v_states._u * std::cos(v_states._psi) -
-                                      v_states._v * std::sin(v_states._psi));
+  v_states.m_x = v_states.m_x +
+                 v_params.m_step * (v_states.m_u * std::cos(v_states.m_psi) -
+                                    v_states.m_v * std::sin(v_states.m_psi));
 
-  v_states._y =
-      v_states._y + v_params._step * (v_states._u * std::sin(v_states._psi) +
-                                      v_states._v * std::cos(v_states._psi));
+  v_states.m_y = v_states.m_y +
+                 v_params.m_step * (v_states.m_u * std::sin(v_states.m_psi) +
+                                    v_states.m_v * std::cos(v_states.m_psi));
 
-  v_states._psi = v_states._psi + v_params._step * v_states._wz;
-  v_states._phi = v_states._phi + v_params._step * v_states._wx;
+  v_states.m_psi = v_states.m_psi + v_params.m_step * v_states.m_wz;
+  v_states.m_phi = v_states.m_phi + v_params.m_step * v_states.m_wx;
 
   // update the vertical forces
   // sketchy load transfer technique
 
   double Z1 =
-      (v_params._m * G * v_params._b) / (2. * (v_params._a + v_params._b)) +
-      (v_params._muf * G) / 2.;
+      (v_params.m_m * G * v_params.m_b) / (2. * (v_params.m_a + v_params.m_b)) +
+      (v_params.m_muf * G) / 2.;
 
-  double Z2 = ((v_params._muf * huf) / v_params._cf +
-               v_params._m * v_params._b * (v_params._h - v_params._hrcf) /
-                   (v_params._cf * (v_params._a + v_params._b))) *
-              (v_states._vdot + v_states._wz * v_states._u);
+  double Z2 = ((v_params.m_muf * huf) / v_params.m_cf +
+               v_params.m_m * v_params.m_b * (v_params.m_h - v_params.m_hrcf) /
+                   (v_params.m_cf * (v_params.m_a + v_params.m_b))) *
+              (v_states.m_vdot + v_states.m_wz * v_states.m_u);
 
-  double Z3 = (v_params._krof * v_states._phi + v_params._brof * v_states._wx) /
-              v_params._cf;
+  double Z3 =
+      (v_params.m_krof * v_states.m_phi + v_params.m_brof * v_states.m_wx) /
+      v_params.m_cf;
 
-  double Z4 =
-      ((v_params._m * v_params._h + v_params._muf * huf + v_params._mur * hur) *
-       (v_states._udot - v_states._wz * v_states._v)) /
-      (2. * (v_params._a + v_params._b));
+  double Z4 = ((v_params.m_m * v_params.m_h + v_params.m_muf * huf +
+                v_params.m_mur * hur) *
+               (v_states.m_udot - v_states.m_wz * v_states.m_v)) /
+              (2. * (v_params.m_a + v_params.m_b));
 
   // evaluate the vertical forces for front
-  v_states._fzlf = (Z1 - Z2 - Z3 - Z4) > 0. ? (Z1 - Z2 - Z3 - Z4) : 0.;
-  v_states._fzrf = (Z1 + Z2 + Z3 - Z4) > 0. ? (Z1 + Z2 + Z3 - Z4) : 0.;
+  v_states.m_fzlf = (Z1 - Z2 - Z3 - Z4) > 0. ? (Z1 - Z2 - Z3 - Z4) : 0.;
+  v_states.m_fzrf = (Z1 + Z2 + Z3 - Z4) > 0. ? (Z1 + Z2 + Z3 - Z4) : 0.;
 
-  Z1 = (v_params._m * G * v_params._a) / (2. * (v_params._a + v_params._b)) +
-       (v_params._mur * G) / 2.;
+  Z1 =
+      (v_params.m_m * G * v_params.m_a) / (2. * (v_params.m_a + v_params.m_b)) +
+      (v_params.m_mur * G) / 2.;
 
-  Z2 = ((v_params._mur * hur) / v_params._cr +
-        v_params._m * v_params._a * (v_params._h - v_params._hrcr) /
-            (v_params._cr * (v_params._a + v_params._b))) *
-       (v_states._vdot + v_states._wz * v_states._u);
+  Z2 = ((v_params.m_mur * hur) / v_params.m_cr +
+        v_params.m_m * v_params.m_a * (v_params.m_h - v_params.m_hrcr) /
+            (v_params.m_cr * (v_params.m_a + v_params.m_b))) *
+       (v_states.m_vdot + v_states.m_wz * v_states.m_u);
 
-  Z3 = (v_params._kror * v_states._phi + v_params._bror * v_states._wx) /
-       v_params._cr;
+  Z3 = (v_params.m_kror * v_states.m_phi + v_params.m_bror * v_states.m_wx) /
+       v_params.m_cr;
 
   // evaluate vertical forces for the rear
-  v_states._fzlr = (Z1 - Z2 - Z3 + Z4) > 0. ? (Z1 - Z2 - Z3 + Z4) : 0.;
-  v_states._fzrr = (Z1 + Z2 + Z3 + Z4) > 0. ? (Z1 + Z2 + Z3 + Z4) : 0.;
+  v_states.m_fzlr = (Z1 - Z2 - Z3 + Z4) > 0. ? (Z1 - Z2 - Z3 + Z4) : 0.;
+  v_states.m_fzrr = (Z1 + Z2 + Z3 + Z4) > 0. ? (Z1 + Z2 + Z3 + Z4) : 0.;
 }
 
 void vehToTireTransform(TMeasyState &tirelf_st, TMeasyState &tirerf_st,
@@ -203,33 +209,33 @@ void vehToTireTransform(TMeasyState &tirelf_st, TMeasyState &tirerf_st,
 
   // get the controls and time out
   double t = controls[0];
-  double delta = controls[1] * v_params._maxSteer;
+  double delta = controls[1] * v_params.m_maxSteer;
   double throttle = controls[2];
   double brake = controls[3];
 
   // left front
-  tirelf_st._fz = v_states._fzlf;
-  tirelf_st._vsy = v_states._v + v_states._wz * v_params._a;
-  tirelf_st._vsx =
-      (v_states._u - (v_states._wz * v_params._cf) / 2.) * std::cos(delta) +
-      tirelf_st._vsy * std::sin(delta);
+  tirelf_st.m_fz = v_states.m_fzlf;
+  tirelf_st.m_vsy = v_states.m_v + v_states.m_wz * v_params.m_a;
+  tirelf_st.m_vsx =
+      (v_states.m_u - (v_states.m_wz * v_params.m_cf) / 2.) * std::cos(delta) +
+      tirelf_st.m_vsy * std::sin(delta);
 
   // right front
-  tirerf_st._fz = v_states._fzrf;
-  tirerf_st._vsy = v_states._v + v_states._wz * v_params._a;
-  tirerf_st._vsx =
-      (v_states._u + (v_states._wz * v_params._cf) / 2.) * std::cos(delta) +
-      tirerf_st._vsy * std::sin(delta);
+  tirerf_st.m_fz = v_states.m_fzrf;
+  tirerf_st.m_vsy = v_states.m_v + v_states.m_wz * v_params.m_a;
+  tirerf_st.m_vsx =
+      (v_states.m_u + (v_states.m_wz * v_params.m_cf) / 2.) * std::cos(delta) +
+      tirerf_st.m_vsy * std::sin(delta);
 
   // left rear - No steer
-  tirelr_st._fz = v_states._fzlr;
-  tirelr_st._vsy = v_states._v - v_states._wz * v_params._b;
-  tirelr_st._vsx = v_states._u - (v_states._wz * v_params._cr) / 2.;
+  tirelr_st.m_fz = v_states.m_fzlr;
+  tirelr_st.m_vsy = v_states.m_v - v_states.m_wz * v_params.m_b;
+  tirelr_st.m_vsx = v_states.m_u - (v_states.m_wz * v_params.m_cr) / 2.;
 
   // rigth rear - No steer
-  tirerr_st._fz = v_states._fzrr;
-  tirerr_st._vsy = v_states._v - v_states._wz * v_params._b;
-  tirerr_st._vsx = v_states._u + (v_states._wz * v_params._cr) / 2.;
+  tirerr_st.m_fz = v_states.m_fzrr;
+  tirerr_st.m_vsy = v_states.m_v - v_states.m_wz * v_params.m_b;
+  tirerr_st.m_vsx = v_states.m_u + (v_states.m_wz * v_params.m_cr) / 2.;
 }
 
 void tireToVehTransform(TMeasyState &tirelf_st, TMeasyState &tirerf_st,
@@ -240,23 +246,23 @@ void tireToVehTransform(TMeasyState &tirelf_st, TMeasyState &tirerf_st,
 
   // get the controls and time out
   double t = controls[0];
-  double delta = controls[1] * v_params._maxSteer;
+  double delta = controls[1] * v_params.m_maxSteer;
   double throttle = controls[2];
   double brake = controls[3];
 
-  double _fx, _fy;
+  double m_fx, m_fy;
 
   // left front
-  _fx = tirelf_st._fx * std::cos(delta) - tirelf_st._fy * std::sin(delta);
-  _fy = tirelf_st._fx * std::sin(delta) + tirelf_st._fy * std::cos(delta);
-  tirelf_st._fx = _fx;
-  tirelf_st._fy = _fy;
+  m_fx = tirelf_st.m_fx * std::cos(delta) - tirelf_st.m_fy * std::sin(delta);
+  m_fy = tirelf_st.m_fx * std::sin(delta) + tirelf_st.m_fy * std::cos(delta);
+  tirelf_st.m_fx = m_fx;
+  tirelf_st.m_fy = m_fy;
 
   // right front
-  _fx = tirerf_st._fx * std::cos(delta) - tirerf_st._fy * std::sin(delta);
-  _fy = tirerf_st._fx * std::sin(delta) + tirerf_st._fy * std::cos(delta);
-  tirerf_st._fx = _fx;
-  tirerf_st._fy = _fy;
+  m_fx = tirerf_st.m_fx * std::cos(delta) - tirerf_st.m_fy * std::sin(delta);
+  m_fy = tirerf_st.m_fx * std::sin(delta) + tirerf_st.m_fy * std::cos(delta);
+  tirerf_st.m_fx = m_fx;
+  tirerf_st.m_fy = m_fy;
 
   // rear tires - No steer so no need to transform
 }
@@ -274,29 +280,80 @@ void setVehParamsJSON(VehicleParam &v_params, std::string fileName) {
   }
 
   // the file should have all these parameters defined
-  v_params._a = d["a"].GetDouble();
-  v_params._b = d["b"].GetDouble();
-  v_params._m = d["m"].GetDouble();
-  v_params._h = d["h"].GetDouble();
-  v_params._jz = d["jz"].GetDouble();
-  v_params._jx = d["jx"].GetDouble();
-  v_params._jxz = d["jxz"].GetDouble();
-  v_params._cf = d["cf"].GetDouble();
-  v_params._cr = d["cr"].GetDouble();
-  v_params._muf = d["muf"].GetDouble();
-  v_params._mur = d["mur"].GetDouble();
-  v_params._hrcf = d["hrcf"].GetDouble();
-  v_params._hrcr = d["hrcr"].GetDouble();
-  v_params._krof = d["krof"].GetDouble();
-  v_params._kror = d["kror"].GetDouble();
-  v_params._brof = d["brof"].GetDouble();
-  v_params._bror = d["bror"].GetDouble();
-  v_params._maxSteer = d["maxSteer"].GetDouble();
-  v_params._gearRatio = d["gearRatio"].GetDouble();
-  v_params._maxTorque = d["maxTorque"].GetDouble();
-  v_params._maxBrakeTorque = d["maxBrakeTorque"].GetDouble();
-  v_params._maxSpeed = d["maxSpeed"].GetDouble();
-  v_params._c1 = d["c1"].GetDouble();
-  v_params._c0 = d["c0"].GetDouble();
-  v_params._step = d["step"].GetDouble();
+  v_params.m_a = d["a"].GetDouble();
+  v_params.m_b = d["b"].GetDouble();
+  v_params.m_m = d["m"].GetDouble();
+  v_params.m_h = d["h"].GetDouble();
+  v_params.m_jz = d["jz"].GetDouble();
+  v_params.m_jx = d["jx"].GetDouble();
+  v_params.m_jxz = d["jxz"].GetDouble();
+  v_params.m_cf = d["cf"].GetDouble();
+  v_params.m_cr = d["cr"].GetDouble();
+  v_params.m_muf = d["muf"].GetDouble();
+  v_params.m_mur = d["mur"].GetDouble();
+  v_params.m_hrcf = d["hrcf"].GetDouble();
+  v_params.m_hrcr = d["hrcr"].GetDouble();
+  v_params.m_krof = d["krof"].GetDouble();
+  v_params.m_kror = d["kror"].GetDouble();
+  v_params.m_brof = d["brof"].GetDouble();
+  v_params.m_bror = d["bror"].GetDouble();
+  v_params.m_maxSteer = d["maxSteer"].GetDouble();
+  v_params.m_gearRatio = d["gearRatio"].GetDouble();
+  v_params.m_maxTorque = d["maxTorque"].GetDouble();
+  v_params.m_maxBrakeTorque = d["maxBrakeTorque"].GetDouble();
+  v_params.m_maxSpeed = d["maxSpeed"].GetDouble();
+  v_params.m_c1 = d["c1"].GetDouble();
+  v_params.m_c0 = d["c0"].GetDouble();
+  v_params.m_step = d["step"].GetDouble();
+}
+
+// setting vehicle's engine parameters using a JSON file
+void setEngParamsJSON(VehicleParam &v_params, std::string fileName) {
+
+  // parse the stream into DOM tree
+  rapidjson::Document d;
+  vehicle::ReadFileJSON(fileName, d);
+
+  // check JSON file is valid
+  if (d.HasParseError()) {
+    std::cout << "Error with rapidjson:" << std::endl
+              << d.GetParseError() << std::endl;
+  }
+
+  // assigning full throttle map data
+  assert(d["Map Full Throttle"].IsArray());
+  for (unsigned int i = 0; i < d["Map Full Throttle"].Size(); i++) {
+    v_params.map_f.AddPoint(d["Map Full Throttle"][i][0u].GetDouble() *
+                                rpm2rads,
+                            d["Map Full Throttle"][i][1u].GetDouble());
+  }
+
+  // assigning zero throttle map data
+  assert(d["Map Zero Throttle"].IsArray());
+  for (unsigned int i = 0; i < d["Map Zero Throttle"].Size(); i++) {
+    v_params.map_0.AddPoint(d["Map Zero Throttle"][i][0u].GetDouble() *
+                                rpm2rads,
+                            d["Map Zero Throttle"][i][1u].GetDouble());
+  }
+
+  // assigning reverse gear ratio
+  assert(d["Reverse Gear Ratio"].IsFloat());
+  v_params.m_rev_gear_ratio = d["Reverse Gear Ratio"].GetFloat();
+
+  // assigning max rpm
+  assert(d["Maximal Engine Speed RPM"].IsFloat());
+  v_params.m_max_rpm = d["Maximal Engine Speed RPM"].IsFloat();
+
+  // assigning forward gear ratio
+  assert(d["Forward Gear Ratios"].IsArray());
+  for (unsigned int i = 0; i < d["Forward Gear Ratios"].Size(); i++) {
+    v_params.m_fwd_gear_ratio.push_back(d["Forward Gear Ratios"][i].GetFloat());
+  }
+
+  assert(d["Shift Points Map RPM"].IsArray());
+  for (unsigned int i = 0; i < d["Shift Points Map RPM"].Size(); i++) {
+    v_params.m_shift_points.push_back(std::make_pair<double, double>(
+        rpm2rads * d["Shift Points Map RPM"][i][0u].GetDouble(),
+        rpm2rads * d["Shift Points Map RPM"][i][1u].GetDouble()));
+  }
 }

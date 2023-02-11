@@ -9,7 +9,7 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Huzaifa Mustafa Unjhawala, Jason Zhou
+// Authors: Jason Zhou, Huzaifa Mustafa Unjhawala
 // =============================================================================
 //
 // The TMeasy for the 8dof vehicle model
@@ -32,16 +32,16 @@ struct TMeasyParam {
 
   // constructor that takes default values of HMMWV
   TMeasyParam()
-      : _jw(6.69), _rr(0.015), _mu(0.8), _r0(0.4699), _pn(8562.8266),
-        _pnmax(29969.893), _cx(185004.42), _cy(164448.37), _kt(411121.0),
-        _dx(3700.), _dy(3488.), _rdyncoPn(0.375), _rdyncoP2n(0.75),
-        _fzRdynco(0), _rdyncoCrit(0), _dfx0Pn(151447.29), _dfx0P2n(236412.79),
-        _fxmPn(7575.3614), _fxmP2n(12808.276), _fxsPn(4657.9208),
-        _fxsP2n(8625.3352), _sxmPn(0.12), _sxmP2n(0.15), _sxsPn(0.9),
-        _sxsP2n(0.95), _dfy0Pn(50931.693), _dfy0P2n(94293.847),
-        _fymPn(6615.0404), _fymP2n(12509.947), _fysPn(6091.5092),
-        _fysP2n(11443.875), _symPn(0.38786), _symP2n(0.38786), _sysPn(0.82534),
-        _sysP2n(0.91309), _step(1e-2) {}
+      : m_jw(6.69), m_rr(0.015), m_mu(0.8), m_r0(0.4699), m_pn(8562.8266),
+        m_pnmax(29969.893), m_cx(185004.42), m_cy(164448.37), m_kt(411121.0),
+        m_dx(3700.), m_dy(3488.), m_rdyncoPn(0.375), m_rdyncoP2n(0.75),
+        m_fzRdynco(0), m_rdyncoCrit(0), m_dfx0Pn(151447.29),
+        m_dfx0P2n(236412.79), m_fxmPn(7575.3614), m_fxmP2n(12808.276),
+        m_fxsPn(4657.9208), m_fxsP2n(8625.3352), m_sxmPn(0.12), m_sxmP2n(0.15),
+        m_sxsPn(0.9), m_sxsP2n(0.95), m_dfy0Pn(50931.693), m_dfy0P2n(94293.847),
+        m_fymPn(6615.0404), m_fymP2n(12509.947), m_fysPn(6091.5092),
+        m_fysP2n(11443.875), m_symPn(0.38786), m_symP2n(0.38786),
+        m_sysPn(0.82534), m_sysP2n(0.91309), m_step(1e-2) {}
 
   // constructor that takes given values - ugly looking code - can this be
   // beutified?
@@ -54,50 +54,50 @@ struct TMeasyParam {
               double dfy0P2n, double fymPn, double fymP2n, double fysPn,
               double fysP2n, double symPn, double symP2n, double sysPn,
               double sysP2n, double step)
-      : _jw(jw), _rr(rr), _mu(mu), _r0(r0), _pn(pn), _pnmax(pnmax), _cx(cx),
-        _cy(cy), _kt(kt), _dx(dx), _dy(dy), _rdyncoPn(rdyncoPn),
-        _rdyncoP2n(rdyncoP2n), _fzRdynco(fzRdynco), _rdyncoCrit(rdyncoCrit),
-        _dfx0Pn(dfx0Pn), _dfx0P2n(dfx0P2n), _fxmPn(fxmPn), _fxmP2n(fxmP2n),
-        _fxsPn(fxsPn), _fxsP2n(fxsP2n), _sxmPn(sxmPn), _sxmP2n(sxmP2n),
-        _sxsPn(sxsPn), _sxsP2n(sxsP2n), _dfy0Pn(dfy0Pn), _dfy0P2n(dfy0P2n),
-        _fymPn(fymPn), _fymP2n(fymP2n), _fysPn(fysPn), _fysP2n(fysP2n),
-        _symPn(symPn), _symP2n(symP2n), _sysPn(sysPn), _sysP2n(sysP2n),
-        _step(step) {}
+      : m_jw(jw), m_rr(rr), m_mu(mu), m_r0(r0), m_pn(pn), m_pnmax(pnmax),
+        m_cx(cx), m_cy(cy), m_kt(kt), m_dx(dx), m_dy(dy), m_rdyncoPn(rdyncoPn),
+        m_rdyncoP2n(rdyncoP2n), m_fzRdynco(fzRdynco), m_rdyncoCrit(rdyncoCrit),
+        m_dfx0Pn(dfx0Pn), m_dfx0P2n(dfx0P2n), m_fxmPn(fxmPn), m_fxmP2n(fxmP2n),
+        m_fxsPn(fxsPn), m_fxsP2n(fxsP2n), m_sxmPn(sxmPn), m_sxmP2n(sxmP2n),
+        m_sxsPn(sxsPn), m_sxsP2n(sxsP2n), m_dfy0Pn(dfy0Pn), m_dfy0P2n(dfy0P2n),
+        m_fymPn(fymPn), m_fymP2n(fymP2n), m_fysPn(fysPn), m_fysP2n(fysP2n),
+        m_symPn(symPn), m_symP2n(symP2n), m_sysPn(sysPn), m_sysP2n(sysP2n),
+        m_step(step) {}
 
   // basic tire parameters
-  double _jw; // wheel inertia
-  double _rr; // rolling resistance of tire
-  double _mu; // friction constant
-  double _r0; // unloaded tire radius
+  double m_jw; // wheel inertia
+  double m_rr; // rolling resistance of tire
+  double m_mu; // friction constant
+  double m_r0; // unloaded tire radius
 
   // TM easy specific tire params
-  double _pn, _pnmax;   // nominal and max vertical force
-  double _cx, _cy, _kt; // longitudinal, lateral and vertical stiffness
-  double _dx,
-      _dy; // longitudinal and lateral damping coeffs. No vertical damping
+  double m_pn, m_pnmax;    // nominal and max vertical force
+  double m_cx, m_cy, m_kt; // longitudinal, lateral and vertical stiffness
+  double m_dx,
+      m_dy; // longitudinal and lateral damping coeffs. No vertical damping
 
   // TM easy force characteristic params
   // 2 values - one at nominal load and one at max load
 
   // dynamic radius weighting coefficient and a critical value for the vertical
   // force
-  double _rdyncoPn, _rdyncoP2n, _fzRdynco, _rdyncoCrit;
+  double m_rdyncoPn, m_rdyncoP2n, m_fzRdynco, m_rdyncoCrit;
 
   // Longitudinal
-  double _dfx0Pn, _dfx0P2n; // intial longitudinal slopes dFx/dsx [N]
-  double _fxmPn, _fxmP2n;   // maximum longituidnal force [N]
-  double _fxsPn, _fxsP2n;   // Longitudinal load at sliding [N]
-  double _sxmPn, _sxmP2n;   // slip sx at maximum longitudinal load Fx
-  double _sxsPn, _sxsP2n;   // slip sx where sliding begins
+  double m_dfx0Pn, m_dfx0P2n; // intial longitudinal slopes dFx/dsx [N]
+  double m_fxmPn, m_fxmP2n;   // maximum longituidnal force [N]
+  double m_fxsPn, m_fxsP2n;   // Longitudinal load at sliding [N]
+  double m_sxmPn, m_sxmP2n;   // slip sx at maximum longitudinal load Fx
+  double m_sxsPn, m_sxsP2n;   // slip sx where sliding begins
 
   // Lateral
-  double _dfy0Pn, _dfy0P2n; // intial lateral slopes dFx/dsx [N]
-  double _fymPn, _fymP2n;   // maximum lateral force [N]
-  double _fysPn, _fysP2n;   // Lateral load at sliding [N]
-  double _symPn, _symP2n;   // slip sx at maximum lateral load Fx
-  double _sysPn, _sysP2n;   // slip sx where sliding begins
+  double m_dfy0Pn, m_dfy0P2n; // intial lateral slopes dFx/dsx [N]
+  double m_fymPn, m_fymP2n;   // maximum lateral force [N]
+  double m_fysPn, m_fysP2n;   // Lateral load at sliding [N]
+  double m_symPn, m_symP2n;   // slip sx at maximum lateral load Fx
+  double m_sysPn, m_sysP2n;   // slip sx where sliding begins
 
-  double _step; // integration time step
+  double m_step; // integration time step
 };
 
 // Tm easy state structure - actual states + things that we need to keep track
@@ -105,29 +105,30 @@ struct TMeasyParam {
 struct TMeasyState {
   // default contructor to 0's
   TMeasyState()
-      : _xe(0.), _ye(0.), _xedot(0.), _yedot(0.), _omega(0.), _xt(0.),
-        _rStat(0.), _fx(0.), _fy(0.), _fz(0.), _vsx(0.), _vsy(0.) {}
+      : m_xe(0.), m_ye(0.), m_xedot(0.), m_yedot(0.), m_omega(0.), m_xt(0.),
+        m_rStat(0.), m_fx(0.), m_fy(0.), m_fz(0.), m_vsx(0.), m_vsy(0.) {}
 
   // special constructor in case we want to start the simualtion at
   // some other time step
   TMeasyState(double xe, double ye, double xedot, double yedot, double omega,
               double xt, double rStat, double fx, double fy, double fz,
               double vsx, double vsy)
-      : _xe(xe), _ye(ye), _xedot(xedot), _yedot(yedot), _omega(omega), _xt(xt),
-        _rStat(rStat), _fx(fx), _fy(fy), _fz(fz), _vsx(vsx), _vsy(vsy) {}
+      : m_xe(xe), m_ye(ye), m_xedot(xedot), m_yedot(yedot), m_omega(omega),
+        m_xt(xt), m_rStat(rStat), m_fx(fx), m_fy(fy), m_fz(fz), m_vsx(vsx),
+        m_vsy(vsy) {}
 
   // the actual state that are intgrated
-  double _xe, _ye;       // long and lat tire deflection
-  double _xedot, _yedot; // long and lat tire deflection velocity
-  double _omega;         // angular velocity of wheel
+  double m_xe, m_ye;       // long and lat tire deflection
+  double m_xedot, m_yedot; // long and lat tire deflection velocity
+  double m_omega;          // angular velocity of wheel
 
   // other "states" that we need to keep track of
-  double _xt;           // vertical tire compression
-  double _rStat;        // loaded tire radius
-  double _fx, _fy, _fz; // long, lateral and vertical force in tire frame
+  double m_xt;             // vertical tire compression
+  double m_rStat;          // loaded tire radius
+  double m_fx, m_fy, m_fz; // long, lateral and vertical force in tire frame
 
   // velocities in tire frame
-  double _vsx, _vsy;
+  double m_vsx, m_vsy;
 };
 
 // sets the vertical tire deflection based on the vehicle weight
