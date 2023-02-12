@@ -49,8 +49,7 @@ double driveTorque(const VehicleParam &v_params, VehicleState &v_state,
   v_state.m_tire_w[tire_idx] =
       omega; // update tire rotational speed info back to vehicle
 
-  double motor_speed =
-      abs(omega / v_params.m_fwd_gear_ratio[v_state.m_cur_gear]);
+  double motor_speed = v_state.m_motor_speed;
 
   double motor_torque = 0.0;
   if (throttle == 0) {
@@ -61,10 +60,8 @@ double driveTorque(const VehicleParam &v_params, VehicleState &v_state,
 
   motor_torque = motor_torque * throttle;
 
-  std::cout << "motor_speed:" << motor_speed / rpm2rads
-            << " motor_torque: " << motor_torque << std::endl;
-
-  return motor_torque / v_params.m_fwd_gear_ratio[v_state.m_cur_gear];
+  return motor_torque / v_params.m_fwd_gear_ratio[v_state.m_cur_gear] /
+         v_params.m_diffRatio / 4;
 }
 
 /*
@@ -211,13 +208,22 @@ void vehAdv(VehicleState &v_states, const VehicleParam &v_params,
   // compute the average omega
   v_states.m_motor_speed = (v_states.m_tire_w[0] + v_states.m_tire_w[1] +
                             v_states.m_tire_w[2] + v_states.m_tire_w[3]) /
-                           4.0;
-  /*
-std::cout << "1:" << v_states.m_tire_w[0] << " 2:" << v_states.m_tire_w[1]
-<< " 3:" << v_states.m_tire_w[2] << " 4:" << v_states.m_tire_w[3]
-<< "motor_speed: " << v_states.m_motor_speed / rpm2rads
-<< std::endl;
-*/
+                           4.0 /
+                           v_params.m_fwd_gear_ratio[v_states.m_cur_gear] /
+                           v_params.m_diffRatio;
+
+  // upshift or downshift gear
+  if (v_states.m_motor_speed <
+      v_params.m_shift_points[v_states.m_cur_gear].first) {
+    if (v_states.m_cur_gear > 0) {
+      v_states.m_cur_gear = v_states.m_cur_gear - 1;
+    }
+  } else if (v_states.m_motor_speed >
+             v_params.m_shift_points[v_states.m_cur_gear].second) {
+    if (v_states.m_cur_gear < v_params.m_shift_points.size() - 1) {
+      v_states.m_cur_gear = v_states.m_cur_gear + 1;
+    }
+  }
 }
 
 void vehToTireTransform(TMeasyState &tirelf_st, TMeasyState &tirerf_st,
@@ -317,7 +323,7 @@ void setVehParamsJSON(VehicleParam &v_params, std::string fileName) {
   v_params.m_brof = d["brof"].GetDouble();
   v_params.m_bror = d["bror"].GetDouble();
   v_params.m_maxSteer = d["maxSteer"].GetDouble();
-  v_params.m_gearRatio = d["gearRatio"].GetDouble();
+  v_params.m_diffRatio = d["diffRatio"].GetDouble();
   v_params.m_maxTorque = d["maxTorque"].GetDouble();
   v_params.m_maxBrakeTorque = d["maxBrakeTorque"].GetDouble();
   v_params.m_maxSpeed = d["maxSpeed"].GetDouble();

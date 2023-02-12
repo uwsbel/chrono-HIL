@@ -39,6 +39,8 @@ using namespace chrono::hil;
 using namespace chrono::vehicle;
 using namespace chrono::sensor;
 
+enum VEH_TYPE { HMMWV, PATROL };
+
 int main(int argc, char *argv[]) {
 
   // Create a ChronoENGINE physical system
@@ -46,6 +48,9 @@ int main(int argc, char *argv[]) {
 
   // Create the terrain
   RigidTerrain terrain(&sys);
+
+  // Define ROM vehicle type
+  VEH_TYPE rom_type = VEH_TYPE::PATROL;
 
   ChContactMaterialData minfo;
   minfo.mu = 0.9f;
@@ -62,6 +67,24 @@ int main(int argc, char *argv[]) {
 
   terrain.Initialize();
 
+  std::string rom_json;
+  switch (rom_type) {
+  case VEH_TYPE::HMMWV:
+    rom_json =
+        std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/hmmwv/hmmwv_rom.json";
+    break;
+  case VEH_TYPE::PATROL:
+    rom_json =
+        std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/patrol/patrol_rom.json";
+    break;
+  default:
+    return -1;
+  }
+
+  Ch_8DOF_vehicle rom_veh(rom_json, 0.45);
+
+  rom_veh.Initialize(sys);
+
   ChSDLInterface SDLDriver;
   // Set the time response for steering and throttle keyboard inputs.
 
@@ -70,13 +93,6 @@ int main(int argc, char *argv[]) {
   std::string joystick_file =
       (STRINGIFY(HIL_DATA_DIR)) + std::string("/joystick/controller_G27.json");
   SDLDriver.SetJoystickConfigFile(joystick_file);
-
-  std::string hmmwv_rom_json =
-      std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/patrol/patrol_rom.json";
-
-  Ch_8DOF_vehicle rom_veh(hmmwv_rom_json, 0.45);
-
-  rom_veh.Initialize(sys);
 
   // now lets run our simulation
   float time = 0;
@@ -106,7 +122,8 @@ int main(int argc, char *argv[]) {
     cam->SetName("Camera Sensor");
 
     cam->PushFilter(
-        chrono_types::make_shared<ChFilterVisualize>(1280, 720, "test", false));
+        chrono_types::make_shared<ChFilterVisualize>(1280, 720, "test",
+    false));
     // Provide the host access to the RGBA8 buffer
     // cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
     manager->AddSensor(cam);

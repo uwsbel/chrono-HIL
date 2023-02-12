@@ -48,7 +48,7 @@ struct VehicleParam {
         m_jx(1289.), m_jxz(3.265), m_cf(1.82), m_cr(1.82), m_muf(127.866),
         m_mur(129.98), m_hrcf(0.379), m_hrcr(0.327), m_krof(31000),
         m_kror(31000), m_brof(3300), m_bror(3300), m_maxSteer(0.6525249),
-        m_gearRatio(0.06), m_maxTorque(1000.), m_maxBrakeTorque(4000.),
+        m_diffRatio(0.06), m_maxTorque(1000.), m_maxBrakeTorque(4000.),
         m_maxSpeed(500.), m_c1(0.), m_c0(0.), m_step(1e-2) {}
 
   // constructor
@@ -61,7 +61,7 @@ struct VehicleParam {
       : m_a(a), m_b(b), m_h(h), m_m(m), m_jz(Jz), m_jx(Jx), m_jxz(Jxz),
         m_cf(cf), m_cr(cr), m_muf(muf), m_mur(mur), m_hrcf(hrcf), m_hrcr(hrcr),
         m_krof(krof), m_kror(kror), m_brof(bror), m_bror(bror),
-        m_maxSteer(maxSteer), m_gearRatio(gearRatio), m_maxTorque(maxTorque),
+        m_maxSteer(maxSteer), m_diffRatio(gearRatio), m_maxTorque(maxTorque),
         m_maxBrakeTorque(brakeTorque), m_maxSpeed(maxSpeed), m_c1(c1), m_c0(c0),
         m_step(step) {}
 
@@ -81,7 +81,7 @@ struct VehicleParam {
   double m_maxSteer;
 
   // some throttle parameters of the vehicle
-  double m_gearRatio;      // gear ratio
+  double m_diffRatio;      // gear ratio
   double m_maxTorque;      // Max torque
   double m_maxBrakeTorque; // max brake torque
   double m_maxSpeed;       // Max speed

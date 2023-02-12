@@ -275,9 +275,6 @@ void tireAdv(TMeasyState &t_states, const TMeasyParam &t_params,
     double weightx = sineStep(std::abs(vsx), 1., 1., 1.5, 0.);
     double weighty = sineStep(std::abs(-sy * vta), 1., 1., 1.5, 0.);
 
-    // std::cout << "vsx:" << vsx << " sy:" << sy << " vta:" << vta <<
-    // std::endl;
-
     // now finally get the resultant force
     t_states.m_fx = weightx * fxstr + (1. - weightx) * fxdyn;
     t_states.m_fy = weighty * fystr + (1. - weighty) * fydyn;
@@ -289,14 +286,6 @@ void tireAdv(TMeasyState &t_states, const TMeasyParam &t_params,
              4. +
          My - sgn(t_states.m_omega) * brakeTorque(v_params, brake) -
          t_states.m_fx * t_states.m_rStat);
-    /*
-        std::cout << "tomega:" << t_states.m_omega
-                  << " sgn: " << sgn(t_states.m_omega) << " brake_torque"
-                  << brakeTorque(v_params, brake) << " My:" << My
-                  << " m_fx:" << t_states.m_fx << " m_rStat:" <<
-       t_states.m_rStat
-                  << " dOmega: " << dOmega << std::endl;
-                  */
 
     // integrate omega using the latest dOmega
     t_states.m_omega = t_states.m_omega + h * dOmega;

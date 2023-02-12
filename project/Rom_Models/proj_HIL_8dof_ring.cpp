@@ -72,11 +72,19 @@ int main(int argc, char *argv[]) {
   terrain.Initialize();
 
   std::string hmmwv_rom_json =
+      std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/hmmwv/hmmwv_rom.json";
+  std::string patrol_rom_json =
       std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/patrol/patrol_rom.json";
 
   for (int i = 0; i < num_rom; i++) {
+    std::string rom_json;
+    if (i % 2 == 0) {
+      rom_json = hmmwv_rom_json;
+    } else {
+      rom_json = patrol_rom_json;
+    }
     std::shared_ptr<Ch_8DOF_vehicle> rom_veh =
-        chrono_types::make_shared<Ch_8DOF_vehicle>(hmmwv_rom_json, 0.45);
+        chrono_types::make_shared<Ch_8DOF_vehicle>(rom_json, 0.45);
 
     // determine initial position and initial orientation
     float deg_sec = (CH_C_PI * 1.2) / num_rom;
