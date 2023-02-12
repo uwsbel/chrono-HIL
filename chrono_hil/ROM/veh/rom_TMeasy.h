@@ -143,8 +143,8 @@ void tmxy_combined(double &f, double &fos, double s, double df0, double sm,
 // Advances the time step
 // updates the tire forces which is then used by the vehicle model
 void tireAdv(TMeasyState &t_states, const TMeasyParam &t_params,
-             const VehicleState &v_states, const VehicleParam &v_params,
-             const std::vector<double> &controls);
+             VehicleState &v_states, const VehicleParam &v_params,
+             const std::vector<double> &controls, int tire_idx);
 
 // setting tire parameters using a JSON file
 void setTireParamsJSON(TMeasyParam &t_params, std::string fileName);

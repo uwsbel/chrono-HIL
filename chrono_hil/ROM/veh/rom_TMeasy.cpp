@@ -102,8 +102,8 @@ void tmxy_combined(double &f, double &fos, double s, double df0, double sm,
 // 2 - LR
 // 3 - RR
 void tireAdv(TMeasyState &t_states, const TMeasyParam &t_params,
-             const VehicleState &v_states, const VehicleParam &v_params,
-             const std::vector<double> &controls) {
+             VehicleState &v_states, const VehicleParam &v_params,
+             const std::vector<double> &controls, int tire_idx) {
 
   // get the controls and time out
   double t = controls[0];
@@ -275,18 +275,31 @@ void tireAdv(TMeasyState &t_states, const TMeasyParam &t_params,
     double weightx = sineStep(std::abs(vsx), 1., 1., 1.5, 0.);
     double weighty = sineStep(std::abs(-sy * vta), 1., 1., 1.5, 0.);
 
+    // std::cout << "vsx:" << vsx << " sy:" << sy << " vta:" << vta <<
+    // std::endl;
+
     // now finally get the resultant force
     t_states.m_fx = weightx * fxstr + (1. - weightx) * fxdyn;
     t_states.m_fy = weighty * fystr + (1. - weighty) * fydyn;
 
     // now use this force for our omegas
-    dOmega = (1 / t_params.m_jw) *
-             (driveTorque(v_params, throttle, t_states.m_omega) / 4. + My -
-              sgn(t_states.m_omega) * brakeTorque(v_params, brake) -
-              t_states.m_fx * t_states.m_rStat);
+    dOmega =
+        (1 / t_params.m_jw) *
+        (driveTorque(v_params, v_states, throttle, t_states.m_omega, tire_idx) /
+             4. +
+         My - sgn(t_states.m_omega) * brakeTorque(v_params, brake) -
+         t_states.m_fx * t_states.m_rStat);
+    /*
+        std::cout << "tomega:" << t_states.m_omega
+                  << " sgn: " << sgn(t_states.m_omega) << " brake_torque"
+                  << brakeTorque(v_params, brake) << " My:" << My
+                  << " m_fx:" << t_states.m_fx << " m_rStat:" <<
+       t_states.m_rStat
+                  << " dOmega: " << dOmega << std::endl;
+                  */
 
     // integrate omega using the latest dOmega
-    t_states.m_omega = t_states.m_omega + v_params.m_step * dOmega;
+    t_states.m_omega = t_states.m_omega + h * dOmega;
 
     t += h;
   }

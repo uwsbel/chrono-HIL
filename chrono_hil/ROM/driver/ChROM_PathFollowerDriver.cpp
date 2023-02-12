@@ -1,9 +1,9 @@
 #include "ChROM_PathFollowerDriver.h"
 ChROM_PathFollowerDriver::ChROM_PathFollowerDriver(
     std::shared_ptr<Ch_8DOF_vehicle> rom, std::shared_ptr<ChBezierCurve> curve,
-    float target_speed, double look_ahead_dist, float PID_st_kp,
-    float PID_st_ki, float PID_st_kd, float PID_sp_kp, float PID_sp_ki,
-    float PID_sp_kd) {
+    double target_speed, double look_ahead_dist, double PID_st_kp,
+    double PID_st_ki, double PID_st_kd, double PID_sp_kp, double PID_sp_ki,
+    double PID_sp_kd) {
   m_dist = look_ahead_dist;
   m_target_speed = target_speed;
 
@@ -25,7 +25,7 @@ ChROM_PathFollowerDriver::ChROM_PathFollowerDriver(
 
 DriverInputs ChROM_PathFollowerDriver::GetDriverInput() { return m_inputs; }
 
-void ChROM_PathFollowerDriver::Advance(float time_step) {
+void ChROM_PathFollowerDriver::Advance(double time_step) {
   ChVector<> cur_pos = m_rom->GetPos(); // current vehicle position
   ChVector<> cur_vel = m_rom->GetVel(); // current vehicle velocity
 
@@ -46,7 +46,8 @@ void ChROM_PathFollowerDriver::Advance(float time_step) {
 
   ChVector<> err_vec = target - sentinel;
 
-  float temp = Vdot(Vcross(sentinel_vec, target_vec), ChWorldFrame::Vertical());
+  double temp =
+      Vdot(Vcross(sentinel_vec, target_vec), ChWorldFrame::Vertical());
 
   double st_err = ChSignum(temp) * err_vec.Length();
 
@@ -56,11 +57,12 @@ void ChROM_PathFollowerDriver::Advance(float time_step) {
 
   m_inputs.m_steering =
       m_st_kp * m_st_err + m_st_ki * m_st_err_i + m_st_kd * m_st_err_d;
+  // std::cout << "m_steering inner: " << m_inputs.m_steering << std::endl;
 
   ChClampValue(m_inputs.m_steering, -1.0, 1.0);
 
   // control speed of the vehicle
-  float cur_speed = cur_vel.Length();
+  double cur_speed = cur_vel.Length();
 
   double sp_err = m_target_speed - cur_speed;
   // std::cout << "sp_err:" << sp_err << std::endl;
@@ -88,6 +90,6 @@ void ChROM_PathFollowerDriver::Advance(float time_step) {
   }
 }
 
-void ChROM_PathFollowerDriver::SetCruiseSpeed(float target_speed) {
+void ChROM_PathFollowerDriver::SetCruiseSpeed(double target_speed) {
   m_target_speed = target_speed;
 }

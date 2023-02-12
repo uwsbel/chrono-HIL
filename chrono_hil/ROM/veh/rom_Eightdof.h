@@ -88,11 +88,11 @@ struct VehicleParam {
   double m_c1, m_c0;       // motor resistance - mainly needed for rc car
 
   // engine and transmission parameters
-  float m_motor_speed;                                   // engine RPM
-  float m_max_rpm;                                       // maximum engine RPM
+  double m_max_rpm; // maximum engine RPM
+
   std::vector<std::pair<double, double>> m_shift_points; // shift pair
-  std::vector<float> m_fwd_gear_ratio;                   // forward gear ratio
-  float m_rev_gear_ratio;                                // reverse gear ratio
+  std::vector<double> m_fwd_gear_ratio;                  // forward gear ratio
+  double m_rev_gear_ratio;                               // reverse gear ratio
   ChFunction_Recorder map_0;                             // 0 throttle map
   ChFunction_Recorder map_f;                             // full throttle map
 
@@ -106,7 +106,7 @@ struct VehicleState {
   VehicleState()
       : m_x(0.), m_y(0.), m_u(0.), m_v(0.), m_psi(0.), m_wz(0.), m_phi(0.),
         m_wx(0.), m_udot(0.), m_vdot(0.), m_wxdot(0.), m_wzdot(0.), m_fzlf(0.),
-        m_fzrf(0.), m_fzlr(0.), m_fzrr(0.) {}
+        m_fzrf(0.), m_fzlr(0.), m_fzrr(0.), m_cur_gear(0.), m_motor_speed(0.) {}
 
   // special constructor in case need to start simulation
   // from some other state
@@ -121,13 +121,20 @@ struct VehicleState {
 
   // vertical forces on each tire
   double m_fzlf, m_fzrf, m_fzlr, m_fzrr;
+
+  // rotational speed of each tire
+  double m_tire_w[4];
+
+  // transmission states
+  int m_cur_gear;       // current gear
+  double m_motor_speed; // engine RPM
 };
 
 // sets the vertical forces based on the vehicle weight
 void vehInit(VehicleState &v_state, const VehicleParam &v_params);
 
-double driveTorque(const VehicleParam &v_params, const double throttle,
-                   const double omega);
+double driveTorque(const VehicleParam &v_params, VehicleState &v_state,
+                   const double throttle, const double omega, int tire_idx);
 
 inline double brakeTorque(const VehicleParam &v_params, const double brake) {
   return v_params.m_maxBrakeTorque * brake;

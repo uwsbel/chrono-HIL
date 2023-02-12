@@ -43,21 +43,28 @@ void vehInit(VehicleState &v_state, const VehicleParam &v_param) {
 }
 
 // returns drive toruqe at a given omega
-double driveTorque(const VehicleParam &v_params, const double throttle,
-                   const double omega) {
+double driveTorque(const VehicleParam &v_params, VehicleState &v_state,
+                   const double throttle, const double omega, int tire_idx) {
 
-  double motor_speed = omega / v_params.m_gearRatio;
-  double motor_torque =
-      v_params.m_maxTorque -
-      (motor_speed * (v_params.m_maxTorque / v_params.m_maxSpeed));
+  v_state.m_tire_w[tire_idx] =
+      omega; // update tire rotational speed info back to vehicle
 
-  motor_torque =
-      motor_torque * throttle - v_params.m_c1 * motor_speed - v_params.m_c0;
+  double motor_speed =
+      abs(omega / v_params.m_fwd_gear_ratio[v_state.m_cur_gear]);
 
-  if (motor_torque < 0) {
-    motor_torque = 0;
+  double motor_torque = 0.0;
+  if (throttle == 0) {
+    motor_torque = v_params.map_0.Get_y(motor_speed);
+  } else {
+    motor_torque = v_params.map_f.Get_y(motor_speed);
   }
-  return motor_torque / v_params.m_gearRatio;
+
+  motor_torque = motor_torque * throttle;
+
+  std::cout << "motor_speed:" << motor_speed / rpm2rads
+            << " motor_torque: " << motor_torque << std::endl;
+
+  return motor_torque / v_params.m_fwd_gear_ratio[v_state.m_cur_gear];
 }
 
 /*
@@ -199,6 +206,18 @@ void vehAdv(VehicleState &v_states, const VehicleParam &v_params,
   // evaluate vertical forces for the rear
   v_states.m_fzlr = (Z1 - Z2 - Z3 + Z4) > 0. ? (Z1 - Z2 - Z3 + Z4) : 0.;
   v_states.m_fzrr = (Z1 + Z2 + Z3 + Z4) > 0. ? (Z1 + Z2 + Z3 + Z4) : 0.;
+
+  // update vehicle transmission information
+  // compute the average omega
+  v_states.m_motor_speed = (v_states.m_tire_w[0] + v_states.m_tire_w[1] +
+                            v_states.m_tire_w[2] + v_states.m_tire_w[3]) /
+                           4.0;
+  /*
+std::cout << "1:" << v_states.m_tire_w[0] << " 2:" << v_states.m_tire_w[1]
+<< " 3:" << v_states.m_tire_w[2] << " 4:" << v_states.m_tire_w[3]
+<< "motor_speed: " << v_states.m_motor_speed / rpm2rads
+<< std::endl;
+*/
 }
 
 void vehToTireTransform(TMeasyState &tirelf_st, TMeasyState &tirerf_st,

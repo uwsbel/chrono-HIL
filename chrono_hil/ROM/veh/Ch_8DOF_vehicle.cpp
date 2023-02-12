@@ -96,13 +96,13 @@ void Ch_8DOF_vehicle::Advance(float time, DriverInputs inputs) {
                      veh1_param, controls);
 
   // advance our 4 tires
-  tireAdv(tirelf_st, tire_param, veh1_st, veh1_param, controls);
-  tireAdv(tirerf_st, tire_param, veh1_st, veh1_param, controls);
+  tireAdv(tirelf_st, tire_param, veh1_st, veh1_param, controls, 0);
+  tireAdv(tirerf_st, tire_param, veh1_st, veh1_param, controls, 1);
 
   // modify controls for our rear tires as they dont take steering
   std::vector<double> mod_controls = {controls[0], 0, controls[2], controls[3]};
-  tireAdv(tirelr_st, tire_param, veh1_st, veh1_param, mod_controls);
-  tireAdv(tirerr_st, tire_param, veh1_st, veh1_param, mod_controls);
+  tireAdv(tirelr_st, tire_param, veh1_st, veh1_param, mod_controls, 2);
+  tireAdv(tirerr_st, tire_param, veh1_st, veh1_param, mod_controls, 3);
 
   // transform tire forces to vehicle frame
   tireToVehTransform(tirelf_st, tirerf_st, tirelr_st, tirerr_st, veh1_st,
