@@ -66,10 +66,29 @@ int main(int argc, char *argv[]) {
 
   std::shared_ptr<RigidTerrain::Patch> patch;
   patch = terrain.AddPatch(patch_mat, CSYSNORM, 300, 300);
-  patch->SetTexture(vehicle::GetDataFile("terrain/textures/tile4.jpg"), 10, 10);
-  patch->SetColor(ChColor(0.8f, 0.8f, 0.5f));
+  // patch->SetColor(ChColor(0.5f, 0.5f, 0.5f));
 
   terrain.Initialize();
+
+  // add terrain with weighted textures
+  auto terrain_mesh = chrono_types::make_shared<ChTriangleMeshConnected>();
+  terrain_mesh->LoadWavefrontMesh(std::string(STRINGIFY(HIL_DATA_DIR)) +
+                                      "/ring/terrain0103/ring_terrain_50.obj",
+                                  false, true);
+  terrain_mesh->Transform(ChVector<>(0, 0, 0),
+                          ChMatrix33<>(1)); // scale to a different size
+  auto terrain_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+  terrain_shape->SetMesh(terrain_mesh);
+  terrain_shape->SetName("terrain");
+  terrain_shape->SetMutable(false);
+
+  auto terrain_body = chrono_types::make_shared<ChBody>();
+  terrain_body->SetPos({0, 0, 0.0});
+  terrain_body->AddVisualShape(terrain_shape);
+  terrain_body->SetBodyFixed(true);
+  terrain_body->SetCollide(false);
+
+  sys.AddBody(terrain_body);
 
   std::string hmmwv_rom_json =
       std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/hmmwv/hmmwv_rom.json";
@@ -83,6 +102,7 @@ int main(int argc, char *argv[]) {
     } else {
       rom_json = patrol_rom_json;
     }
+
     std::shared_ptr<Ch_8DOF_vehicle> rom_veh =
         chrono_types::make_shared<Ch_8DOF_vehicle>(rom_json, 0.45);
 
@@ -155,26 +175,8 @@ int main(int argc, char *argv[]) {
   manager->scene->SetSceneEpsilon(1e-3);
   manager->scene->EnableDynamicOrigin(true);
   manager->scene->SetOriginOffsetThreshold(500.f);
-  /*
-    auto cam = chrono_types::make_shared<ChCameraSensor>(
-        rom_veh->GetChassisBody(), // body camera is attached to
-        35,                        // update rate in Hz
-        chrono::ChFrame<double>(
-            ChVector<>(0.0, -8.0, 3.0),
-            Q_from_Euler123(ChVector<>(0.0, 0.15, C_PI / 2))), // offset pose
-        1280,                                                  // image width
-        720,                                                   // image height
-        1.608f,
-        1); // fov, lag, exposure
-    cam->SetName("Camera Sensor");
 
-    cam->PushFilter(
-        chrono_types::make_shared<ChFilterVisualize>(1280, 720, "test", false));
-    // Provide the host access to the RGBA8 buffer
-    // cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
-    manager->AddSensor(cam);
-  */
-  auto cam2 = chrono_types::make_shared<ChCameraSensor>(
+  auto cam = chrono_types::make_shared<ChCameraSensor>(
       attached_body, // body camera is attached to
       35,            // update rate in Hz
       chrono::ChFrame<double>(
@@ -182,19 +184,19 @@ int main(int argc, char *argv[]) {
           Q_from_Euler123(ChVector<>(0.0, C_PI / 2, 0.0))), // offset pose
       1280,                                                 // image width
       720,                                                  // image
-      1.608f, 1); // fov, lag, exposure cam2->SetName("Camera Sensor");
+      1.608f, 1); // fov, lag, exposure cam->SetName("Camera Sensor");
 
-  cam2->PushFilter(
+  cam->PushFilter(
       chrono_types::make_shared<ChFilterVisualize>(1280, 720, "test", false));
   // Provide the host access to the RGBA8 buffer
-  // cam2->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
-  manager->AddSensor(cam2);
+  // cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+  manager->AddSensor(cam);
 
   manager->Update();
 
   ChRealtimeCumulative realtime_timer;
-  while (true) {
 
+  while (true) {
     if (step_number == 0) {
       realtime_timer.Reset();
     }

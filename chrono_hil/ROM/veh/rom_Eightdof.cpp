@@ -324,11 +324,7 @@ void setVehParamsJSON(VehicleParam &v_params, std::string fileName) {
   v_params.m_bror = d["bror"].GetDouble();
   v_params.m_maxSteer = d["maxSteer"].GetDouble();
   v_params.m_diffRatio = d["diffRatio"].GetDouble();
-  v_params.m_maxTorque = d["maxTorque"].GetDouble();
   v_params.m_maxBrakeTorque = d["maxBrakeTorque"].GetDouble();
-  v_params.m_maxSpeed = d["maxSpeed"].GetDouble();
-  v_params.m_c1 = d["c1"].GetDouble();
-  v_params.m_c0 = d["c0"].GetDouble();
   v_params.m_step = d["step"].GetDouble();
 }
 
