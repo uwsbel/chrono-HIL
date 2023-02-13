@@ -9,6 +9,7 @@
 
 set(DEMOS
   proj_HIL_8dof_ring
+  proj_HIL_8dof_compare
 )
 
 #--------------------------------------------------------------

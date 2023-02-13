@@ -72,8 +72,8 @@ Ch_8DOF_vehicle::Ch_8DOF_vehicle(std::string rom_json, float z_plane) {
   tireInit(tire_param);
 }
 
-void Ch_8DOF_vehicle::Initialize(ChSystem &sys) {
-  InitializeVisualization(chassis_mesh, wheel_mesh, &sys);
+void Ch_8DOF_vehicle::Initialize(ChSystem *sys) {
+  InitializeVisualization(chassis_mesh, wheel_mesh, sys);
 }
 
 void Ch_8DOF_vehicle::Advance(float time, DriverInputs inputs) {
@@ -191,7 +191,6 @@ void Ch_8DOF_vehicle::InitializeVisualization(std::string chassis_obj_path,
                                               ChSystem *sys) {
   auto chassis_mmesh = chrono_types::make_shared<ChTriangleMeshConnected>();
   chassis_mmesh->LoadWavefrontMesh(chassis_obj_path, false, true);
-  chassis_mmesh->RepairDuplicateVertexes(1e-9);
 
   auto chassis_trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
   chassis_trimesh_shape->SetMesh(chassis_mmesh);
@@ -219,7 +218,6 @@ void Ch_8DOF_vehicle::InitializeVisualization(std::string chassis_obj_path,
   for (int i = 0; i < 4; i++) {
     auto wheel_mmesh = chrono_types::make_shared<ChTriangleMeshConnected>();
     wheel_mmesh->LoadWavefrontMesh(wheel_obj_path, false, true);
-    wheel_mmesh->RepairDuplicateVertexes(1e-9);
 
     auto wheel_trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
     wheel_trimesh_shape->SetMesh(wheel_mmesh);

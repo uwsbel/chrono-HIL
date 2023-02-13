@@ -9,7 +9,7 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Huzaifa Mustafa Unjhawala, Jason Zhou
+// Authors: Jason Zhou, Huzaifa Mustafa Unjhawala
 // =============================================================================
 //
 // The 8dof vehicle model base class
@@ -60,8 +60,9 @@ double driveTorque(const VehicleParam &v_params, VehicleState &v_state,
 
   motor_torque = motor_torque * throttle;
 
+  // share the torque output between two wheels on the same axle
   return motor_torque / v_params.m_fwd_gear_ratio[v_state.m_cur_gear] /
-         v_params.m_diffRatio / 4;
+         v_params.m_diffRatio / 2;
 }
 
 /*

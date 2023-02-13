@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
 
   Ch_8DOF_vehicle rom_veh(rom_json, 0.45);
 
-  rom_veh.Initialize(sys);
+  rom_veh.Initialize(&sys);
 
   ChSDLInterface SDLDriver;
   // Set the time response for steering and throttle keyboard inputs.

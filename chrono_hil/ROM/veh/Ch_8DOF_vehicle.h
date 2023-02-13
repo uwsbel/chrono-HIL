@@ -37,7 +37,7 @@ class Ch_8DOF_vehicle {
 public:
   Ch_8DOF_vehicle(std::string rom_json, float z_plane);
 
-  void Initialize(ChSystem &sys);
+  void Initialize(ChSystem *sys);
 
   void SetInitPos(ChVector<> init_pos);
 

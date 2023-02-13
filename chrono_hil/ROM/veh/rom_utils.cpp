@@ -9,7 +9,7 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Huzaifa Mustafa Unjhawala, Jason Zhou
+// Authors: Jason Zhou, Huzaifa Mustafa Unjhawala
 // =============================================================================
 //
 // 8dof utility class
