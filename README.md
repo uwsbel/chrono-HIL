@@ -7,3 +7,5 @@ The expected functionalities need to be achieved including:
 3. Reduced-Order vehicle models, including 2DOF, 4DOF, and 14DOF, to enable massive traffic simulations
 4. Independent hardware and force feedback for easier HIL simulation implementation.
 5. etc
+
+This project code base is pegged to 'feature/hil' branch of the Chrono Fork: https://github.com/zzhou292/chrono
