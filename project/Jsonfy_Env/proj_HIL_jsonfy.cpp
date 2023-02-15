@@ -95,12 +95,10 @@ struct Terrain {
 struct Asset {
   std::string name;
   ChVector<> pos;
+  ChVector<> rot;
+  float scale;
   std::string mesh_file;
-  std::string kd_texture;
-  std::string roughness_texture;
-  std::string normalmap_texture;
-  std::string metallic_texture;
-  int mutable_ind; // 0 for mutable false. 1 for mutable true
+  bool mutable_ind; // 0 for mutable false. 1 for mutable true
 };
 
 struct Camera {
@@ -111,6 +109,7 @@ struct Camera {
   int resolution_y;
   int supersampling;
   int fps;
+  bool fullscreen;
   std::string name;
 };
 
@@ -199,6 +198,12 @@ void ReadParameterFiles() {
       temp_camera.name = d[cameraname.c_str()]["name"].GetString();
     } else {
       temp_camera.name = "Default Cam View";
+    }
+
+    if (d[cameraname.c_str()].HasMember("fullscreen")) {
+      temp_camera.fullscreen = d[cameraname.c_str()]["fullscreen"].GetBool();
+    } else {
+      temp_camera.fullscreen = false;
     }
 
     my_cameras.push_back(temp_camera);
@@ -307,31 +312,22 @@ void ReadParameterFiles() {
                                   marr[2].GetDouble());
     }
 
+    if (d[assetname.c_str()].HasMember("rot")) {
+      auto marr = d[assetname.c_str()]["rot"].GetArray();
+      temp_asset.rot = ChVector<>(marr[0].GetDouble(), marr[1].GetDouble(),
+                                  marr[2].GetDouble());
+    }
+
     if (d[assetname.c_str()].HasMember("mesh")) {
       temp_asset.mesh_file = d[assetname.c_str()]["mesh"].GetString();
     }
 
     if (d[assetname.c_str()].HasMember("mutable")) {
-      temp_asset.mutable_ind = d[assetname.c_str()]["mutable"].GetInt();
+      temp_asset.mutable_ind = d[assetname.c_str()]["mutable"].GetBool();
     }
 
-    if (d[assetname.c_str()].HasMember("kd_texture")) {
-      temp_asset.kd_texture = d[assetname.c_str()]["kd_texture"].GetString();
-    }
-
-    if (d[assetname.c_str()].HasMember("roughness_texture")) {
-      temp_asset.roughness_texture =
-          d[assetname.c_str()]["roughtness_texture"].GetString();
-    }
-
-    if (d[assetname.c_str()].HasMember("normalmap_texture")) {
-      temp_asset.normalmap_texture =
-          d[assetname.c_str()]["normalmap_texture"].GetString();
-    }
-
-    if (d[assetname.c_str()].HasMember("metallic_texture")) {
-      temp_asset.metallic_texture =
-          d[assetname.c_str()]["metallic_texture"].GetString();
+    if (d[assetname.c_str()].HasMember("scale")) {
+      temp_asset.scale = d[assetname.c_str()]["scale"].GetFloat();
     }
 
     my_assets.push_back(temp_asset);
@@ -415,8 +411,29 @@ int main(int argc, char *argv[]) {
   std::cout << "Finished Terrain Setup" << std::endl;
 
   // setup assets
+  for (int i = 0; i < my_assets.size(); i++) {
+    auto body_mesh = chrono_types::make_shared<ChTriangleMeshConnected>();
+    body_mesh->LoadWavefrontMesh(my_assets[i].mesh_file, false, true);
+    body_mesh->Transform(
+        ChVector<>(0, 0, 0),
+        ChMatrix33<>(my_assets[i].scale)); // scale to a different size
+    auto body_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+    body_shape->SetMesh(body_mesh);
+    body_shape->SetName(my_assets[i].name);
+    body_shape->SetMutable(my_assets[i].mutable_ind);
 
+    auto body_body = chrono_types::make_shared<ChBody>();
+    body_body->SetPos(my_assets[i].pos);
+    body_body->SetRot(Q_from_Euler123(my_assets[i].rot));
+    body_body->AddVisualShape(body_shape);
+    body_body->SetBodyFixed(true);
+    body_body->SetCollide(false);
+
+    vehicle.GetSystem()->AddBody(body_body);
+  }
   std::cout << "Finished Asset Setup" << std::endl;
+
+  // ========================================
 
   auto manager =
       chrono_types::make_shared<ChSensorManager>(vehicle.GetSystem());
@@ -447,7 +464,7 @@ int main(int argc, char *argv[]) {
 
       cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
           my_cameras[i].resolution_x, my_cameras[i].resolution_y,
-          my_cameras[i].name, false));
+          my_cameras[i].name, my_cameras[i].fullscreen));
       // Provide the host access to the RGBA8 buffer
       cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
       manager->AddSensor(cam);
@@ -467,10 +484,9 @@ int main(int argc, char *argv[]) {
           1.608f,
           my_cameras[i].supersampling); // fov, lag, exposure
       cam->SetName("Camera Sensor");
-
       cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
           my_cameras[i].resolution_x, my_cameras[i].resolution_y,
-          my_cameras[i].name, false));
+          my_cameras[i].name, my_cameras[i].fullscreen));
       cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
       manager->AddSensor(cam);
     }
