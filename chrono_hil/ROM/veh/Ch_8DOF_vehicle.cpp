@@ -143,10 +143,9 @@ void Ch_8DOF_vehicle::Advance(float time, DriverInputs inputs) {
 
   // front tire - 3 - take into tire rotation
   temp = ChQuaternion<>(1, 0, 0, 0);
-  temp.Q_from_AngY(prev_tire_rotation +
-                   veh1_param.m_step * (tirelf_st.m_omega / 180.f * C_PI));
-  prev_tire_rotation = prev_tire_rotation +
-                       veh1_param.m_step * (tirelf_st.m_omega / 180.f * C_PI);
+  temp.Q_from_AngY(prev_tire_rotation + veh1_param.m_step * tirelf_st.m_omega);
+  prev_tire_rotation =
+      prev_tire_rotation + veh1_param.m_step * tirelf_st.m_omega;
   if (prev_tire_rotation > C_2PI) {
     prev_tire_rotation = 0.f;
   }

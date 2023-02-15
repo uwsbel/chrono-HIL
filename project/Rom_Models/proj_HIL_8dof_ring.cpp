@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
   std::vector<std::shared_ptr<ChROM_PathFollowerDriver>>
       driver_vec; // rom driver vector
   std::vector<std::shared_ptr<ChROM_IDMFollower>> idm_vec;
-  int num_rom = 25;
+  int num_rom = 20;
 
   // Create the terrain
   RigidTerrain terrain(&sys);
@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
         chrono_types::make_shared<Ch_8DOF_vehicle>(rom_json, 0.45);
 
     // determine initial position and initial orientation
-    float deg_sec = (CH_C_PI * 1.2) / num_rom;
+    float deg_sec = (CH_C_PI * 1.0) / num_rom;
     ChVector<> initLoc =
         ChVector<>(50.0 * cos(deg_sec * i), 50.0 * sin(deg_sec * i), 0.5);
     float rot_deg = deg_sec * i + CH_C_PI_2;

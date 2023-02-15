@@ -39,7 +39,7 @@ using namespace chrono::hil;
 using namespace chrono::vehicle;
 using namespace chrono::sensor;
 
-enum VEH_TYPE { HMMWV, PATROL };
+enum VEH_TYPE { HMMWV, PATROL, AUDI };
 
 int main(int argc, char *argv[]) {
 
@@ -50,7 +50,8 @@ int main(int argc, char *argv[]) {
   RigidTerrain terrain(&sys);
 
   // Define ROM vehicle type
-  VEH_TYPE rom_type = VEH_TYPE::PATROL;
+  VEH_TYPE rom_type = VEH_TYPE::AUDI;
+  float init_height = 0.45;
 
   ChContactMaterialData minfo;
   minfo.mu = 0.9f;
@@ -72,16 +73,22 @@ int main(int argc, char *argv[]) {
   case VEH_TYPE::HMMWV:
     rom_json =
         std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/hmmwv/hmmwv_rom.json";
+    init_height = 0.45;
     break;
   case VEH_TYPE::PATROL:
     rom_json =
         std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/patrol/patrol_rom.json";
+    init_height = 0.45;
+    break;
+  case VEH_TYPE::AUDI:
+    rom_json = std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/audi/audi_rom.json";
+    init_height = 0.20;
     break;
   default:
     return -1;
   }
 
-  Ch_8DOF_vehicle rom_veh(rom_json, 0.45);
+  Ch_8DOF_vehicle rom_veh(rom_json, init_height);
 
   rom_veh.Initialize(&sys);
 
@@ -133,7 +140,7 @@ int main(int argc, char *argv[]) {
       rom_veh.GetChassisBody(), // body camera is attached to
       35,                       // update rate in Hz
       chrono::ChFrame<double>(
-          ChVector<>(0.0, -5.0, 3.0),
+          ChVector<>(0.0, -5.0, 0.0),
           Q_from_Euler123(ChVector<>(0.0, 0.25, C_PI / 2))), // offset pose
       1280,                                                  // image width
       720,                                                   // image height

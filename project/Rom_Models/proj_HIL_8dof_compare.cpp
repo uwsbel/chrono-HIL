@@ -31,6 +31,8 @@
 
 #include "chrono_models/vehicle/sedan/Sedan.h"
 
+#include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
+
 #include <irrlicht.h>
 
 #include "chrono_vehicle/terrain/RigidTerrain.h"
@@ -73,47 +75,88 @@ double t_end = 1000;
 // Time interval between two render frames
 double render_step_size = 1.0 / 50; // FPS = 50
 
-ChVector<> initLoc(0, 0, 1.6);
+ChVector<> initLoc(0, 0, 1.4);
 ChQuaternion<> initRot(1, 0, 0, 0);
 
 // Point on chassis tracked by the camera
 ChVector<> trackPoint(0.0, 0.0, 1.75);
 
+enum VEH_TYPE { HMMWV, PATROL, AUDI };
+
 int main(int argc, char *argv[]) {
   vehicle::SetDataPath(CHRONO_DATA_DIR + std::string("vehicle/"));
   // ========== Chrono::Vehicle HMMWV vehicle ===============
   // Create the HMMWV vehicle, set parameters, and initialize
-  HMMWV_Full my_hmmwv;
-  my_hmmwv.SetContactMethod(ChContactMethod::SMC);
-  my_hmmwv.SetChassisCollisionType(CollisionType::NONE);
-  my_hmmwv.SetChassisFixed(false);
-  my_hmmwv.SetInitPosition(ChCoordsys<>(initLoc, initRot));
-  my_hmmwv.SetPowertrainType(PowertrainModelType::SHAFTS);
-  my_hmmwv.SetDriveType(DrivelineTypeWV::AWD);
-  my_hmmwv.UseTierodBodies(true);
-  my_hmmwv.SetSteeringType(SteeringTypeWV::PITMAN_ARM);
-  my_hmmwv.SetBrakeType(BrakeType::SHAFTS);
-  my_hmmwv.SetTireType(TireModelType::TMEASY);
-  my_hmmwv.SetTireStepSize(tire_step_size);
-  my_hmmwv.Initialize();
 
-  my_hmmwv.SetChassisVisualizationType(VisualizationType::MESH);
-  my_hmmwv.SetSuspensionVisualizationType(VisualizationType::MESH);
-  my_hmmwv.SetSteeringVisualizationType(VisualizationType::MESH);
-  my_hmmwv.SetWheelVisualizationType(VisualizationType::MESH);
-  my_hmmwv.SetTireVisualizationType(VisualizationType::MESH);
+  VEH_TYPE rom_type = VEH_TYPE::AUDI;
 
-  // ROM HMMWV model
-  std::string hmmwv_rom_json =
-      std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/hmmwv/hmmwv_rom.json";
+  float init_height = 0.45;
+  std::string vehicle_filename;
+  std::string tire_filename;
+  std::string powertrain_filename;
+  std::string rom_json;
+
+  switch (rom_type) {
+  case VEH_TYPE::HMMWV:
+    vehicle_filename = vehicle::GetDataFile("hmmwv/vehicle/HMMWV_Vehicle.json");
+    tire_filename = vehicle::GetDataFile("hmmwv/tire/HMMWV_TMeasyTire.json");
+    powertrain_filename =
+        vehicle::GetDataFile("hmmwv/powertrain/HMMWV_ShaftsPowertrain.json");
+    rom_json =
+        std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/hmmwv/hmmwv_rom.json";
+    init_height = 0.45;
+    break;
+  case VEH_TYPE::PATROL:
+    vehicle_filename =
+        vehicle::GetDataFile("Nissan_Patrol/json/suv_Vehicle.json");
+    tire_filename =
+        vehicle::GetDataFile("Nissan_Patrol/json/suv_TMeasyTire.json");
+    powertrain_filename =
+        vehicle::GetDataFile("Nissan_Patrol/json/suv_ShaftsPowertrain.json");
+    rom_json =
+        std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/patrol/patrol_rom.json";
+    init_height = 0.45;
+    break;
+  case VEH_TYPE::AUDI:
+    vehicle_filename = vehicle::GetDataFile("audi/json/audi_Vehicle.json");
+    tire_filename = vehicle::GetDataFile("audi/json/audi_TMeasyTire.json");
+    powertrain_filename =
+        vehicle::GetDataFile("audi/json/audi_SimpleMapPowertrain.json");
+    rom_json = std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/audi/audi_rom.json";
+    init_height = 0.45;
+    break;
+  default:
+    return -1;
+  }
+  // Create the Sedan vehicle, set parameters, and initialize
+  WheeledVehicle my_vehicle(vehicle_filename, ChContactMethod::SMC);
+  auto ego_chassis = my_vehicle.GetChassis();
+  my_vehicle.Initialize(ChCoordsys<>(initLoc, initRot));
+  my_vehicle.GetChassis()->SetFixed(false);
+  auto powertrain = ReadPowertrainJSON(powertrain_filename);
+  my_vehicle.InitializePowertrain(powertrain);
+  my_vehicle.SetChassisVisualizationType(VisualizationType::MESH);
+  my_vehicle.SetSuspensionVisualizationType(VisualizationType::MESH);
+  my_vehicle.SetSteeringVisualizationType(VisualizationType::MESH);
+  my_vehicle.SetWheelVisualizationType(VisualizationType::MESH);
+
+  // Create and initialize the tires
+  for (auto &axle : my_vehicle.GetAxles()) {
+    for (auto &wheel : axle->GetWheels()) {
+      auto tire = ReadTireJSON(tire_filename);
+      tire->SetStepsize(step_size / 2);
+      my_vehicle.InitializeTire(tire, wheel, VisualizationType::MESH);
+    }
+  }
+
   std::shared_ptr<Ch_8DOF_vehicle> rom_veh =
-      chrono_types::make_shared<Ch_8DOF_vehicle>(hmmwv_rom_json, 0.45);
-  rom_veh->SetInitPos(initLoc + ChVector<>(0.0, 4.0, 0.45));
+      chrono_types::make_shared<Ch_8DOF_vehicle>(rom_json, init_height);
+  rom_veh->SetInitPos(initLoc + ChVector<>(0.0, 4.0, init_height));
   rom_veh->SetInitRot(0.0);
-  rom_veh->Initialize(my_hmmwv.GetSystem());
+  rom_veh->Initialize(my_vehicle.GetSystem());
 
   // Initialize terrain
-  RigidTerrain terrain(my_hmmwv.GetSystem());
+  RigidTerrain terrain(my_vehicle.GetSystem());
 
   double terrainLength = 200.0; // size in X direction
   double terrainWidth = 200.0;  // size in Y direction
@@ -132,7 +175,7 @@ int main(int argc, char *argv[]) {
 
   // Create a body that camera attaches to
   auto attached_body = std::make_shared<ChBody>();
-  my_hmmwv.GetSystem()->AddBody(attached_body);
+  my_vehicle.GetSystem()->AddBody(attached_body);
   attached_body->SetPos(ChVector<>(0.0, 0.0, 0.0));
   attached_body->SetCollide(false);
   attached_body->SetBodyFixed(true);
@@ -140,7 +183,7 @@ int main(int argc, char *argv[]) {
   // Create camera
   // Create the camera sensor
   auto manager =
-      chrono_types::make_shared<ChSensorManager>(my_hmmwv.GetSystem());
+      chrono_types::make_shared<ChSensorManager>(my_vehicle.GetSystem());
   float intensity = 1.2;
   manager->scene->AddPointLight({0, 0, 1e8}, {intensity, intensity, intensity},
                                 1e12);
@@ -153,7 +196,7 @@ int main(int argc, char *argv[]) {
       attached_body, // body camera is attached to
       35,            // update rate in Hz
       chrono::ChFrame<double>(
-          ChVector<>(15.0, -25.0, 10.0),
+          ChVector<>(15.0, -15.0, 10.0),
           Q_from_Euler123(ChVector<>(0.0, C_PI / 6, C_PI / 2))), // offset pose
       1280,                                                      // image width
       720,                                                       // image
@@ -188,7 +231,7 @@ int main(int argc, char *argv[]) {
       realtime_timer.Reset();
     }
 
-    time = my_hmmwv.GetSystem()->GetChTime();
+    time = my_vehicle.GetSystem()->GetChTime();
 
     // End simulation
     if (time >= t_end)
@@ -218,10 +261,10 @@ int main(int argc, char *argv[]) {
 
     // Update modules (process inputs from other modules)
     terrain.Synchronize(time);
-    my_hmmwv.Synchronize(time, driver_inputs, terrain);
+    my_vehicle.Synchronize(time, driver_inputs, terrain);
     // Advance simulation for one timestep for all modules
     terrain.Advance(step_size);
-    my_hmmwv.Advance(step_size);
+    my_vehicle.Advance(step_size);
     rom_veh->Advance(time, driver_inputs);
 
     manager->Update();

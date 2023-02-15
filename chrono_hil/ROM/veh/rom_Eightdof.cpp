@@ -31,7 +31,7 @@ Code for the Eight dof model implemented in cpp
 // sets the vertical forces based on the vehicle weight
 void vehInit(VehicleState &v_state, const VehicleParam &v_param) {
   double weight_split =
-      ((v_param.m_m * G * v_param.m_b) / (2 * (v_param.m_a + v_param.m_b)) +
+      ((v_param.m_m * G * v_param.m_a) / (2 * (v_param.m_a + v_param.m_b)) +
        v_param.m_muf * G);
   v_state.m_fzlf = v_state.m_fzrf = weight_split;
 
