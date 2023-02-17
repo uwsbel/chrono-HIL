@@ -123,7 +123,7 @@ int main(int argc, char *argv[]) {
     powertrain_filename =
         vehicle::GetDataFile("audi/json/audi_SimpleMapPowertrain.json");
     rom_json = std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/audi/audi_rom.json";
-    init_height = 0.45;
+    init_height = 0.20;
     break;
   default:
     return -1;
@@ -196,17 +196,33 @@ int main(int argc, char *argv[]) {
       attached_body, // body camera is attached to
       35,            // update rate in Hz
       chrono::ChFrame<double>(
-          ChVector<>(15.0, -15.0, 10.0),
-          Q_from_Euler123(ChVector<>(0.0, C_PI / 6, C_PI / 2))), // offset pose
-      1280,                                                      // image width
-      720,                                                       // image
+          ChVector<>(5.0, -5.0, 1.0),
+          Q_from_Euler123(ChVector<>(0.0, 0.0, C_PI / 2))), // offset pose
+      1920,                                                 // image width
+      1080,                                                 // image
       1.608f, 1); // fov, lag, exposure cam->SetName("Camera Sensor");
 
   cam->PushFilter(
-      chrono_types::make_shared<ChFilterVisualize>(1280, 720, "test", false));
+      chrono_types::make_shared<ChFilterVisualize>(1920, 1080, "test", false));
   // Provide the host access to the RGBA8 buffer
   // cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
   manager->AddSensor(cam);
+
+  auto cam2 = chrono_types::make_shared<ChCameraSensor>(
+      attached_body, // body camera is attached to
+      35,            // update rate in Hz
+      chrono::ChFrame<double>(
+          ChVector<>(5.0, 9.0, 1.0),
+          Q_from_Euler123(ChVector<>(0.0, 0.0, -C_PI / 2))), // offset pose
+      1920,                                                  // image width
+      1080,                                                  // image
+      1.608f, 1); // fov, lag, exposure cam->SetName("Camera Sensor");
+
+  cam2->PushFilter(
+      chrono_types::make_shared<ChFilterVisualize>(1920, 1080, "test", false));
+  // Provide the host access to the RGBA8 buffer
+  // cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+  manager->AddSensor(cam2);
 
   manager->Update();
 

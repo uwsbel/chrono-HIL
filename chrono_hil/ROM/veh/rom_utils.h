@@ -19,6 +19,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include "../../ChApiHil.h"
 #include <fstream>
 #include <sstream>
 #include <vector>

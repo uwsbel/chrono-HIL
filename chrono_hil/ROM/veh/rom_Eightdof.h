@@ -17,6 +17,7 @@
 //
 // =============================================================================
 
+#include "../../ChApiHil.h"
 #include "chrono/motion_functions/ChFunction_Recorder.h"
 #include "chrono_vehicle/utils/ChUtilsJSON.h"
 #include "rom_TMeasy.h"

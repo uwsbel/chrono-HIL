@@ -20,6 +20,7 @@
 #ifndef TMEASY_H
 #define TMEASY_H
 
+#include "../../ChApiHil.h"
 #include "rom_Eightdof.h"
 #include <stdint.h>
 

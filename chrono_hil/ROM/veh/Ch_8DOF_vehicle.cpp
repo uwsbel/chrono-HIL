@@ -45,6 +45,10 @@ Ch_8DOF_vehicle::Ch_8DOF_vehicle(std::string rom_json, float z_plane) {
   wheel_mesh =
       std::string(STRINGIFY(HIL_DATA_DIR)) + d["Wheel_Mesh"].GetString();
 
+  // 1 -> LF
+  // 2 -> RF
+  // 3 -> LR
+  // 4 -> RR
   wheels_offset_pos[0] = vehicle::ReadVectorJSON(d["Wheel_Pos_0"]);
   wheels_offset_pos[1] = vehicle::ReadVectorJSON(d["Wheel_Pos_1"]);
   wheels_offset_pos[2] = vehicle::ReadVectorJSON(d["Wheel_Pos_2"]);
@@ -167,20 +171,20 @@ void Ch_8DOF_vehicle::Advance(float time, DriverInputs inputs) {
   for (int i = 0; i < 4; i++) {
     if (i == 0) {
       wheels_body[i]->SetPos(X_LF.GetPos());
-      wheels_body[i]->SetRot(f_steer_rot);
+      wheels_body[i]->SetRot(f_steer_rot * X_LF.GetRot());
     }
 
     if (i == 1) {
       wheels_body[i]->SetPos(X_RF.GetPos());
-      wheels_body[i]->SetRot(f_steer_rot);
+      wheels_body[i]->SetRot(f_steer_rot * X_RF.GetRot());
     }
     if (i == 2) {
       wheels_body[i]->SetPos(X_LR.GetPos());
-      wheels_body[i]->SetRot(r_steer_rot);
+      wheels_body[i]->SetRot(r_steer_rot * X_LR.GetRot());
     }
     if (i == 3) {
       wheels_body[i]->SetPos(X_RR.GetPos());
-      wheels_body[i]->SetRot(r_steer_rot);
+      wheels_body[i]->SetRot(r_steer_rot * X_RR.GetRot());
     }
   }
 }
