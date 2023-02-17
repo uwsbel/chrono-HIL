@@ -81,14 +81,14 @@ ChQuaternion<> initRot(1, 0, 0, 0);
 // Point on chassis tracked by the camera
 ChVector<> trackPoint(0.0, 0.0, 1.75);
 
-enum VEH_TYPE { HMMWV, PATROL, AUDI };
+enum VEH_TYPE { HMMWV, PATROL, AUDI, SEDAN };
 
 int main(int argc, char *argv[]) {
   vehicle::SetDataPath(CHRONO_DATA_DIR + std::string("vehicle/"));
   // ========== Chrono::Vehicle HMMWV vehicle ===============
   // Create the HMMWV vehicle, set parameters, and initialize
 
-  VEH_TYPE rom_type = VEH_TYPE::AUDI;
+  VEH_TYPE rom_type = VEH_TYPE::SEDAN;
 
   float init_height = 0.45;
   std::string vehicle_filename;
@@ -123,6 +123,15 @@ int main(int argc, char *argv[]) {
     powertrain_filename =
         vehicle::GetDataFile("audi/json/audi_SimpleMapPowertrain.json");
     rom_json = std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/audi/audi_rom.json";
+    init_height = 0.20;
+    break;
+  case VEH_TYPE::SEDAN:
+    vehicle_filename = vehicle::GetDataFile("sedan/vehicle/Sedan_Vehicle.json");
+    tire_filename = vehicle::GetDataFile("sedan/tire/Sedan_TMeasyTire.json");
+    powertrain_filename =
+        vehicle::GetDataFile("sedan/powertrain/Sedan_SimpleMapPowertrain.json");
+    rom_json =
+        std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/sedan/sedan_rom.json";
     init_height = 0.20;
     break;
   default:

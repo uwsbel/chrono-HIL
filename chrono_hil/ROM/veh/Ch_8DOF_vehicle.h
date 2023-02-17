@@ -88,7 +88,7 @@ private:
   ChVector<> wheels_offset_pos[4];
   ChQuaternion<> wheels_offset_rot[4];
 
-  float prev_tire_rotation;
+  float prev_tire_rotation[4];
 };
 
 #endif

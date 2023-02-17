@@ -39,7 +39,7 @@ using namespace chrono::hil;
 using namespace chrono::vehicle;
 using namespace chrono::sensor;
 
-enum VEH_TYPE { HMMWV, PATROL, AUDI };
+enum VEH_TYPE { HMMWV, PATROL, AUDI, SEDAN };
 
 int main(int argc, char *argv[]) {
 
@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
   RigidTerrain terrain(&sys);
 
   // Define ROM vehicle type
-  VEH_TYPE rom_type = VEH_TYPE::AUDI;
+  VEH_TYPE rom_type = VEH_TYPE::SEDAN;
   float init_height = 0.45;
 
   ChContactMaterialData minfo;
@@ -83,6 +83,11 @@ int main(int argc, char *argv[]) {
   case VEH_TYPE::AUDI:
     rom_json = std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/audi/audi_rom.json";
     init_height = 0.20;
+    break;
+  case VEH_TYPE::SEDAN:
+    rom_json =
+        std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/sedan/sedan_rom.json";
+    init_height = 0.18;
     break;
   default:
     return -1;

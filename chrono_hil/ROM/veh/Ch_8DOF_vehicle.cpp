@@ -54,6 +54,12 @@ Ch_8DOF_vehicle::Ch_8DOF_vehicle(std::string rom_json, float z_plane) {
   wheels_offset_pos[2] = vehicle::ReadVectorJSON(d["Wheel_Pos_2"]);
   wheels_offset_pos[3] = vehicle::ReadVectorJSON(d["Wheel_Pos_3"]);
 
+  // initialization of vehicle's tire rotation angle on Y direction
+  prev_tire_rotation[0] = 0.0;
+  prev_tire_rotation[1] = 0.0;
+  prev_tire_rotation[2] = 0.0;
+  prev_tire_rotation[3] = 0.0;
+
   wheels_offset_rot[0].Q_from_Euler123(
       vehicle::ReadVectorJSON(d["Wheel_Rot_0"]));
   wheels_offset_rot[1].Q_from_Euler123(
@@ -137,54 +143,48 @@ void Ch_8DOF_vehicle::Advance(float time, DriverInputs inputs) {
   ChFrame<> X_RR =
       chassis_body_fr * ChFrame<>(wheels_offset_pos[3], wheels_offset_rot[3]);
 
-  // front tire - 1 - vehicle rotation
-  ChQuaternion<> f_steer_rot = chassis_body_fr.GetRot();
-
-  // front tire - 2 - steer rotation
-  ChQuaternion<> temp = ChQuaternion<>(1, 0, 0, 0);
-  temp.Q_from_AngZ(inputs.m_steering * veh1_param.m_maxSteer);
-  f_steer_rot = f_steer_rot * temp;
-
-  // front tire - 3 - take into tire rotation
-  temp = ChQuaternion<>(1, 0, 0, 0);
-  temp.Q_from_AngY(prev_tire_rotation + veh1_param.m_step * tirelf_st.m_omega);
-  prev_tire_rotation =
-      prev_tire_rotation + veh1_param.m_step * tirelf_st.m_omega;
-  if (prev_tire_rotation > C_2PI) {
-    prev_tire_rotation = 0.f;
-  }
-  f_steer_rot = f_steer_rot * temp;
-
-  // rear tire - 1 - vehicle rotation
-  ChQuaternion<> r_steer_rot = chassis_body_fr.GetRot();
-  temp = ChQuaternion<>(1, 0, 0, 0);
-  temp.Q_from_AngY(prev_tire_rotation +
-                   veh1_param.m_step * (tirelf_st.m_omega / 180.f * C_PI));
-  r_steer_rot = r_steer_rot * temp;
-
-  prev_tire_rotation = prev_tire_rotation +
-                       veh1_param.m_step * (tirelf_st.m_omega / 180.f * C_PI);
-  if (prev_tire_rotation > C_2PI) {
-    prev_tire_rotation = 0.f;
-  }
-
   for (int i = 0; i < 4; i++) {
+    // 1 - vehicle rotation
+    // step one to obtain vehicle chassis orientation and wheel offset
+    ChQuaternion<> rot_operator = chassis_body_fr.GetRot();
+
+    // 2 - steer offset
+    // step two only applies to front wheels which need to take care of steering
+    if (i == 0 || i == 1) {
+      ChQuaternion<> temp = ChQuaternion<>(1, 0, 0, 0);
+      temp.Q_from_AngZ(inputs.m_steering * veh1_param.m_maxSteer);
+      rot_operator = rot_operator * temp;
+    }
+
+    // 3 - take into tire rotation
+    // apply to all tires
+    ChQuaternion<> temp(1, 0, 0, 0);
+    temp.Q_from_AngY(prev_tire_rotation[i] +
+                     veh1_param.m_step * tirelf_st.m_omega);
+    prev_tire_rotation[i] =
+        prev_tire_rotation[i] + veh1_param.m_step * tirelf_st.m_omega;
+    if (prev_tire_rotation[i] > C_2PI) {
+      prev_tire_rotation[i] = 0.f;
+    }
+    rot_operator = rot_operator * temp;
+
+    // final rotation step
     if (i == 0) {
       wheels_body[i]->SetPos(X_LF.GetPos());
-      wheels_body[i]->SetRot(f_steer_rot * X_LF.GetRot());
+      wheels_body[i]->SetRot(rot_operator);
     }
 
     if (i == 1) {
       wheels_body[i]->SetPos(X_RF.GetPos());
-      wheels_body[i]->SetRot(f_steer_rot * X_RF.GetRot());
+      wheels_body[i]->SetRot(rot_operator);
     }
     if (i == 2) {
       wheels_body[i]->SetPos(X_LR.GetPos());
-      wheels_body[i]->SetRot(r_steer_rot * X_LR.GetRot());
+      wheels_body[i]->SetRot(rot_operator);
     }
     if (i == 3) {
       wheels_body[i]->SetPos(X_RR.GetPos());
-      wheels_body[i]->SetRot(r_steer_rot * X_RR.GetRot());
+      wheels_body[i]->SetRot(rot_operator);
     }
   }
 }
@@ -221,6 +221,9 @@ void Ch_8DOF_vehicle::InitializeVisualization(std::string chassis_obj_path,
   for (int i = 0; i < 4; i++) {
     auto wheel_mmesh = chrono_types::make_shared<ChTriangleMeshConnected>();
     wheel_mmesh->LoadWavefrontMesh(wheel_obj_path, false, true);
+
+    // transform all wheel rotations, to the meshes
+    wheel_mmesh->Transform(ChVector<>(0.0, 0.0, 0.0), wheels_offset_rot[i]);
 
     auto wheel_trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
     wheel_trimesh_shape->SetMesh(wheel_mmesh);
