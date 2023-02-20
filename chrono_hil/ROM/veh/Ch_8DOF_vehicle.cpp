@@ -262,7 +262,7 @@ ChVector<> Ch_8DOF_vehicle::GetPos() {
 }
 
 ChQuaternion<> Ch_8DOF_vehicle::GetRot() {
-  ChQuaternion ret_rot = ChQuaternion<>(1, 0, 0, 0);
+  ChQuaternion<> ret_rot = ChQuaternion<>(1, 0, 0, 0);
   ret_rot.Q_from_Euler123(ChVector<>(veh1_st.m_phi, 0, veh1_st.m_psi));
   return ret_rot;
 }
