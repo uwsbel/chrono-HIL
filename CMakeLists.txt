@@ -65,6 +65,7 @@ LIST(APPEND CMAKE_PREFIX_PATH "${CMAKE_INSTALL_PREFIX}/../Chrono/lib")
 find_package(Chrono
              COMPONENTS SynChrono Vehicle Sensor Irrlicht 
              CONFIG)
+find_package(SDL2 REQUIRED)
 
 #--------------------------------------------------------------
 # Return now if Chrono or a required component was not found.
@@ -150,7 +151,10 @@ add_subdirectory(test)
 #--------------------------------------------------------------
 
 set(EXECUTABLE_OUTPUT_PATH bin)
-add_DLL_copy_command("${CHRONO_DLLS}" "${SDL2_DLL}")
+
+list(APPEND ALL_DLLS "${CHRONO_DLLS}" "${SDL2_DLL}")
+message(STATUS "foo include dir: ${ALL_DLLS}")
+add_DLL_copy_command("${ALL_DLLS}")
 
 # Return now if not windows
 if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
