@@ -9,7 +9,7 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Simone Benatti, Jason Zhou
+// Authors: Jason Zhou
 // =============================================================================
 //
 // This is an IDM follower driver designed to not to accept a vehicle as an
@@ -36,10 +36,14 @@ void ChIDMFollower::Synchronize(double time, double step, double lead_distance,
   // In this portion we adjust the target speed according to custom piece-wise
   // sinusoidal defined in behavior_data. We use the driver model explained
   // here, using a desired speed instead:
-  // https://traffic-simulation.de/info/info_IDM.html the parameters are: start
-  // [miles], end [miles], v0 desired v [m/s], T desired time headway [s],
-  // desired space headway [m], a: accel reate a [m/s^2], b: comfort decel
-  // [m/s^2], delta: accel exponent
+  // https://traffic-simulation.de/info/info_IDM.html the parameters are
+  // data[0] - velocity desired [m/s]
+  // data[1] - time gap [s]
+  // data[2] - spacing standstill [m]
+  // data[3] - acceleration rate [m/s^2]
+  // data[4] - deceleration [m/s^2]
+  // data[5] - acceleration exponent [-]
+  // data[6] - avergae length between lead and ego vehicles [m]
   dist += (m_vehicle.GetChassis()->GetPos() - previousPos).Length();
   previousPos = m_vehicle.GetChassis()->GetPos();
 
@@ -73,6 +77,14 @@ double ChIDMFollower::Get_Dist() { return dist; }
 
 void ChIDMFollower::Set_TheroSpeed(float target_thero_speed) {
   thero_speed = target_thero_speed;
+}
+
+void ChIDMFollower::SetParam(std::vector<double> params) {
+  if (params.size() != behavior_data.size()) {
+    std::cout << "behavior data invalid!" << std::endl;
+    return;
+  }
+  behavior_data.assign(params.begin(), params.end());
 }
 
 } // end namespace hil

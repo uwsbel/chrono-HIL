@@ -69,6 +69,8 @@ public:
 
   void SetCruiseSpeed(double speed);
 
+  void SetParam(std::vector<double> params);
+
   double Get_Dist();
 
   void Set_TheroSpeed(float target_thero_speed);

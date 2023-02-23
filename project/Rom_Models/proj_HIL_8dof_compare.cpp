@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
   // ========== Chrono::Vehicle HMMWV vehicle ===============
   // Create the HMMWV vehicle, set parameters, and initialize
 
-  VEH_TYPE rom_type = VEH_TYPE::SEDAN;
+  VEH_TYPE rom_type = VEH_TYPE::HMMWV;
 
   float init_height = 0.45;
   std::string vehicle_filename;
