@@ -150,7 +150,7 @@ add_subdirectory(test)
 #--------------------------------------------------------------
 
 set(EXECUTABLE_OUTPUT_PATH bin)
-add_DLL_copy_command("${CHRONO_DLLS}")
+add_DLL_copy_command("${CHRONO_DLLS}" "${SDL2_DLL}")
 
 # Return now if not windows
 if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")

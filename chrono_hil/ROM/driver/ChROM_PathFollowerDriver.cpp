@@ -1,4 +1,6 @@
 #include "ChROM_PathFollowerDriver.h"
+namespace chrono {
+namespace hil {
 ChROM_PathFollowerDriver::ChROM_PathFollowerDriver(
     std::shared_ptr<Ch_8DOF_vehicle> rom, std::shared_ptr<ChBezierCurve> curve,
     double target_speed, double look_ahead_dist, double PID_st_kp,
@@ -93,3 +95,6 @@ void ChROM_PathFollowerDriver::Advance(double time_step) {
 void ChROM_PathFollowerDriver::SetCruiseSpeed(double target_speed) {
   m_target_speed = target_speed;
 }
+
+} // namespace hil
+} // namespace chrono

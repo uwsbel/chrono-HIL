@@ -20,8 +20,6 @@
 #include "chrono/physics/ChBodyEasy.h"
 #include "chrono/physics/ChSystemSMC.h"
 
-#include "chrono_hil/driver/ChSDLInterface.h"
-
 #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 #include "chrono_vehicle/driver/ChInteractiveDriverIRR.h"
 #include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"

@@ -56,7 +56,10 @@ add_library(ChronoEngine_hil SHARED
 )
 
 find_package(SDL2 REQUIRED)
-include_directories(ChronoEngine_hil ${SDL2_INCLUDE_DIRS})
+
+list(APPEND ALL_DLLS "${CHRONO_DLLS}" "${SDL2_DLL}")
+set(ALL_DLLS "${ALL_DLLS}" PARENT_SCOPE)
+
 
 set_target_properties(ChronoEngine_hil PROPERTIES
                       COMPILE_FLAGS "${CXX_FLAGS}"

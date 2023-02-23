@@ -14,10 +14,10 @@
 
 #include <string>
 
-using namespace chrono;
-using namespace chrono::vehicle;
+namespace chrono {
+namespace hil {
 
-class ChROM_PathFollowerDriver {
+class CH_HIL_API ChROM_PathFollowerDriver {
 
 public:
   ChROM_PathFollowerDriver(std::shared_ptr<Ch_8DOF_vehicle> m_rom,
@@ -64,5 +64,8 @@ private:
 
   DriverInputs m_inputs;
 };
+
+} // namespace hil
+} // namespace chrono
 
 #endif

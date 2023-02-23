@@ -37,6 +37,7 @@ endif()
 include_directories(
     ${CHRONO_INCLUDE_DIRS}
     ${CMAKE_SOURCE_DIR}
+    ${SDL2_INCLUDE_DIRS}
 )
 
 set(EXT_LIBRARIES 
