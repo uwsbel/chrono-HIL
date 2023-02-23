@@ -60,6 +60,8 @@ find_package(SDL2 REQUIRED)
 list(APPEND ALL_DLLS "${CHRONO_DLLS}" "${SDL2_DLL}")
 set(ALL_DLLS "${ALL_DLLS}" PARENT_SCOPE)
 
+find_package(Boost REQUIRED)
+
 
 set_target_properties(ChronoEngine_hil PROPERTIES
                       COMPILE_FLAGS "${CXX_FLAGS}"
