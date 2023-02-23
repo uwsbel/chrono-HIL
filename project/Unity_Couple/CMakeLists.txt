@@ -20,6 +20,7 @@ find_package(Chrono
              COMPONENTS SynChrono Vehicle Sensor Irrlicht
              CONFIG
 )
+find_package(SDL2 REQUIRED)
 
 # If Chrono and/or the required component(s) were not found, return now.
 if(NOT Chrono_FOUND)
@@ -39,6 +40,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}
     ${SDL2_INCLUDE_DIRS}
 )
+
 
 set(EXT_LIBRARIES 
 	ChronoEngine_hil

@@ -21,6 +21,8 @@ find_package(Chrono
              CONFIG
 )
 
+find_package(SDL2 REQUIRED)
+
 # If Chrono and/or the required component(s) were not found, return now.
 if(NOT Chrono_FOUND)
   message("Could not find requirements for the SynChrono Highway Project")
@@ -31,16 +33,16 @@ endif()
 #--------------------------------------------------------------
 # Include paths and libraries
 #--------------------------------------------------------------
-
 include_directories(
+    ${SDL2_INCLUDE_DIRS}
     ${CHRONO_INCLUDE_DIRS}
     ${CMAKE_SOURCE_DIR}
-    ${SDL2_INCLUDE_DIRS}
 )
 
 set(LINK_LIBRARY 
 	ChronoEngine_hil
 	${CHRONO_LIBRARIES}
+  ${SDL2_LIBRARIES}
 )
 
 
@@ -49,7 +51,7 @@ set(LINK_LIBRARY
 # Append to the parent's list of DLLs
 #--------------------------------------------------------------
 
-list(APPEND ALL_DLLS "${CHRONO_DLLS}")
+list(APPEND ALL_DLLS "${CHRONO_DLLS}" "${SDL2_DLL}")
 set(ALL_DLLS "${ALL_DLLS}" PARENT_SCOPE)
 
 #--------------------------------------------------------------
@@ -81,6 +83,6 @@ foreach(PROGRAM ${DEMOS})
   target_compile_options(${PROGRAM} PUBLIC ${CHRONO_CXX_FLAGS})
   target_link_options(${PROGRAM} PUBLIC ${CH_LINKERFLAG_SHARED})
 
-	target_link_libraries(${PROGRAM} ${LINK_LIBRARY} ${CHRONO_LIBRARIES} "-L/usr/local/cuda/lib64")# -lcudart")
+	target_link_libraries(${PROGRAM} ${LINK_LIBRARY}${CHRONO_LIBRARIES} "-L/usr/local/cuda/lib64")# -lcudart")
 
 endforeach(PROGRAM)

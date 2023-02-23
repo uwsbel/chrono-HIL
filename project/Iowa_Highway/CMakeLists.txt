@@ -23,6 +23,8 @@ find_package(Chrono
              CONFIG
 )
 
+find_package(SDL2 REQUIRED)
+
 # If Chrono and/or the required component(s) were not found, return now.
 if(NOT Chrono_FOUND)
   message("Could not find requirements for the SynChrono Highway Project")

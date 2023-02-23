@@ -21,6 +21,7 @@ find_package(Chrono
              COMPONENTS SynChrono Vehicle Sensor Irrlicht
              CONFIG
 )
+find_package(SDL2 REQUIRED)
 
 # If Chrono and/or the required component(s) were not found, return now.
 if(NOT Chrono_FOUND)

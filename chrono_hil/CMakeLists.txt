@@ -66,8 +66,8 @@ find_package(Boost REQUIRED)
 set_target_properties(ChronoEngine_hil PROPERTIES
                       COMPILE_FLAGS "${CXX_FLAGS}"
                       LINK_FLAGS "${CH_LINKERFLAG_SHARED}")
-                    
-include_directories(${CHRONO_INCLUDE_DIRS} ${SDL2_INCLUDE_DIRS})
+
+include_directories(${CHRONO_INCLUDE_DIRS} ${SDL2_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 
 
 target_compile_definitions(ChronoEngine_hil PRIVATE "CH_API_COMPILE_HIL")
