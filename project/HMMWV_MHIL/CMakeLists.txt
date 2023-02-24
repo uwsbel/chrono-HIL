@@ -20,7 +20,6 @@ find_package(Chrono
              COMPONENTS SynChrono Vehicle Sensor Irrlicht
              CONFIG
 )
-
 find_package(SDL2 REQUIRED)
 
 # If Chrono and/or the required component(s) were not found, return now.
@@ -30,19 +29,19 @@ if(NOT Chrono_FOUND)
 endif()
 
 
+
 #--------------------------------------------------------------
 # Include paths and libraries
 #--------------------------------------------------------------
+
 include_directories(
-    ${SDL2_INCLUDE_DIRS}
     ${CHRONO_INCLUDE_DIRS}
     ${CMAKE_SOURCE_DIR}
+    ${SDL2_INCLUDE_DIRS}
 )
 
-set(LINK_LIBRARY 
+set(EXT_LIBRARIES 
 	ChronoEngine_hil
-	${CHRONO_LIBRARIES}
-  ${SDL2_LIBRARIES}
 )
 
 
@@ -51,7 +50,7 @@ set(LINK_LIBRARY
 # Append to the parent's list of DLLs
 #--------------------------------------------------------------
 
-list(APPEND ALL_DLLS "${CHRONO_DLLS}" "${SDL2_DLL}")
+list(APPEND ALL_DLLS "${CHRONO_DLLS}")
 set(ALL_DLLS "${ALL_DLLS}" PARENT_SCOPE)
 
 #--------------------------------------------------------------
@@ -77,12 +76,12 @@ foreach(PROGRAM ${DEMOS})
 
   add_executable(${PROGRAM}  "${PROGRAM}.cpp")
   source_group(""  FILES "${PROGRAM}.cpp")
-
+  
   target_compile_definitions(${PROGRAM} PUBLIC "CHRONO_DATA_DIR=\"${CHRONO_DATA_DIR}\"") 
   target_compile_definitions(${PROGRAM} PUBLIC "PROJECTS_DATA_DIR=\"${PROJECTS_DATA_DIR}\"") 
   target_compile_options(${PROGRAM} PUBLIC ${CHRONO_CXX_FLAGS})
   target_link_options(${PROGRAM} PUBLIC ${CH_LINKERFLAG_SHARED})
 
-	target_link_libraries(${PROGRAM} ${LINK_LIBRARY}${CHRONO_LIBRARIES} "-L/usr/local/cuda/lib64")# -lcudart")
+	target_link_libraries(${PROGRAM} ${EXT_LIBRARIES} ${CHRONO_LIBRARIES} "-L/usr/local/cuda/lib64")# -lcudart")
 
 endforeach(PROGRAM)
