@@ -18,19 +18,36 @@ void ChROM_IDMFollower::Synchronize(double time, double step,
   // desired space headway [m], a: accel reate a [m/s^2], b: comfort decel
   // [m/s^2], delta: accel exponent
 
+  // update IDM param if disturbed
+  std::vector<double> temp_params;
+  if (m_enable_sto == true) {
+    // cruise speed
+
+    temp_params.push_back(m_d1(m_gen));
+    temp_params.push_back(m_params[1]);
+    temp_params.push_back(m_d2(m_gen));
+    temp_params.push_back(m_d3(m_gen));
+    temp_params.push_back(m_d4(m_gen));
+    temp_params.push_back(m_params[5]);
+    temp_params.push_back(m_params[6]);
+  } else {
+    temp_params = m_params;
+  }
+
   dist += (m_rom->GetPos() - previousPos).Length();
   previousPos = m_rom->GetPos();
 
-  double s = lead_distance - m_params[6];
+  double s = lead_distance - temp_params[6];
   double v = (m_rom->GetVel()).Length();
   double delta_v = v - lead_speed;
 
   double s_star =
-      m_params[2] +
-      ChMax(0.0, v * m_params[1] +
-                     (v * delta_v) / (2 * sqrt(m_params[3] * m_params[4])));
-  double dv_dt = m_params[3] *
-                 (1 - pow(v / m_params[0], m_params[5]) - pow(s_star / s, 2));
+      temp_params[2] +
+      ChMax(0.0,
+            v * temp_params[1] +
+                (v * delta_v) / (2 * sqrt(temp_params[3] * temp_params[4])));
+  double dv_dt = temp_params[3] * (1 - pow(v / temp_params[0], temp_params[5]) -
+                                   pow(s_star / s, 2));
 
   // integrate intended acceleration into theoretical soeed
   thero_speed = thero_speed + dv_dt * step;

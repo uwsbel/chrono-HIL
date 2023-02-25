@@ -70,6 +70,9 @@ std::vector<IDM_TYPE> idm_types = {
     AGG, AGG,  NORMAL, CONS, AGG,  CONS,   NORMAL, NORMAL, NORMAL, AGG,
     AGG, CONS, AGG,    CONS, CONS, NORMAL, AGG,    AGG,    CONS};
 
+std::random_device rd{};
+std::mt19937 gen{rd()};
+
 int main(int argc, char *argv[]) {
 
   // Create a physical system
@@ -129,19 +132,24 @@ int main(int argc, char *argv[]) {
   // initialize all idm roms
   for (int i = 0; i < num_rom; i++) {
     std::string rom_json;
+    float init_height;
 
     if (vehicle_types[i] == HMMWV) {
       rom_json = hmmwv_rom_json;
+      init_height = 0.45;
     } else if (vehicle_types[i] == PATROL) {
       rom_json = patrol_rom_json;
+      init_height = 0.45;
     } else if (vehicle_types[i] == AUDI) {
       rom_json = audi_rom_json;
+      init_height = 0.20;
     } else if (vehicle_types[i] == SEDAN) {
       rom_json = sedan_rom_json;
+      init_height = 0.20;
     }
 
     std::shared_ptr<Ch_8DOF_vehicle> rom_veh =
-        chrono_types::make_shared<Ch_8DOF_vehicle>(rom_json, 0.45);
+        chrono_types::make_shared<Ch_8DOF_vehicle>(rom_json, init_height);
 
     // determine initial position and initial orientation
     float deg_sec = (CH_C_PI * 1.0) / (num_rom);
@@ -164,39 +172,41 @@ int main(int argc, char *argv[]) {
 
     std::shared_ptr<ChROM_PathFollowerDriver> driver =
         chrono_types::make_shared<ChROM_PathFollowerDriver>(
-            rom_vec[i], path, 8.0, 6.0, 0.4, 0.0, 0.0, 0.4, 0.0, 0.0);
+            rom_vec[i], path, 2.0, 6.0, 0.4, 0.0, 0.0, 0.4, 0.0, 0.0);
     driver_vec.push_back(driver);
 
     // initialize idm control
     std::vector<double> params;
     if (idm_types[i] == AGG) {
-      params.push_back(2.0);
+      params.push_back(4.0);
       params.push_back(0.1);
       params.push_back(5.0);
       params.push_back(3.5);
       params.push_back(2.5);
       params.push_back(4.0);
-      params.push_back(5.0);
+      params.push_back(6.0);
     } else if (idm_types[i] == CONS) {
-      params.push_back(2.0);
+      params.push_back(4.0);
       params.push_back(0.7);
       params.push_back(8.0);
       params.push_back(2.5);
       params.push_back(1.5);
       params.push_back(4.0);
-      params.push_back(5.0);
+      params.push_back(6.0);
     } else if (idm_types[i] == NORMAL) {
-      params.push_back(2.0);
+      params.push_back(4.0);
       params.push_back(0.2);
       params.push_back(6.0);
       params.push_back(3.0);
       params.push_back(2.1);
       params.push_back(4.0);
-      params.push_back(4.86);
+      params.push_back(6.0);
     }
+
     std::shared_ptr<ChROM_IDMFollower> idm_controller =
         chrono_types::make_shared<ChROM_IDMFollower>(rom_vec[i], driver_vec[i],
                                                      params);
+    idm_controller->SetSto(true, 0.4, 1.0, 0.2, 0.2);
     idm_vec.push_back(idm_controller);
   }
 
@@ -265,6 +275,9 @@ int main(int argc, char *argv[]) {
 
       float theta = abs(acos(temp));
       float act_dis = theta * 50.f;
+
+      // for the center control vehicle
+
       idm_vec[i]->Synchronize(time, step_size, act_dis,
                               (rom_vec[ld_idx]->GetVel()).Length());
 
