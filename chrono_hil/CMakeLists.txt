@@ -44,6 +44,12 @@ set(ROM_FILES
     )
 source_group("rom" FILES ${ROM_FILES})
 
+set(NETWORK_FILES
+    network/ChBoostDataStreamer.h
+    network/ChBoostDataStreamer.cpp
+    )
+source_group("network" FILES ${NETWORK_FILES})
+
 set(CXX_FLAGS ${CH_CXX_FLAGS})
 set(LIBRARIES ${CHRONO_LIBRARIES})
 
@@ -53,6 +59,7 @@ add_library(ChronoEngine_hil SHARED
             ${TIMER_FILES}
             ${SOUND_FILES}
             ${ROM_FILES}
+            ${NETWORK_FILES}
 )
 
 find_package(SDL2 REQUIRED)

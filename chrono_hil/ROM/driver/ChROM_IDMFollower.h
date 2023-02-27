@@ -47,6 +47,10 @@ public:
     m_d4 = d4;
   }
 
+  void SetBehaviorParams(std::vector<double> new_params) {
+    m_params = new_params;
+  }
+
   void Synchronize(double time, double step, double lead_distance,
                    double lead_speed);
 

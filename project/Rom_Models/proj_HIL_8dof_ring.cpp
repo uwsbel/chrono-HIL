@@ -178,7 +178,7 @@ int main(int argc, char *argv[]) {
     // initialize idm control
     std::vector<double> params;
     if (idm_types[i] == AGG) {
-      params.push_back(4.0);
+      params.push_back(5.0);
       params.push_back(0.1);
       params.push_back(5.0);
       params.push_back(3.5);
@@ -186,7 +186,7 @@ int main(int argc, char *argv[]) {
       params.push_back(4.0);
       params.push_back(6.0);
     } else if (idm_types[i] == CONS) {
-      params.push_back(4.0);
+      params.push_back(5.0);
       params.push_back(0.7);
       params.push_back(8.0);
       params.push_back(2.5);
@@ -194,7 +194,7 @@ int main(int argc, char *argv[]) {
       params.push_back(4.0);
       params.push_back(6.0);
     } else if (idm_types[i] == NORMAL) {
-      params.push_back(4.0);
+      params.push_back(5.0);
       params.push_back(0.2);
       params.push_back(6.0);
       params.push_back(3.0);
@@ -206,7 +206,10 @@ int main(int argc, char *argv[]) {
     std::shared_ptr<ChROM_IDMFollower> idm_controller =
         chrono_types::make_shared<ChROM_IDMFollower>(rom_vec[i], driver_vec[i],
                                                      params);
-    idm_controller->SetSto(true, 0.4, 1.0, 0.2, 0.2);
+    if (i != num_rom - 1) {
+      idm_controller->SetSto(true, 0.2, 1.0, 0.2, 0.2);
+    }
+
     idm_vec.push_back(idm_controller);
   }
 
@@ -277,6 +280,57 @@ int main(int argc, char *argv[]) {
       float act_dis = theta * 50.f;
 
       // for the center control vehicle
+      if (i == num_rom - 1) {
+        if (step_number == 200000) {
+          std::vector<double> temp_params;
+          temp_params.push_back(2.0);
+          temp_params.push_back(0.7);
+          temp_params.push_back(8.0);
+          temp_params.push_back(2.5);
+          temp_params.push_back(0.3);
+          temp_params.push_back(4.0);
+          temp_params.push_back(6.0);
+          idm_vec[i]->SetBehaviorParams(temp_params);
+        }
+
+        if (step_number == 600000) {
+          std::vector<double> temp_params;
+          temp_params.push_back(3.0);
+          temp_params.push_back(0.7);
+          temp_params.push_back(8.0);
+          temp_params.push_back(2.5);
+          temp_params.push_back(0.5);
+          temp_params.push_back(4.0);
+          temp_params.push_back(6.0);
+          idm_vec[i]->SetBehaviorParams(temp_params);
+        }
+
+        if (step_number == 2000000) {
+          std::vector<double> temp_params;
+          temp_params.push_back(4.5);
+          temp_params.push_back(0.7);
+          temp_params.push_back(8.0);
+          temp_params.push_back(2.5);
+          temp_params.push_back(0.5);
+          temp_params.push_back(4.0);
+          temp_params.push_back(6.0);
+          idm_vec[i]->SetBehaviorParams(temp_params);
+        }
+
+        if (step_number == 3000000) {
+          std::vector<double> temp_params;
+          temp_params.push_back(5.0);
+          temp_params.push_back(0.7);
+          temp_params.push_back(8.0);
+          temp_params.push_back(2.5);
+          temp_params.push_back(0.5);
+          temp_params.push_back(4.0);
+          temp_params.push_back(6.0);
+          idm_vec[i]->SetBehaviorParams(temp_params);
+        }
+
+        std::cout << "step:" << step_number << std::endl;
+      }
 
       idm_vec[i]->Synchronize(time, step_size, act_dis,
                               (rom_vec[ld_idx]->GetVel()).Length());

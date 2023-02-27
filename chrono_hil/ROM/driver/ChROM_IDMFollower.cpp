@@ -22,14 +22,18 @@ void ChROM_IDMFollower::Synchronize(double time, double step,
   std::vector<double> temp_params;
   if (m_enable_sto == true) {
     // cruise speed
+    if (int(time / step) % 2000 == 0) {
+      temp_params.push_back(m_d1(m_gen));
+      temp_params.push_back(m_params[1]);
+      temp_params.push_back(m_d2(m_gen));
+      temp_params.push_back(m_d3(m_gen));
+      temp_params.push_back(m_d4(m_gen));
+      temp_params.push_back(m_params[5]);
+      temp_params.push_back(m_params[6]);
+    } else {
+      temp_params = m_params;
+    }
 
-    temp_params.push_back(m_d1(m_gen));
-    temp_params.push_back(m_params[1]);
-    temp_params.push_back(m_d2(m_gen));
-    temp_params.push_back(m_d3(m_gen));
-    temp_params.push_back(m_d4(m_gen));
-    temp_params.push_back(m_params[5]);
-    temp_params.push_back(m_params[6]);
   } else {
     temp_params = m_params;
   }

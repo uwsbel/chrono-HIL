@@ -9,14 +9,7 @@
 // http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
-// Authors: Radu Serban, Asher Elmquist
-// =============================================================================
-//
-// Main driver function for the Sedan full model.
-//
-// The vehicle reference frame has Z up, X towards the front of the vehicle, and
-// Y pointing to the left.
-//
+// Authors: Jason Zhou
 // =============================================================================
 
 #include "chrono/core/ChStream.h"
@@ -50,6 +43,8 @@
 
 #include "chrono_hil/driver/ChSDLInterface.h"
 
+#include "chrono_hil/network/ChBoostDataStreamer.h"
+
 using namespace chrono;
 using namespace chrono::irrlicht;
 using namespace chrono::vehicle;
@@ -57,6 +52,7 @@ using namespace chrono::vehicle::sedan;
 using namespace chrono::geometry;
 using namespace chrono::sensor;
 using namespace chrono::hil;
+
 // =============================================================================
 
 // Initial vehicle location and orientation
@@ -78,7 +74,7 @@ bool debug_output = false;
 double debug_step_size = 1.0 / 1; // FPS = 1
 
 // Driving mode
-int driver_mode = 0; // 0 for human driven, 1 for self drive
+int driver_mode = 1; // 0 for human driven, 1 for self drive
 
 // =============================================================================
 
@@ -228,6 +224,11 @@ int main(int argc, char *argv[]) {
   std::chrono::high_resolution_clock::time_point start =
       std::chrono::high_resolution_clock::now();
   double last_time = 0;
+
+  // create boost data streaming interface
+  ChBoostDataStreamer boost_streamer("127.0.0.1", 1209);
+
+  // simulation loop
   while (true) {
     double time = my_vehicle.GetSystem()->GetChTime();
 
@@ -273,6 +274,13 @@ int main(int argc, char *argv[]) {
         driver_mode = (driver_mode + 1) % 2;
         last_invoked = current_invoke;
       }
+    }
+
+    if (step_number % 100 == 0) {
+      boost_streamer.AddData(pos.x());
+      boost_streamer.AddData(pos.y());
+      boost_streamer.AddData(pos.z());
+      boost_streamer.Synchronize();
     }
 
     std::cout << "driver_mode:" << driver_mode << std::endl;
