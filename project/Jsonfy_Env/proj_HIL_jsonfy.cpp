@@ -60,6 +60,10 @@
 #include "chrono/utils/ChFilters.h"
 #include "chrono/utils/ChUtilsInputOutput.h"
 
+#include "chrono_hil/ROM/driver/ChROM_IDMFollower.h"
+#include "chrono_hil/ROM/driver/ChROM_PathFollowerDriver.h"
+#include "chrono_hil/ROM/veh/Ch_8DOF_vehicle.h"
+
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -76,6 +80,8 @@ using namespace chrono::hil;
 
 std::string json_parameters;
 
+float MPH2MS = 0.44704;
+
 struct IG_vehicle {
   std::string vehicle_file;
   std::string powertrain_file;
@@ -87,6 +93,7 @@ struct IG_vehicle {
 
 struct Terrain {
   RigidTerrain::PatchType terrain_model;
+  std::string terrain_mesh;
   ChVector<> pos;
   float length;
   float width;
@@ -99,6 +106,14 @@ struct Asset {
   float scale;
   std::string mesh_file;
   bool mutable_ind; // 0 for mutable false. 1 for mutable true
+};
+
+struct LdVehicle {
+  std::string vehicle_file;
+  ChVector<> pos;
+  ChVector<> rot;
+  float speed;
+  std::string path_file;
 };
 
 struct Camera {
@@ -118,6 +133,7 @@ IG_vehicle my_ig_vehicle;
 Terrain my_terrain;
 std::vector<Asset> my_assets;
 std::vector<Camera> my_cameras;
+std::vector<LdVehicle> my_lds;
 
 ChContactMethod contact_method = ChContactMethod::SMC;
 float step_size = 1e-3;
@@ -265,9 +281,15 @@ void ReadParameterFiles() {
       std::string type_string = d["Terrain"]["type"].GetString();
       if (type_string == "BOX") {
         my_terrain.terrain_model = RigidTerrain::PatchType::BOX;
+      } else if (type_string == "MESH") {
+        my_terrain.terrain_model = RigidTerrain::PatchType::MESH;
       }
     } else {
       PrintErrorMsg(3);
+    }
+
+    if (d["Terrain"].HasMember("terrain_mesh")) {
+      my_terrain.terrain_mesh = d["Terrain"]["terrain_mesh"].GetString();
     }
 
     if (d["Terrain"].HasMember("pos")) {
@@ -332,6 +354,47 @@ void ReadParameterFiles() {
 
     my_assets.push_back(temp_asset);
     asset_index++;
+  }
+
+  // ===================================
+  // Lead Vehicle specification
+  // ====================================
+  int ld_index = 0;
+  while (d.HasMember(
+      (std::string("Ld_Vehicle") + std::to_string(ld_index)).c_str())) {
+    LdVehicle temp_ld;
+    std::string ldname = std::string("Ld_Vehicle") + std::to_string(ld_index);
+
+    if (d[ldname.c_str()].HasMember("vehicle_type")) {
+      std::string type = d[ldname.c_str()]["vehicle_type"].GetString();
+      if (type == "HMMWV") {
+        temp_ld.vehicle_file =
+            std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/hmmwv/hmmwv_rom.json";
+      }
+    }
+
+    if (d[ldname.c_str()].HasMember("pos")) {
+      auto marr = d[ldname.c_str()]["pos"].GetArray();
+      temp_ld.pos = ChVector<>(marr[0].GetDouble(), marr[1].GetDouble(),
+                               marr[2].GetDouble());
+    }
+
+    if (d[ldname.c_str()].HasMember("rot")) {
+      auto marr = d[ldname.c_str()]["rot"].GetArray();
+      temp_ld.rot = ChVector<>(marr[0].GetDouble(), marr[1].GetDouble(),
+                               marr[2].GetDouble());
+    }
+
+    if (d[ldname.c_str()].HasMember("path")) {
+      temp_ld.path_file = d[ldname.c_str()]["path"].GetString();
+    }
+
+    if (d[ldname.c_str()].HasMember("speed")) {
+      temp_ld.speed = d[ldname.c_str()]["speed"].GetInt();
+    }
+
+    my_lds.push_back(temp_ld);
+    ld_index++;
   }
 }
 
@@ -403,12 +466,58 @@ int main(int argc, char *argv[]) {
     patch->SetTexture(vehicle::GetDataFile("terrain/textures/tile4.jpg"), 200,
                       200);
     break;
+  case RigidTerrain::PatchType::MESH:
+    patch = terrain->AddPatch(patch_mat, CSYSNORM, my_terrain.terrain_mesh);
+    // add vis mesh
+    auto terrain_mesh = chrono_types::make_shared<ChTriangleMeshConnected>();
+    terrain_mesh->LoadWavefrontMesh(my_terrain.terrain_mesh, true, true);
+    terrain_mesh->Transform(ChVector<>(0, 0, 0),
+                            ChMatrix33<>(1)); // scale to a different size
+    auto terrain_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+    terrain_shape->SetMesh(terrain_mesh);
+    terrain_shape->SetName("terrain");
+    terrain_shape->SetMutable(false);
+
+    auto terrain_body = chrono_types::make_shared<ChBody>();
+    terrain_body->SetPos({0, 0, -.01});
+    terrain_body->AddVisualShape(terrain_shape);
+    terrain_body->SetBodyFixed(true);
+    terrain_body->SetCollide(false);
+    vehicle.GetSystem()->Add(terrain_body);
+
+    break;
   }
   patch->SetColor(ChColor(0.8f, 0.8f, 0.5f));
 
   terrain->Initialize();
 
   std::cout << "Finished Terrain Setup" << std::endl;
+
+  // setup ld_vehicles
+
+  std::vector<std::shared_ptr<Ch_8DOF_vehicle>> rom_vec;
+  std::vector<std::shared_ptr<ChROM_PathFollowerDriver>> driver_vec;
+  for (int i = 0; i < my_lds.size(); i++) {
+
+    std::shared_ptr<Ch_8DOF_vehicle> rom_veh =
+        chrono_types::make_shared<Ch_8DOF_vehicle>(my_lds[i].vehicle_file,
+                                                   my_lds[i].pos.z());
+    rom_veh->SetInitPos(my_lds[i].pos);
+    rom_veh->SetInitRot(my_lds[i].rot.z());
+    rom_veh->Initialize(vehicle.GetSystem());
+
+    std::shared_ptr<ChBezierCurve> path =
+        ChBezierCurve::read(my_lds[i].path_file, true);
+
+    std::shared_ptr<ChROM_PathFollowerDriver> driver =
+        chrono_types::make_shared<ChROM_PathFollowerDriver>(
+            rom_veh, path, my_lds[i].speed * MPH2MS, 6.0, 0.06, 0.0, 0.0, 0.4,
+            0.0, 0.0);
+    rom_vec.push_back(rom_veh);
+    driver_vec.push_back(driver);
+  }
+
+  std::cout << "Finished Ld Vehicle Setup" << std::endl;
 
   // setup assets
   for (int i = 0; i < my_assets.size(); i++) {
@@ -517,6 +626,13 @@ int main(int argc, char *argv[]) {
     int status = SDLDriver.Synchronize();
     if (status == 1) {
       return -1;
+    }
+
+    // Update leads
+    for (int i = 0; i < rom_vec.size(); i++) {
+      driver_vec[i]->Advance(step_size);
+      DriverInputs ld_di = driver_vec[i]->GetDriverInput();
+      rom_vec[i]->Advance(time, ld_di);
     }
 
     terrain->Synchronize(time);
