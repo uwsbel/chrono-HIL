@@ -370,6 +370,15 @@ void ReadParameterFiles() {
       if (type == "HMMWV") {
         temp_ld.vehicle_file =
             std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/hmmwv/hmmwv_rom.json";
+      } else if (type == "Sedan") {
+        temp_ld.vehicle_file =
+            std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/sedan/sedan_rom.json";
+      } else if (type == "Audi") {
+        temp_ld.vehicle_file =
+            std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/audi/audi_rom.json";
+      } else if (type == "Patrol") {
+        temp_ld.vehicle_file = std::string(STRINGIFY(HIL_DATA_DIR)) +
+                               "/rom/patrol/patrol_rom.json";
       }
     }
 

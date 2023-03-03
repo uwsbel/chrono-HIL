@@ -33,21 +33,24 @@ namespace hil {
 // Driver for the leader vehicle, it adjusts its target speed according to a
 // piecewise sinusoidal function In the buffer-areas between pieces it keeps the
 // target speed specified in target_speed
-class CH_HIL_API ChBoostDataStreamer {
+class CH_HIL_API ChBoostOutStreamer {
 public:
   /// Construct an interactive driver.
-  ChBoostDataStreamer(std::string end_ip_addr, int port);
+  ChBoostOutStreamer(std::string end_ip_addr, int port);
 
-  ~ChBoostDataStreamer(){};
+  ~ChBoostOutStreamer() { m_socket->close(); };
 
   void AddData(float data_in);
 
   void Synchronize();
 
 private:
-  std::vector<float> stream_data;
-  std::string end_ip_addr;
-  int port;
+  std::shared_ptr<boost::asio::io_service> m_io_service;
+  std::shared_ptr<boost::asio::ip::udp::socket> m_socket;
+  std::shared_ptr<boost::asio::ip::udp::endpoint> m_remote_endpoint;
+  std::vector<float> m_stream_data;
+  std::string m_end_ip_addr;
+  int m_port;
 };
 
 } // namespace hil

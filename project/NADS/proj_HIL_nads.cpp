@@ -43,7 +43,8 @@
 
 #include "chrono_hil/driver/ChSDLInterface.h"
 
-#include "chrono_hil/network/ChBoostDataStreamer.h"
+#include "chrono_hil/network/ChBoostInStreamer.h"
+#include "chrono_hil/network/ChBoostOutStreamer.h"
 
 using namespace chrono;
 using namespace chrono::irrlicht;
@@ -52,6 +53,13 @@ using namespace chrono::vehicle::sedan;
 using namespace chrono::geometry;
 using namespace chrono::sensor;
 using namespace chrono::hil;
+
+const double RADS_2_RPM = 30 / CH_C_PI;
+const double MS_2_MPH = 2.2369;
+
+#define PORT_IN 1209
+#define PORT_OUT 1204
+#define IP_OUT "127.0.0.1"
 
 // =============================================================================
 
@@ -74,7 +82,8 @@ bool debug_output = false;
 double debug_step_size = 1.0 / 1; // FPS = 1
 
 // Driving mode
-int driver_mode = 1; // 0 for human driven, 1 for self drive
+int driver_mode =
+    2; // 0 for human driven, 1 for self drive, 2 for network driver
 
 // =============================================================================
 
@@ -166,6 +175,9 @@ int main(int argc, char *argv[]) {
   // ------------------------
 
   ChSDLInterface SDLDriver;
+  ChBoostInStreamer in_streamer(PORT_IN, 3);
+  std::vector<float> recv_data;
+
   // Set the time response for steering and throttle keyboard inputs.
   std::string path_file(std::string(STRINGIFY(HIL_DATA_DIR)) +
                         "/Environments/nads/nads_path_5.txt");
@@ -176,12 +188,16 @@ int main(int argc, char *argv[]) {
   driver.GetSpeedController().SetGains(0.3, 0, 0);
   driver.Initialize();
 
-  SDLDriver.Initialize();
+  if (driver_mode == 0) {
+    SDLDriver.Initialize();
 
-  SDLDriver.SetJoystickConfigFile(std::string(STRINGIFY(HIL_DATA_DIR)) +
-                                  std::string("/joystick/controller_G29.json"));
+    SDLDriver.SetJoystickConfigFile(
+        std::string(STRINGIFY(HIL_DATA_DIR)) +
+        std::string("/joystick/controller_G29.json"));
 
-  SDLDriver.AddCallbackButtons(6); // enable button callback
+    SDLDriver.AddCallbackButtons(6); // enable button callback
+  }
+
   // ---------------
   // Simulation loop
   // ---------------
@@ -226,7 +242,7 @@ int main(int argc, char *argv[]) {
   double last_time = 0;
 
   // create boost data streaming interface
-  ChBoostDataStreamer boost_streamer("127.0.0.1", 1209);
+  ChBoostOutStreamer boost_streamer(IP_OUT, PORT_OUT);
 
   // simulation loop
   while (true) {
@@ -258,30 +274,54 @@ int main(int argc, char *argv[]) {
       driver_inputs.m_braking = SDLDriver.GetBraking();
     } else if (driver_mode == 1) {
       driver_inputs = driver.GetInputs();
+    } else if (driver_mode == 2) {
+      in_streamer.Synchronize();
+      recv_data = in_streamer.GetRecvData();
+      driver_inputs.m_throttle = recv_data[0];
+      driver_inputs.m_steering = recv_data[1];
+      driver_inputs.m_braking = recv_data[2];
     }
 
-    // temp section to check button reg
-    std::vector<int> check_button_idx;
-    std::vector<int> check_button_val;
-    SDLDriver.GetButtonStatus(check_button_idx, check_button_val);
-    if (check_button_val[0] == 1) {
-      static auto last_invoked =
-          std::chrono::system_clock::now().time_since_epoch();
-      auto current_invoke = std::chrono::system_clock::now().time_since_epoch();
-      if (std::chrono::duration_cast<std::chrono::seconds>(current_invoke -
-                                                           last_invoked)
-              .count() > 1.0) {
-        driver_mode = (driver_mode + 1) % 2;
-        last_invoked = current_invoke;
+    if (driver_mode == 0 || driver_mode == 1) {
+      // temp section to check button reg
+      std::vector<int> check_button_idx;
+      std::vector<int> check_button_val;
+      SDLDriver.GetButtonStatus(check_button_idx, check_button_val);
+      if (check_button_val[0] == 1) {
+        static auto last_invoked =
+            std::chrono::system_clock::now().time_since_epoch();
+        auto current_invoke =
+            std::chrono::system_clock::now().time_since_epoch();
+        if (std::chrono::duration_cast<std::chrono::seconds>(current_invoke -
+                                                             last_invoked)
+                .count() > 1.0) {
+          driver_mode = (driver_mode + 1) % 2;
+          last_invoked = current_invoke;
+        }
       }
     }
 
-    if (step_number % 100 == 0) {
-      boost_streamer.AddData(pos.x());
-      boost_streamer.AddData(pos.y());
-      boost_streamer.AddData(pos.z());
-      boost_streamer.Synchronize();
-    }
+    boost_streamer.AddData((float)time); // 0 - time
+    boost_streamer.AddData(pos.x());     // 1 - x position
+    boost_streamer.AddData(pos.y());     // 2 - y position
+    boost_streamer.AddData(pos.z());     // 3 - z position
+    auto eu_rot = Q_to_Euler123(rot);
+    boost_streamer.AddData(eu_rot.x()); // 4 - x rotation
+    boost_streamer.AddData(eu_rot.y()); // 5 - y rotation
+    boost_streamer.AddData(eu_rot.z()); // 6 - z rotation
+    auto vel =
+        my_vehicle.GetChassis()->GetBody()->GetFrame_REF_to_abs().GetPos_dt();
+    boost_streamer.AddData(vel.x()); // 7 - x velocity
+    boost_streamer.AddData(vel.y()); // 8 - y velocity
+    boost_streamer.AddData(vel.z()); // 9 - z velocity
+    boost_streamer.AddData(
+        (float)(my_vehicle.GetSpeed() * MS_2_MPH)); // 10 - speed (m/s)
+    boost_streamer.AddData(
+        my_vehicle.GetPowertrain()
+            ->GetCurrentTransmissionGear()); // 11 - current gear
+    boost_streamer.AddData(my_vehicle.GetPowertrain()->GetMotorSpeed() *
+                           RADS_2_RPM); // 12 - current RPM
+    boost_streamer.Synchronize();
 
     std::cout << "driver_mode:" << driver_mode << std::endl;
 

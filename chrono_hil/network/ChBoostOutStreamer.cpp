@@ -12,7 +12,7 @@
 // This is a stream-based input driver interface based on boost UDP networking
 // =============================================================================
 
-#include "ChBoostDataStreamer.h"
+#include "ChBoostOutStreamer.h"
 
 #include <algorithm>
 #include <climits>
@@ -24,30 +24,28 @@
 namespace chrono {
 namespace hil {
 
-ChBoostDataStreamer::ChBoostDataStreamer(std::string end_ip_addr, int port) {
-  this->end_ip_addr = end_ip_addr;
-  this->port = port;
+ChBoostOutStreamer::ChBoostOutStreamer(std::string end_ip_addr, int port) {
+  m_end_ip_addr = end_ip_addr;
+  m_port = port;
+  m_io_service = std::make_shared<boost::asio::io_service>();
+  m_socket = std::make_shared<boost::asio::ip::udp::socket>(*m_io_service);
+  m_remote_endpoint = std::make_shared<boost::asio::ip::udp::endpoint>(
+      address::from_string(m_end_ip_addr), m_port);
+  m_socket->open(udp::v4());
 }
 
-void ChBoostDataStreamer::AddData(float data_in) {
-  stream_data.push_back(data_in);
+void ChBoostOutStreamer::AddData(float data_in) {
+  m_stream_data.push_back(data_in);
 }
 
-void ChBoostDataStreamer::Synchronize() {
-  boost::asio::io_service io_service;
-  udp::socket socket(io_service);
-  udp::endpoint remote_endpoint =
-      udp::endpoint(address::from_string(end_ip_addr), port);
-  socket.open(udp::v4());
+void ChBoostOutStreamer::Synchronize() {
 
   boost::system::error_code err;
-  auto sent =
-      socket.send_to(boost::asio::buffer(stream_data.data(),
-                                         sizeof(float) * stream_data.size()),
-                     remote_endpoint, 0, err);
-
-  socket.close();
-  stream_data.clear();
+  auto sent = m_socket->send_to(
+      boost::asio::buffer(m_stream_data.data(),
+                          sizeof(float) * m_stream_data.size()),
+      *m_remote_endpoint, 0, err);
+  m_stream_data.clear();
 }
 
 } // namespace hil

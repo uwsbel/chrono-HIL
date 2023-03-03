@@ -9,8 +9,6 @@ set(DRIVER_FILES
     driver/ChNSF_Drivers.cpp
     driver/ChSDLInterface.h
     driver/ChSDLInterface.cpp
-    driver/ChBoostStreamInterface.h
-    driver/ChBoostStreamInterface.cpp
     driver/ChIDM_Follower.h
     driver/ChIDM_Follower.cpp
     #driver/joystick.h
@@ -45,8 +43,10 @@ set(ROM_FILES
 source_group("rom" FILES ${ROM_FILES})
 
 set(NETWORK_FILES
-    network/ChBoostDataStreamer.h
-    network/ChBoostDataStreamer.cpp
+    network/ChBoostInStreamer.h
+    network/ChBoostInStreamer.cpp
+    network/ChBoostOutStreamer.h
+    network/ChBoostOutStreamer.cpp
     )
 source_group("network" FILES ${NETWORK_FILES})
 
