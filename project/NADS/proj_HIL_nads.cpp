@@ -41,8 +41,6 @@
 
 #include "chrono_thirdparty/filesystem/path.h"
 
-#include "chrono_hil/driver/ChSDLInterface.h"
-
 #include "chrono_hil/network/ChBoostInStreamer.h"
 #include "chrono_hil/network/ChBoostOutStreamer.h"
 
@@ -59,7 +57,8 @@ const double MS_2_MPH = 2.2369;
 
 #define PORT_IN 1209
 #define PORT_OUT 1204
-#define IP_OUT "127.0.0.1"
+#define IP_OUT "128.104.190.70"
+bool render = true;
 
 // =============================================================================
 
@@ -76,14 +75,6 @@ double tire_step_size = 1e-5;
 
 // Simulation end time
 double t_end = 1000;
-
-// Debug logging
-bool debug_output = false;
-double debug_step_size = 1.0 / 1; // FPS = 1
-
-// Driving mode
-int driver_mode =
-    2; // 0 for human driven, 1 for self drive, 2 for network driver
 
 // =============================================================================
 
@@ -174,29 +165,8 @@ int main(int argc, char *argv[]) {
   // Create the driver system
   // ------------------------
 
-  ChSDLInterface SDLDriver;
-  ChBoostInStreamer in_streamer(PORT_IN, 3);
+  ChBoostInStreamer in_streamer(PORT_IN, 4);
   std::vector<float> recv_data;
-
-  // Set the time response for steering and throttle keyboard inputs.
-  std::string path_file(std::string(STRINGIFY(HIL_DATA_DIR)) +
-                        "/Environments/nads/nads_path_5.txt");
-  auto path = ChBezierCurve::read(path_file, true);
-  ChPathFollowerDriver driver(my_vehicle, path, "my_path", 20.0);
-  driver.GetSteeringController().SetLookAheadDistance(15);
-  driver.GetSteeringController().SetGains(0.1, 0, 0.02);
-  driver.GetSpeedController().SetGains(0.3, 0, 0);
-  driver.Initialize();
-
-  if (driver_mode == 0) {
-    SDLDriver.Initialize();
-
-    SDLDriver.SetJoystickConfigFile(
-        std::string(STRINGIFY(HIL_DATA_DIR)) +
-        std::string("/joystick/controller_G29.json"));
-
-    SDLDriver.AddCallbackButtons(6); // enable button callback
-  }
 
   // ---------------
   // Simulation loop
@@ -209,30 +179,33 @@ int main(int argc, char *argv[]) {
   // Create the camera sensor
   auto manager =
       chrono_types::make_shared<ChSensorManager>(my_vehicle.GetSystem());
-  float intensity = 1.2;
-  manager->scene->AddPointLight({0, 0, 1e8}, {1.0, 1.0, 1.0}, 1e12);
-  manager->scene->SetAmbientLight({.2, .2, .2});
-  manager->scene->SetSceneEpsilon(1e-3);
-  manager->scene->EnableDynamicOrigin(true);
-  manager->scene->SetOriginOffsetThreshold(500.f);
+  if (render){
+      float intensity = 1.2;
+      manager->scene->AddPointLight({0, 0, 1e8}, {1.0, 1.0, 1.0}, 1e12);
+      manager->scene->SetAmbientLight({.2, .2, .2});
+      manager->scene->SetSceneEpsilon(1e-3);
+      manager->scene->EnableDynamicOrigin(true);
+      manager->scene->SetOriginOffsetThreshold(500.f);
 
-  auto cam = chrono_types::make_shared<ChCameraSensor>(
-      attached_body, // body camera is attached to
-      30,            // update rate in Hz
-      chrono::ChFrame<double>(
-          ChVector<>(-12.0, 0.0, 2.0),
-          Q_from_Euler123(ChVector<>(0.0, 0.11, 0.0))), // offset pose
-      1280,                                             // image width
-      720,                                              // image height
-      1.408f,
-      2); // fov, lag, exposure
-  cam->SetName("Camera Sensor");
+      auto cam = chrono_types::make_shared<ChCameraSensor>(
+          attached_body, // body camera is attached to
+          30,            // update rate in Hz
+          chrono::ChFrame<double>(
+              ChVector<>(-12.0, 0.0, 2.0),
+              Q_from_Euler123(ChVector<>(0.0, 0.11, 0.0))), // offset pose
+          5760,                                             // image width
+          1080,                                              // image height
+          1.408f,
+          2); // fov, lag, exposure
+      cam->SetName("Camera Sensor");
 
-  cam->PushFilter(
-      chrono_types::make_shared<ChFilterVisualize>(1280, 720, "hwwmv", false));
-  // Provide the host access to the RGBA8 buffer
-  cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
-  manager->AddSensor(cam);
+      cam->PushFilter(
+          chrono_types::make_shared<ChFilterVisualize>(1280, 720, "hwwmv", false));
+      // Provide the host access to the RGBA8 buffer
+      cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+      manager->AddSensor(cam);
+  }
+
 
   my_vehicle.EnableRealtime(false);
 
@@ -259,8 +232,10 @@ int main(int argc, char *argv[]) {
     attached_body->SetPos(pos);
     attached_body->SetRot(y_0_rot);
 
-    manager->Update();
-
+    if (render){
+      manager->Update();
+    }
+    
     // End simulation
     if (time >= t_end)
       break;
@@ -268,39 +243,32 @@ int main(int argc, char *argv[]) {
     // Get driver inputs
     DriverInputs driver_inputs;
 
-    if (driver_mode == 0) {
-      driver_inputs.m_throttle = SDLDriver.GetThrottle();
-      driver_inputs.m_steering = SDLDriver.GetSteering();
-      driver_inputs.m_braking = SDLDriver.GetBraking();
-    } else if (driver_mode == 1) {
-      driver_inputs = driver.GetInputs();
-    } else if (driver_mode == 2) {
-      in_streamer.Synchronize();
-      recv_data = in_streamer.GetRecvData();
-      driver_inputs.m_throttle = recv_data[0];
-      driver_inputs.m_steering = recv_data[1];
-      driver_inputs.m_braking = recv_data[2];
+    in_streamer.Synchronize();
+    recv_data = in_streamer.GetRecvData();
+    driver_inputs.m_throttle = recv_data[0];
+    driver_inputs.m_steering = recv_data[1];
+    driver_inputs.m_braking = recv_data[2];
+
+    float gear = recv_data[3];
+    std::cout << gear << std::endl;
+    if (gear == 0.0) {
+      my_vehicle.GetPowertrain()->SetDriveMode(
+          ChPowertrain::DriveMode::NEUTRAL);
+      driver_inputs.m_braking = 1.0;
+    } else if (gear == 1.0) {
+      my_vehicle.GetPowertrain()->SetDriveMode(
+          ChPowertrain::DriveMode::FORWARD);
+    } else if (gear == 2.0) {
+      my_vehicle.GetPowertrain()->SetDriveMode(
+          ChPowertrain::DriveMode::REVERSE);
+    } else if (gear == 3.0) {
+      my_vehicle.GetPowertrain()->SetDriveMode(
+          ChPowertrain::DriveMode::NEUTRAL);
     }
 
-    if (driver_mode == 0 || driver_mode == 1) {
-      // temp section to check button reg
-      std::vector<int> check_button_idx;
-      std::vector<int> check_button_val;
-      SDLDriver.GetButtonStatus(check_button_idx, check_button_val);
-      if (check_button_val[0] == 1) {
-        static auto last_invoked =
-            std::chrono::system_clock::now().time_since_epoch();
-        auto current_invoke =
-            std::chrono::system_clock::now().time_since_epoch();
-        if (std::chrono::duration_cast<std::chrono::seconds>(current_invoke -
-                                                             last_invoked)
-                .count() > 1.0) {
-          driver_mode = (driver_mode + 1) % 2;
-          last_invoked = current_invoke;
-        }
-      }
-    }
-
+    // =======================
+    // data stream out section
+    // =======================
     boost_streamer.AddData((float)time); // 0 - time
     boost_streamer.AddData(pos.x());     // 1 - x position
     boost_streamer.AddData(pos.y());     // 2 - y position
@@ -316,26 +284,35 @@ int main(int argc, char *argv[]) {
     boost_streamer.AddData(vel.z()); // 9 - z velocity
     boost_streamer.AddData(
         (float)(my_vehicle.GetSpeed() * MS_2_MPH)); // 10 - speed (m/s)
+    
+    auto acc =  my_vehicle.GetChassis()->GetBody()->GetFrame_REF_to_abs().GetPos_dtdt(); 
+    boost_streamer.AddData(acc.x());  // 11 - x acceleration
+    boost_streamer.AddData(acc.y());  // 12 - y acceleration
+    boost_streamer.AddData(acc.z());  // 13 - z acceleration
+
+    auto ang_vel_q = my_vehicle.GetChassis()->GetBody()->GetFrame_REF_to_abs().GetRot_dt();
+    auto ang_vel = Q_to_Euler123(ang_vel_q);
+    boost_streamer.AddData(ang_vel.x());  // 14 - x ang vel of chassis
+    boost_streamer.AddData(ang_vel.y());  // 15 - y ang vel of chassis
+    boost_streamer.AddData(ang_vel.z());  // 16 - z ang vel of chassis
+
     boost_streamer.AddData(
         my_vehicle.GetPowertrain()
-            ->GetCurrentTransmissionGear()); // 11 - current gear
+            ->GetCurrentTransmissionGear()); // 17 - current gear
     boost_streamer.AddData(my_vehicle.GetPowertrain()->GetMotorSpeed() *
-                           RADS_2_RPM); // 12 - current RPM
+                           RADS_2_RPM); // 18 - current RPM
     boost_streamer.Synchronize();
-
-    std::cout << "driver_mode:" << driver_mode << std::endl;
+    // =======================
+    // end data stream out section
+    // =======================
 
     // Update modules (process inputs from other modules)
-    driver.Synchronize(time);
     terrain.Synchronize(time);
     my_vehicle.Synchronize(time, driver_inputs, terrain);
-    // vis->Synchronize(driver.GetInputModeAsString(), driver_inputs);
 
     // Advance simulation for one timestep for all modules
-    driver.Advance(step_size);
     terrain.Advance(step_size);
     my_vehicle.Advance(step_size);
-    // vis->Advance(step_size);
 
     // Increment frame number
     step_number++;
@@ -358,10 +335,6 @@ int main(int argc, char *argv[]) {
       std::cout << (wall_time.count()) / (time - last_time) << "\n";
       last_time = time;
       start = std::chrono::high_resolution_clock::now();
-    }
-
-    if (SDLDriver.Synchronize() == 1) {
-      break;
     }
   }
 

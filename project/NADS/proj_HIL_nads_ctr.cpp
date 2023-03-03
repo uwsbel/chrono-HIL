@@ -44,7 +44,7 @@ using boost::asio::ip::udp;
 
 #define PORT_IN 1204
 #define PORT_OUT 1209
-#define IP_OUT "127.0.0.1"
+#define IP_OUT "128.104.190.187"
 
 int main(int argc, char *argv[]) {
   ChSDLInterface SDLDriver;
@@ -53,22 +53,50 @@ int main(int argc, char *argv[]) {
 
   SDLDriver.SetJoystickConfigFile(std::string(STRINGIFY(HIL_DATA_DIR)) +
                                   std::string("/joystick/controller_G29.json"));
+  SDLDriver.AddCallbackButtons(6);
+  float gear =
+      0.f; // 0.0 for park, 1.0 for forward, 2.0 for backward, 3.0 for neutral
+
+  std::vector<int> check_button_idx;
+  std::vector<int> check_button_val;
 
   ChBoostOutStreamer out_streamer(IP_OUT, PORT_OUT);
-  ChBoostInStreamer in_streamer(PORT_IN, 13);
+  ChBoostInStreamer in_streamer(PORT_IN, 19);
 
   std::vector<float> recv_data;
 
   while (true) {
+    // data out
     float throttle = SDLDriver.GetThrottle();
     float steering = SDLDriver.GetSteering();
     float braking = SDLDriver.GetBraking();
-    out_streamer.AddData(throttle);
-    out_streamer.AddData(steering);
-    out_streamer.AddData(braking);
+
+    out_streamer.AddData(throttle); // out - 0 - throttle
+    out_streamer.AddData(steering); // out - 1 - steering
+    out_streamer.AddData(braking);  // out - 2 - braking
+
+    SDLDriver.GetButtonStatus(check_button_idx, check_button_val);
+    if (check_button_val[0] == 1) {
+      static auto last_invoked_1 =
+          std::chrono::system_clock::now().time_since_epoch();
+      auto current_invoke_1 =
+          std::chrono::system_clock::now().time_since_epoch();
+
+      if (std::chrono::duration_cast<std::chrono::seconds>(current_invoke_1 -
+                                                           last_invoked_1)
+              .count() >= 1.0) {
+        gear = ((int)(gear + 1.0)) % 4;
+
+        last_invoked_1 = current_invoke_1;
+      }
+    }
+    out_streamer.AddData(gear);
+
     out_streamer.Synchronize();
 
+    // data in
     in_streamer.Synchronize();
+
     recv_data = in_streamer.GetRecvData();
     for (int i = 0; i < recv_data.size(); i++) {
       std::cout << recv_data[i] << ",";
