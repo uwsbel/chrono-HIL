@@ -708,9 +708,9 @@ int main(int argc, char *argv[]) {
     if (use_control == 1 && drive_type == 0) {
       float avg_speed = IG_speed_avg.Add(my_vehicle.GetSpeed());
       if (avg_speed < (8.9408 / 4.0)) {
-        driver.Set_TheroSpeed(8.9408 / 4.0);
-        std::cout << "spd:" << 8.9408 / 4.0 << std::endl;
-      } else if (avg_speed < (8.9408 / 2.0)) {
+        driver.Set_TheroSpeed(8.9408 / 3.0);
+        std::cout << "spd:" << 8.9408 / 3.0 << std::endl;
+      } else if (avg_speed < (8.9408 / 3.0)) {
         driver.Set_TheroSpeed(8.9408 / 2.0);
         std::cout << "spd:" << 8.9408 / 2.0 << std::endl;
       } else {
