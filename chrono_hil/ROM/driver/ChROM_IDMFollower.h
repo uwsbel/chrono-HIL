@@ -71,6 +71,8 @@ private:
   std::normal_distribution<double> m_d2;
   std::normal_distribution<double> m_d3;
   std::normal_distribution<double> m_d4;
+  int update_step_resolution; // IDM parameter disturb frequencies (update each
+                              // x steps)
 
   ChVector<> previousPos;
 

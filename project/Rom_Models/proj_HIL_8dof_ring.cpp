@@ -67,8 +67,8 @@ std::vector<VEH_TYPE> vehicle_types = {
     HMMWV, AUDI,  PATROL, AUDI, SEDAN, HMMWV, HMMWV, AUDI, SEDAN, HMMWV,
     SEDAN, HMMWV, AUDI,   AUDI, HMMWV, SEDAN, HMMWV, AUDI, AUDI};
 std::vector<IDM_TYPE> idm_types = {
-    AGG, AGG,  NORMAL, CONS, AGG,  CONS,   NORMAL, NORMAL, NORMAL, AGG,
-    AGG, CONS, AGG,    CONS, CONS, NORMAL, AGG,    AGG,    CONS};
+    AGG, NORMAL, NORMAL, CONS, AGG,  CONS,   NORMAL, NORMAL, NORMAL, AGG,
+    AGG, CONS,   AGG,    CONS, CONS, NORMAL, AGG,    AGG,    CONS};
 
 std::random_device rd{};
 std::mt19937 gen{rd()};
@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) {
         chrono_types::make_shared<ChROM_IDMFollower>(rom_vec[i], driver_vec[i],
                                                      params);
     if (i != num_rom - 1) {
-      idm_controller->SetSto(true, 0.2, 1.0, 0.2, 0.2);
+      idm_controller->SetSto(true, 0.1, 0.8, 0.2, 0.2);
     }
 
     idm_vec.push_back(idm_controller);
@@ -280,6 +280,7 @@ int main(int argc, char *argv[]) {
       float act_dis = theta * 50.f;
 
       // for the center control vehicle
+      /*
       if (i == num_rom - 1) {
         if (step_number == 200000) {
           std::vector<double> temp_params;
@@ -331,6 +332,7 @@ int main(int argc, char *argv[]) {
 
         std::cout << "step:" << step_number << std::endl;
       }
+      */
 
       idm_vec[i]->Synchronize(time, step_size, act_dis,
                               (rom_vec[ld_idx]->GetVel()).Length());

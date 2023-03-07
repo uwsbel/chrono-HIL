@@ -128,6 +128,9 @@ int render_scene = 0;
 int fps = 25;
 int output = 0;
 
+int use_control = 0; // whether to use slow start control
+utils::ChRunningAverage IG_speed_avg(10000);
+
 std::string path_file(std::string(STRINGIFY(HIL_DATA_DIR)) +
                       "/ring/terrain0103/ring50_closed.txt");
 
@@ -161,6 +164,7 @@ void AddCommandLineOptions(ChCLI &cli) {
   cli.AddOption<int>("Simulation", "output", "output exp data", "0");
   cli.AddOption<std::vector<std::string>>(
       "DDS", "ip", "IP Addresses for initialPeersList", "127.0.0.1");
+  cli.AddOption<int>("Simulation", "control", "to use slow-start control", "0");
 }
 
 void readvectors(std::vector<float> &throttle_ref,
@@ -258,6 +262,7 @@ int main(int argc, char *argv[]) {
   const std::vector<std::string> ip_list =
       cli.GetAsType<std::vector<std::string>>("ip");
   render_scene = cli.GetAsType<int>("render");
+  use_control = cli.GetAsType<int>("control");
 
   // -----------------------
   // Create SynChronoManager
@@ -697,6 +702,21 @@ int main(int argc, char *argv[]) {
       SynLog() << (wall_time.count()) / (time - last_time) << "\n";
       last_time = time;
       start = std::chrono::high_resolution_clock::now();
+    }
+
+    // slow-start control
+    if (use_control == 1 && drive_type == 0) {
+      float avg_speed = IG_speed_avg.Add(my_vehicle.GetSpeed());
+      if (avg_speed < (8.9408 / 4.0)) {
+        driver.Set_TheroSpeed(8.9408 / 4.0);
+        std::cout << "spd:" << 8.9408 / 4.0 << std::endl;
+      } else if (avg_speed < (8.9408 / 2.0)) {
+        driver.Set_TheroSpeed(8.9408 / 2.0);
+        std::cout << "spd:" << 8.9408 / 2.0 << std::endl;
+      } else {
+        driver.Set_TheroSpeed(8.9408);
+        std::cout << "spd:" << 8.9408 << std::endl;
+      }
     }
 
     // obtain map
