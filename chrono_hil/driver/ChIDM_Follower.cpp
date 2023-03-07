@@ -79,6 +79,10 @@ void ChIDMFollower::Set_TheroSpeed(float target_thero_speed) {
   thero_speed = target_thero_speed;
 }
 
+void ChIDMFollower::Set_CruiseSpeed(float idm_cruise_speed) {
+  behavior_data[0] = target_thero_speed;
+}
+
 void ChIDMFollower::SetParam(std::vector<double> params) {
   if (params.size() != behavior_data.size()) {
     std::cout << "behavior data invalid!" << std::endl;

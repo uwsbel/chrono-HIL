@@ -73,7 +73,7 @@ public:
 
   double Get_Dist();
 
-  void Set_TheroSpeed(float target_thero_speed);
+  void Set_CruiseSpeed(float idm_cruise_speed);
 
 private:
   // starting pos to compare with to obtain traveled dist
@@ -86,6 +86,8 @@ private:
   std::vector<double> behavior_data;
   // Cruise speed between sinusoidal stretches
   double cruise_speed;
+
+  void Set_TheroSpeed(float target_thero_speed);
 };
 
 } // namespace hil
