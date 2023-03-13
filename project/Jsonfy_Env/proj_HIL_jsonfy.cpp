@@ -509,8 +509,8 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < my_lds.size(); i++) {
 
     std::shared_ptr<Ch_8DOF_vehicle> rom_veh =
-        chrono_types::make_shared<Ch_8DOF_vehicle>(my_lds[i].vehicle_file,
-                                                   my_lds[i].pos.z());
+        chrono_types::make_shared<Ch_8DOF_vehicle>(
+            my_lds[i].vehicle_file, my_lds[i].pos.z(), step_size);
     rom_veh->SetInitPos(my_lds[i].pos);
     rom_veh->SetInitRot(my_lds[i].rot.z());
     rom_veh->Initialize(vehicle.GetSystem());

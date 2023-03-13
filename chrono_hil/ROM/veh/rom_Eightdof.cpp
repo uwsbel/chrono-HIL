@@ -29,7 +29,7 @@ Code for the Eight dof model implemented in cpp
 */
 
 // sets the vertical forces based on the vehicle weight
-void vehInit(VehicleState &v_state, const VehicleParam &v_param) {
+void vehInit(VehicleState &v_state, VehicleParam &v_param, float time_step) {
   double weight_split =
       ((v_param.m_m * G * v_param.m_a) / (2 * (v_param.m_a + v_param.m_b)) +
        v_param.m_muf * G);
@@ -40,6 +40,7 @@ void vehInit(VehicleState &v_state, const VehicleParam &v_param) {
        v_param.m_mur * G);
 
   v_state.m_fzlr = v_state.m_fzrr = weight_split;
+  v_param.m_step = time_step;
 }
 
 // returns drive toruqe at a given omega
@@ -326,7 +327,6 @@ void setVehParamsJSON(VehicleParam &v_params, std::string fileName) {
   v_params.m_maxSteer = d["maxSteer"].GetDouble();
   v_params.m_diffRatio = d["diffRatio"].GetDouble();
   v_params.m_maxBrakeTorque = d["maxBrakeTorque"].GetDouble();
-  v_params.m_step = d["step"].GetDouble();
 }
 
 // setting vehicle's engine parameters using a JSON file

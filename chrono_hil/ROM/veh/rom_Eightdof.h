@@ -127,7 +127,7 @@ struct VehicleState {
 };
 
 // sets the vertical forces based on the vehicle weight
-void vehInit(VehicleState &v_state, const VehicleParam &v_params);
+void vehInit(VehicleState &v_state, VehicleParam &v_params, float step_size);
 
 double driveTorque(const VehicleParam &v_params, VehicleState &v_state,
                    const double throttle, const double omega, int tire_idx);

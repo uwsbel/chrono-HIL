@@ -11,6 +11,10 @@
 // =============================================================================
 // Author: Jason Zhou
 // =============================================================================
+// This demo compares the dynamics simulation results between chrono::vehicle
+// and 8dof vehicle model. The demo contains two preset driving scenarios -
+// straight acceleration and another scenario which contains steering.
+// =============================================================================
 
 #include <chrono>
 #include <iostream>
@@ -44,6 +48,8 @@
 
 #include "chrono_models/vehicle/hmmwv/HMMWV.h"
 
+#include "chrono/utils/ChUtilsInputOutput.h"
+#include "chrono_hil/timer/ChRealtimeCumulative.h"
 #include "chrono_sensor/ChSensorManager.h"
 #include "chrono_sensor/filters/ChFilterAccess.h"
 #include "chrono_sensor/filters/ChFilterCameraNoise.h"
@@ -53,7 +59,7 @@
 #include "chrono_sensor/filters/ChFilterVisualize.h"
 #include "chrono_sensor/sensors/ChSegmentationCamera.h"
 
-#include "chrono_hil/timer/ChRealtimeCumulative.h"
+#include "chrono_thirdparty/filesystem/path.h"
 
 // Use the namespaces of Chrono
 using namespace chrono;
@@ -67,9 +73,6 @@ using namespace chrono::hil;
 double step_size = 5e-4;
 double tire_step_size = 1e-3;
 
-// Simulation end time
-double t_end = 1000;
-
 // Time interval between two render frames
 double render_step_size = 1.0 / 50; // FPS = 50
 
@@ -79,7 +82,12 @@ ChQuaternion<> initRot(1, 0, 0, 0);
 // Point on chassis tracked by the camera
 ChVector<> trackPoint(0.0, 0.0, 1.75);
 
+bool output = false;
+const std::string out_dir = GetChronoOutputPath() + "8dof";
+
 enum VEH_TYPE { HMMWV, PATROL, AUDI, SEDAN };
+
+enum TEST_CASE { STRAIGHT, TURN };
 
 int main(int argc, char *argv[]) {
   vehicle::SetDataPath(CHRONO_DATA_DIR + std::string("vehicle/"));
@@ -87,6 +95,7 @@ int main(int argc, char *argv[]) {
   // Create the HMMWV vehicle, set parameters, and initialize
 
   VEH_TYPE rom_type = VEH_TYPE::HMMWV;
+  TEST_CASE test_case = TEST_CASE::STRAIGHT;
 
   float init_height = 0.45;
   std::string vehicle_filename;
@@ -157,7 +166,8 @@ int main(int argc, char *argv[]) {
   }
 
   std::shared_ptr<Ch_8DOF_vehicle> rom_veh =
-      chrono_types::make_shared<Ch_8DOF_vehicle>(rom_json, init_height);
+      chrono_types::make_shared<Ch_8DOF_vehicle>(rom_json, init_height,
+                                                 step_size);
   rom_veh->SetInitPos(initLoc + ChVector<>(0.0, 4.0, init_height));
   rom_veh->SetInitRot(0.0);
   rom_veh->Initialize(my_vehicle.GetSystem());
@@ -203,7 +213,7 @@ int main(int argc, char *argv[]) {
       attached_body, // body camera is attached to
       35,            // update rate in Hz
       chrono::ChFrame<double>(
-          ChVector<>(5.0, -5.0, 1.0),
+          ChVector<>(20.0, -35.0, 1.0),
           Q_from_Euler123(ChVector<>(0.0, 0.0, C_PI / 2))), // offset pose
       1920,                                                 // image width
       1080,                                                 // image
@@ -214,23 +224,6 @@ int main(int argc, char *argv[]) {
   // Provide the host access to the RGBA8 buffer
   // cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
   manager->AddSensor(cam);
-
-  auto cam2 = chrono_types::make_shared<ChCameraSensor>(
-      attached_body, // body camera is attached to
-      35,            // update rate in Hz
-      chrono::ChFrame<double>(
-          ChVector<>(5.0, 9.0, 1.0),
-          Q_from_Euler123(ChVector<>(0.0, 0.0, -C_PI / 2))), // offset pose
-      1920,                                                  // image width
-      1080,                                                  // image
-      1.608f, 1); // fov, lag, exposure cam->SetName("Camera Sensor");
-
-  cam2->PushFilter(
-      chrono_types::make_shared<ChFilterVisualize>(1920, 1080, "test", false));
-  // Provide the host access to the RGBA8 buffer
-  // cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
-  manager->AddSensor(cam2);
-
   manager->Update();
 
   // Set the time response for steering and throttle keyboard inputs.
@@ -246,13 +239,25 @@ int main(int argc, char *argv[]) {
   int render_frame = 0;
   double time = 0.0;
 
-  ChRealtimeCumulative realtime_timer;
+  // Simulation end time
+  double t_end = 0.0;
+  if (test_case == TEST_CASE::STRAIGHT) {
+    t_end = 14.0;
+  } else if (test_case == TEST_CASE::TURN) {
+    t_end = 16.0;
+  }
 
-  while (time < t_end) {
-
-    if (step_number == 0) {
-      realtime_timer.Reset();
+  // output
+  // Initialize output
+  if (output) {
+    if (!filesystem::create_directory(filesystem::path(out_dir))) {
+      std::cout << "Error creating directory " << out_dir << std::endl;
+      return 1;
     }
+  }
+  utils::CSV_writer csv(" ");
+
+  while (time <= t_end) {
 
     time = my_vehicle.GetSystem()->GetChTime();
 
@@ -264,22 +269,46 @@ int main(int argc, char *argv[]) {
     DriverInputs driver_inputs;
 
     // Time-based drive inputs
-    if (time < 3.0f) {
-      driver_inputs.m_throttle = 0.0;
-      driver_inputs.m_braking = 0.0;
-      driver_inputs.m_steering = 0.0;
-    } else if (time >= 3.0f && time < 8.0f) {
-      driver_inputs.m_throttle = 0.5;
-      driver_inputs.m_braking = 0.0;
-      driver_inputs.m_steering = 0.0;
-    } else if (time >= 8.0f && time < 12.0f) {
-      driver_inputs.m_throttle = 0.0;
-      driver_inputs.m_braking = 0.4;
-      driver_inputs.m_steering = 0.0;
-    } else {
-      driver_inputs.m_throttle = 0.0;
-      driver_inputs.m_braking = 0.0;
-      driver_inputs.m_steering = 0.0;
+    if (test_case == TEST_CASE::STRAIGHT) {
+      if (time < 3.0f) {
+        driver_inputs.m_throttle = 0.0;
+        driver_inputs.m_braking = 0.0;
+        driver_inputs.m_steering = 0.0;
+      } else if (time >= 3.0f && time < 8.0f) {
+        driver_inputs.m_throttle = 0.5;
+        driver_inputs.m_braking = 0.0;
+        driver_inputs.m_steering = 0.0;
+      } else if (time >= 8.0f && time < 12.0f) {
+        driver_inputs.m_throttle = 0.0;
+        driver_inputs.m_braking = 0.4;
+        driver_inputs.m_steering = 0.0;
+      } else {
+        driver_inputs.m_throttle = 0.0;
+        driver_inputs.m_braking = 0.0;
+        driver_inputs.m_steering = 0.0;
+      }
+    } else if (test_case == TEST_CASE::TURN) {
+      if (time < 3.0f) {
+        driver_inputs.m_throttle = 0.0;
+        driver_inputs.m_braking = 0.0;
+        driver_inputs.m_steering = 0.0;
+      } else if (time >= 3.0f && time < 8.0f) {
+        driver_inputs.m_throttle = 0.5;
+        driver_inputs.m_braking = 0.0;
+        driver_inputs.m_steering = 0.2;
+      } else if (time >= 8.0f && time < 10.0f) {
+        driver_inputs.m_throttle = 0.3;
+        driver_inputs.m_braking = 0.0;
+        driver_inputs.m_steering = -0.4;
+      } else if (time >= 10.0f && time < 14.0f) {
+        driver_inputs.m_throttle = 0.0;
+        driver_inputs.m_braking = 0.2;
+        driver_inputs.m_steering = 0.0;
+      } else {
+        driver_inputs.m_throttle = 0.0;
+        driver_inputs.m_braking = 0.0;
+        driver_inputs.m_steering = 0.0;
+      }
     }
 
     // Update modules (process inputs from other modules)
@@ -290,11 +319,37 @@ int main(int argc, char *argv[]) {
     my_vehicle.Advance(step_size);
     rom_veh->Advance(time, driver_inputs);
 
+    if (output && step_number % 20 == 0) {
+      // initialize output
+      if (step_number == 0) {
+        csv << "time,cv_x,cv_y,cv_sp,cv_pitch,cv_row,cv_yaw,rom_x,rom_y,rom_sp,"
+               "rom_"
+               "pitch,rom_row,rom_yaw"
+            << std::endl;
+      }
+
+      // chrono vehicle info
+      ChVector<> veh_pos = my_vehicle.GetChassis()->GetPos();
+      ChQuaternion<> veh_rot = my_vehicle.GetChassis()->GetRot();
+      ChVector<> veh_rot_euler = veh_rot.Q_to_Euler123();
+
+      // 8dof rom vehicle info
+      ChVector<> rom_pos = rom_veh->GetPos();
+      ChQuaternion<> rom_rot = rom_veh->GetRot();
+      ChVector<> rom_rot_euler = rom_rot.Q_to_Euler123();
+      // write drive torques of all four wheels into file
+      csv << time << "," << veh_pos.x() << "," << veh_pos.y() << ","
+          << my_vehicle.GetChassis()->GetSpeed() << "," << veh_rot_euler.y()
+          << "," << veh_rot_euler.x() << "," << veh_rot_euler.z() << ",";
+      csv << rom_pos.x() << "," << rom_pos.y() << ","
+          << rom_veh->GetVel().Length() << "," << rom_rot_euler.y() << ","
+          << rom_rot_euler.x() << "," << rom_rot_euler.z() << std::endl;
+      csv.write_to_file(out_dir + "/output.csv");
+    }
+
     manager->Update();
 
     // Increment frame number
     step_number++;
-
-    realtime_timer.Spin(time);
   }
 }

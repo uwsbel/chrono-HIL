@@ -83,6 +83,11 @@ int main(int argc, char *argv[]) {
   std::vector<std::shared_ptr<ChROM_IDMFollower>> idm_vec;
   int num_rom = vehicle_types.size();
 
+  // now lets run our simulation
+  float time = 0;
+  int step_number = 0; // time step counter
+  float step_size = 1e-3;
+
   // Create the terrain
   RigidTerrain terrain(&sys);
 
@@ -149,7 +154,8 @@ int main(int argc, char *argv[]) {
     }
 
     std::shared_ptr<Ch_8DOF_vehicle> rom_veh =
-        chrono_types::make_shared<Ch_8DOF_vehicle>(rom_json, init_height);
+        chrono_types::make_shared<Ch_8DOF_vehicle>(rom_json, init_height,
+                                                   step_size);
 
     // determine initial position and initial orientation
     float deg_sec = (CH_C_PI * 1.0) / (num_rom);
@@ -219,11 +225,6 @@ int main(int argc, char *argv[]) {
   attached_body->SetCollide(false);
   attached_body->SetBodyFixed(true);
 
-  // now lets run our simulation
-  float time = 0;
-  int step_number = 0; // time step counter
-  float step_size = rom_vec[0]->GetStepSize();
-
   // Create the camera sensor
   auto manager = chrono_types::make_shared<ChSensorManager>(&sys);
   float intensity = 1.2;
@@ -278,61 +279,6 @@ int main(int argc, char *argv[]) {
 
       float theta = abs(acos(temp));
       float act_dis = theta * 50.f;
-
-      // for the center control vehicle
-      /*
-      if (i == num_rom - 1) {
-        if (step_number == 200000) {
-          std::vector<double> temp_params;
-          temp_params.push_back(2.0);
-          temp_params.push_back(0.7);
-          temp_params.push_back(8.0);
-          temp_params.push_back(2.5);
-          temp_params.push_back(0.3);
-          temp_params.push_back(4.0);
-          temp_params.push_back(6.0);
-          idm_vec[i]->SetBehaviorParams(temp_params);
-        }
-
-        if (step_number == 600000) {
-          std::vector<double> temp_params;
-          temp_params.push_back(3.0);
-          temp_params.push_back(0.7);
-          temp_params.push_back(8.0);
-          temp_params.push_back(2.5);
-          temp_params.push_back(0.5);
-          temp_params.push_back(4.0);
-          temp_params.push_back(6.0);
-          idm_vec[i]->SetBehaviorParams(temp_params);
-        }
-
-        if (step_number == 2000000) {
-          std::vector<double> temp_params;
-          temp_params.push_back(4.5);
-          temp_params.push_back(0.7);
-          temp_params.push_back(8.0);
-          temp_params.push_back(2.5);
-          temp_params.push_back(0.5);
-          temp_params.push_back(4.0);
-          temp_params.push_back(6.0);
-          idm_vec[i]->SetBehaviorParams(temp_params);
-        }
-
-        if (step_number == 3000000) {
-          std::vector<double> temp_params;
-          temp_params.push_back(5.0);
-          temp_params.push_back(0.7);
-          temp_params.push_back(8.0);
-          temp_params.push_back(2.5);
-          temp_params.push_back(0.5);
-          temp_params.push_back(4.0);
-          temp_params.push_back(6.0);
-          idm_vec[i]->SetBehaviorParams(temp_params);
-        }
-
-        std::cout << "step:" << step_number << std::endl;
-      }
-      */
 
       idm_vec[i]->Synchronize(time, step_size, act_dis,
                               (rom_vec[ld_idx]->GetVel()).Length());

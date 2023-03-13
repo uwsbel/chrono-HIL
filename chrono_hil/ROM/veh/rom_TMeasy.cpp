@@ -343,6 +343,4 @@ void setTireParamsJSON(TMeasyParam &t_params, std::string fileName) {
   t_params.m_symP2n = d["symP2n"].GetDouble();
   t_params.m_sysPn = d["sysPn"].GetDouble();
   t_params.m_sysP2n = d["sysP2n"].GetDouble();
-
-  t_params.m_step = d["step"].GetDouble();
 }

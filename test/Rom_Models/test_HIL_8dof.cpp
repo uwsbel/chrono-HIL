@@ -68,6 +68,11 @@ int main(int argc, char *argv[]) {
 
   terrain.Initialize();
 
+  // now lets run our simulation
+  float time = 0;
+  int step_number = 0; // time step counter
+  float step_size = 1e-3;
+
   std::string rom_json;
   switch (rom_type) {
   case VEH_TYPE::HMMWV:
@@ -93,7 +98,7 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  Ch_8DOF_vehicle rom_veh(rom_json, init_height);
+  Ch_8DOF_vehicle rom_veh(rom_json, init_height, step_size);
 
   rom_veh.Initialize(&sys);
 
@@ -105,11 +110,6 @@ int main(int argc, char *argv[]) {
   std::string joystick_file =
       (STRINGIFY(HIL_DATA_DIR)) + std::string("/joystick/controller_G27.json");
   SDLDriver.SetJoystickConfigFile(joystick_file);
-
-  // now lets run our simulation
-  float time = 0;
-  int step_number = 0; // time step counter
-  float step_size = rom_veh.GetStepSize();
 
   // Create the camera sensor
   auto manager = chrono_types::make_shared<ChSensorManager>(&sys);

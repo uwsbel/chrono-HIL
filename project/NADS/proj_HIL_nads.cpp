@@ -179,33 +179,32 @@ int main(int argc, char *argv[]) {
   // Create the camera sensor
   auto manager =
       chrono_types::make_shared<ChSensorManager>(my_vehicle.GetSystem());
-  if (render){
-      float intensity = 1.2;
-      manager->scene->AddPointLight({0, 0, 1e8}, {1.0, 1.0, 1.0}, 1e12);
-      manager->scene->SetAmbientLight({.2, .2, .2});
-      manager->scene->SetSceneEpsilon(1e-3);
-      manager->scene->EnableDynamicOrigin(true);
-      manager->scene->SetOriginOffsetThreshold(500.f);
+  if (render) {
+    float intensity = 1.2;
+    manager->scene->AddPointLight({0, 0, 1e8}, {1.0, 1.0, 1.0}, 1e12);
+    manager->scene->SetAmbientLight({.2, .2, .2});
+    manager->scene->SetSceneEpsilon(1e-3);
+    manager->scene->EnableDynamicOrigin(true);
+    manager->scene->SetOriginOffsetThreshold(500.f);
 
-      auto cam = chrono_types::make_shared<ChCameraSensor>(
-          attached_body, // body camera is attached to
-          30,            // update rate in Hz
-          chrono::ChFrame<double>(
-              ChVector<>(-12.0, 0.0, 2.0),
-              Q_from_Euler123(ChVector<>(0.0, 0.11, 0.0))), // offset pose
-          5760,                                             // image width
-          1080,                                              // image height
-          1.408f,
-          2); // fov, lag, exposure
-      cam->SetName("Camera Sensor");
+    auto cam = chrono_types::make_shared<ChCameraSensor>(
+        attached_body, // body camera is attached to
+        30,            // update rate in Hz
+        chrono::ChFrame<double>(
+            ChVector<>(-12.0, 0.0, 2.0),
+            Q_from_Euler123(ChVector<>(0.0, 0.11, 0.0))), // offset pose
+        5760,                                             // image width
+        1080,                                             // image height
+        1.408f,
+        2); // fov, lag, exposure
+    cam->SetName("Camera Sensor");
 
-      cam->PushFilter(
-          chrono_types::make_shared<ChFilterVisualize>(1280, 720, "hwwmv", false));
-      // Provide the host access to the RGBA8 buffer
-      cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
-      manager->AddSensor(cam);
+    cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
+        1280, 720, "hwwmv", false));
+    // Provide the host access to the RGBA8 buffer
+    cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+    manager->AddSensor(cam);
   }
-
 
   my_vehicle.EnableRealtime(false);
 
@@ -232,10 +231,10 @@ int main(int argc, char *argv[]) {
     attached_body->SetPos(pos);
     attached_body->SetRot(y_0_rot);
 
-    if (render){
+    if (render) {
       manager->Update();
     }
-    
+
     // End simulation
     if (time >= t_end)
       break;
@@ -284,17 +283,19 @@ int main(int argc, char *argv[]) {
     boost_streamer.AddData(vel.z()); // 9 - z velocity
     boost_streamer.AddData(
         (float)(my_vehicle.GetSpeed() * MS_2_MPH)); // 10 - speed (m/s)
-    
-    auto acc =  my_vehicle.GetChassis()->GetBody()->GetFrame_REF_to_abs().GetPos_dtdt(); 
-    boost_streamer.AddData(acc.x());  // 11 - x acceleration
-    boost_streamer.AddData(acc.y());  // 12 - y acceleration
-    boost_streamer.AddData(acc.z());  // 13 - z acceleration
 
-    auto ang_vel_q = my_vehicle.GetChassis()->GetBody()->GetFrame_REF_to_abs().GetRot_dt();
+    auto acc =
+        my_vehicle.GetChassis()->GetBody()->GetFrame_REF_to_abs().GetPos_dtdt();
+    boost_streamer.AddData(acc.x()); // 11 - x acceleration
+    boost_streamer.AddData(acc.y()); // 12 - y acceleration
+    boost_streamer.AddData(acc.z()); // 13 - z acceleration
+
+    auto ang_vel_q =
+        my_vehicle.GetChassis()->GetBody()->GetFrame_REF_to_abs().GetRot_dt();
     auto ang_vel = Q_to_Euler123(ang_vel_q);
-    boost_streamer.AddData(ang_vel.x());  // 14 - x ang vel of chassis
-    boost_streamer.AddData(ang_vel.y());  // 15 - y ang vel of chassis
-    boost_streamer.AddData(ang_vel.z());  // 16 - z ang vel of chassis
+    boost_streamer.AddData(ang_vel.x()); // 14 - x ang vel of chassis
+    boost_streamer.AddData(ang_vel.y()); // 15 - y ang vel of chassis
+    boost_streamer.AddData(ang_vel.z()); // 16 - z ang vel of chassis
 
     boost_streamer.AddData(
         my_vehicle.GetPowertrain()

@@ -21,7 +21,8 @@ using namespace chrono;
 using namespace chrono::vehicle;
 using namespace chrono::geometry;
 
-Ch_8DOF_vehicle::Ch_8DOF_vehicle(std::string rom_json, float z_plane) {
+Ch_8DOF_vehicle::Ch_8DOF_vehicle(std::string rom_json, float z_plane,
+                                 float step_size) {
 
   rom_z_plane = z_plane;
 
@@ -73,7 +74,7 @@ Ch_8DOF_vehicle::Ch_8DOF_vehicle(std::string rom_json, float z_plane) {
   setVehParamsJSON(veh1_param, vehicle_dyn_json);
   setEngParamsJSON(veh1_param, engine_json);
 
-  vehInit(veh1_st, veh1_param);
+  vehInit(veh1_st, veh1_param, step_size);
 
   // set the tire parameters from a JSON file
   setTireParamsJSON(tire_param, tire_json);

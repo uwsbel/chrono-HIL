@@ -42,7 +42,7 @@ struct TMeasyParam {
         m_sxsPn(0.9), m_sxsP2n(0.95), m_dfy0Pn(50931.693), m_dfy0P2n(94293.847),
         m_fymPn(6615.0404), m_fymP2n(12509.947), m_fysPn(6091.5092),
         m_fysP2n(11443.875), m_symPn(0.38786), m_symP2n(0.38786),
-        m_sysPn(0.82534), m_sysP2n(0.91309), m_step(1e-2) {}
+        m_sysPn(0.82534), m_sysP2n(0.91309) {}
 
   // constructor that takes given values - ugly looking code - can this be
   // beutified?
@@ -54,7 +54,7 @@ struct TMeasyParam {
               double sxmP2n, double sxsPn, double sxsP2n, double dfy0Pn,
               double dfy0P2n, double fymPn, double fymP2n, double fysPn,
               double fysP2n, double symPn, double symP2n, double sysPn,
-              double sysP2n, double step)
+              double sysP2n)
       : m_jw(jw), m_rr(rr), m_mu(mu), m_r0(r0), m_pn(pn), m_pnmax(pnmax),
         m_cx(cx), m_cy(cy), m_kt(kt), m_dx(dx), m_dy(dy), m_rdyncoPn(rdyncoPn),
         m_rdyncoP2n(rdyncoP2n), m_fzRdynco(fzRdynco), m_rdyncoCrit(rdyncoCrit),
@@ -62,8 +62,7 @@ struct TMeasyParam {
         m_fxsPn(fxsPn), m_fxsP2n(fxsP2n), m_sxmPn(sxmPn), m_sxmP2n(sxmP2n),
         m_sxsPn(sxsPn), m_sxsP2n(sxsP2n), m_dfy0Pn(dfy0Pn), m_dfy0P2n(dfy0P2n),
         m_fymPn(fymPn), m_fymP2n(fymP2n), m_fysPn(fysPn), m_fysP2n(fysP2n),
-        m_symPn(symPn), m_symP2n(symP2n), m_sysPn(sysPn), m_sysP2n(sysP2n),
-        m_step(step) {}
+        m_symPn(symPn), m_symP2n(symP2n), m_sysPn(sysPn), m_sysP2n(sysP2n) {}
 
   // basic tire parameters
   double m_jw; // wheel inertia

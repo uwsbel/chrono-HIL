@@ -35,7 +35,7 @@ using namespace chrono::vehicle;
 class CH_HIL_API Ch_8DOF_vehicle {
 
 public:
-  Ch_8DOF_vehicle(std::string rom_json, float z_plane);
+  Ch_8DOF_vehicle(std::string rom_json, float z_plane, float step_size);
 
   void Initialize(ChSystem *sys);
 
