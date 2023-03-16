@@ -37,7 +37,7 @@ Code for the TM easy tire model implemented with the 8DOF model
 // 1 - RF
 // 2 - LR
 // 3 - RR
-void tireInit(TMeasyParam &t_params) {
+void tireInit(TMeasyParam &t_params, double step_size) {
 
   // calculates some critical values that are needed
   t_params.m_fzRdynco = (t_params.m_pn * (t_params.m_rdyncoP2n -
@@ -46,6 +46,8 @@ void tireInit(TMeasyParam &t_params) {
 
   t_params.m_rdyncoCrit = InterpL(t_params.m_fzRdynco, t_params.m_rdyncoPn,
                                   t_params.m_rdyncoP2n, t_params.m_pn);
+
+  t_params.m_step = step_size;
 }
 
 void tmxy_combined(double &f, double &fos, double s, double df0, double sm,

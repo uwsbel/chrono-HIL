@@ -26,7 +26,7 @@
 #include "chrono_vehicle/ChVehicleModelData.h"
 #include "chrono_vehicle/ChWorldFrame.h"
 #include "chrono_vehicle/driver/ChDataDriver.h"
-#include "chrono_vehicle/driver/ChIrrGuiDriver.h"
+#include "chrono_vehicle/driver/ChInteractiveDriverIRR.h"
 #include "chrono_vehicle/terrain/RigidTerrain.h"
 
 #include <irrlicht.h>
@@ -38,7 +38,7 @@
 #include "chrono_sensor/sensors/ChCameraSensor.h"
 #include "chrono_thirdparty/cxxopts/ChCLI.h"
 #include "chrono_thirdparty/filesystem/path.h"
-#include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
 
 //#include "chrono_vehicle/driver/ChPathFollowerDriver.h"
 
@@ -88,9 +88,6 @@ ChQuaternion<> driver_view_direction = Q_from_AngAxis(0, {1, 0, 0});
 
 enum DriverMode { HUMAN, AUTONOMOUS };
 DriverMode driver_mode = AUTONOMOUS;
-enum DashMode { TEXT, SIGN_GO, SIGN_NOGO };
-DashMode dash_mode = TEXT;
-bool engage = false;
 
 // Visualization type for vehicle parts (PRIMITIVES, MESH, or NONE)
 VisualizationType chassis_vis_type = VisualizationType::MESH;
@@ -128,7 +125,6 @@ bool enable_realtime = true;
 // steering wheel button settings
 // change mapping if on a different steering wheel
 int r_3 = 19;
-int r_2 = 18;
 int r_1 = 6;
 
 // camera parameters
@@ -163,7 +159,9 @@ irr::core::position2d<irr::s32> sm_center(219, 215);
 irr::core::position2d<irr::s32> rpm_center(609, 215);
 irr::core::position2d<irr::s32> gr_center(388, 23);
 irr::core::position2d<irr::s32> auto_center(358, 338);
-irr::core::position2d<irr::s32> cur_left(875, 60);
+irr::core::position2d<irr::s32> cur_left(950, 70);
+irr::core::position2d<irr::s32> end_left(950, 190);
+irr::core::position2d<irr::s32> eta_left(950, 310);
 double sm_needle = 140;
 
 std::string demo_data_path = std::string(STRINGIFY(HIL_DATA_DIR));
@@ -287,17 +285,13 @@ irr::video::ITexture *texture_GEAR5;
 irr::video::ITexture *texture_GEAR6;
 irr::video::ITexture *texture_AUTO;
 irr::video::ITexture *texture_COLON;
-irr::video::ITexture *texture_MSG;
-irr::video::ITexture *texture_GO;
-irr::video::ITexture *texture_NOGO;
 irr::video::ITexture *texture_NUMERICAL[10];
 
 // =============================================================================
 
 // button callback placeholder
 void CustomButtonCallback();
-void CustomButtonCallback_r_2();
-void CustomButtonCallback_r_3();
+void DummyButtonCallback_r_3();
 
 // distribution of trees near the road
 void AddTrees(ChSystem *chsystem);
@@ -1068,15 +1062,14 @@ int main(int argc, char *argv[]) {
   // Create the interactive driver system
   // ChCSLDriver driver(vehicle);
   // driver = chrono_types::make_shared<ChCSLDriver>(vehicle);
-  auto IGdriver = chrono_types::make_shared<ChIrrGuiDriver>(app);
+  auto IGdriver = chrono_types::make_shared<ChInteractiveDriverIRR>(app);
   IGdriver->SetButtonCallback(r_1, &CustomButtonCallback);
-  IGdriver->SetButtonCallback(r_2, &CustomButtonCallback_r_2);
-  IGdriver->SetButtonCallback(r_3, &CustomButtonCallback_r_3);
+  IGdriver->SetButtonCallback(r_3, &DummyButtonCallback_r_3);
 
   if (keyboard_control) {
-    IGdriver->SetInputMode(ChIrrGuiDriver::InputMode::KEYBOARD);
+    IGdriver->SetInputMode(ChInteractiveDriverIRR::InputMode::KEYBOARD);
   } else {
-    IGdriver->SetInputMode(ChIrrGuiDriver::InputMode::JOYSTICK);
+    IGdriver->SetInputMode(ChInteractiveDriverIRR::InputMode::JOYSTICK);
     std::cout << "joystick config: " << joystick_filename << std::endl;
     IGdriver->SetJoystickConfigFile(joystick_filename);
   }
@@ -1118,8 +1111,7 @@ int main(int argc, char *argv[]) {
 
   // we call the callback explicitly to start the timer
   CustomButtonCallback();
-  CustomButtonCallback_r_2();
-  CustomButtonCallback_r_3();
+  DummyButtonCallback_r_3();
 
   if (!disable_joystick) {
     driver_mode = HUMAN;
@@ -1316,7 +1308,7 @@ int main(int argc, char *argv[]) {
     terrain.Synchronize(sim_time);
     vehicle.Synchronize(sim_time, driver_inputs, terrain);
 
-    app.Synchronize("", driver_inputs);
+    app.Synchronize(sim_time, driver_inputs);
 #ifdef CHRONO_IRRKLANG
     soundEng.Synchronize(sim_time);
 #endif
@@ -1889,16 +1881,13 @@ void AddTerrain(ChSystem *chsystem) {
   auto gravel_tex = chrono_types::make_shared<ChVisualMaterial>();
   gravel_tex->SetKdTexture(
       demo_data_path +
-          "/Environments/Iowa/terrain/Grass/GroundMudTireTracks001_COL_500.jpg",
-      1000, 1000);
+      "/Environments/Iowa/terrain/Grass/GroundMudTireTracks001_COL_500.jpg");
   gravel_tex->SetRoughnessTexture(demo_data_path +
-                                      "/Environments/Iowa/terrain/Grass/"
-                                      "GroundMudTireTracks001_ROUGH_500.png",
-                                  1000, 1000);
+                                  "/Environments/Iowa/terrain/Grass/"
+                                  "GroundMudTireTracks001_ROUGH_500.png");
   gravel_tex->SetNormalMapTexture(
       demo_data_path +
-          "/Environments/Iowa/terrain/Grass/GroundMudTireTracks001_NRM_500.jpg",
-      1000, 1000);
+      "/Environments/Iowa/terrain/Grass/GroundMudTireTracks001_NRM_500.jpg");
   gravel_tex->SetWeightTexture(
       demo_data_path +
       "/Environments/Iowa/terrain/Terrain_Weightmap_Gravel_v3.png");
@@ -1910,16 +1899,13 @@ void AddTerrain(ChSystem *chsystem) {
 
   auto grass_tex_1 = chrono_types::make_shared<ChVisualMaterial>();
   grass_tex_1->SetKdTexture(demo_data_path + "/Environments/Iowa/terrain/Grass/"
-                                             "GroundGrassGreen001_COL_500.jpg",
-                            1000, 1000);
+                                             "GroundGrassGreen001_COL_500.jpg");
   grass_tex_1->SetRoughnessTexture(
       demo_data_path +
-          "/Environments/Iowa/terrain/Grass/GroundGrassGreen001_ROUGH_500.jpg",
-      1000, 1000);
+      "/Environments/Iowa/terrain/Grass/GroundGrassGreen001_ROUGH_500.jpg");
   grass_tex_1->SetNormalMapTexture(
       demo_data_path +
-          "/Environments/Iowa/terrain/Grass/GroundGrassGreen001_NRM_500.jpg",
-      1000, 1000);
+      "/Environments/Iowa/terrain/Grass/GroundGrassGreen001_NRM_500.jpg");
   grass_tex_1->SetWeightTexture(
       demo_data_path +
       "/Environments/Iowa/terrain/Terrain_Weightmap_Grass_A_v3.png");
@@ -1931,17 +1917,14 @@ void AddTerrain(ChSystem *chsystem) {
 
   auto grass_tex_2 = chrono_types::make_shared<ChVisualMaterial>();
   grass_tex_2->SetKdTexture(demo_data_path +
-                                "/Environments/Iowa/terrain/Grass/"
-                                "GroundGrassGreenPatchy002_COL_500.jpg",
-                            1000, 1000);
-  grass_tex_2->SetRoughnessTexture(
-      demo_data_path + "/Environments/Iowa/terrain/Grass/"
-                       "GroundGrassGreenPatchy002_ROUGH_500.png",
-      1000, 1000);
+                            "/Environments/Iowa/terrain/Grass/"
+                            "GroundGrassGreenPatchy002_COL_500.jpg");
+  grass_tex_2->SetRoughnessTexture(demo_data_path +
+                                   "/Environments/Iowa/terrain/Grass/"
+                                   "GroundGrassGreenPatchy002_ROUGH_500.png");
   grass_tex_2->SetNormalMapTexture(demo_data_path +
-                                       "/Environments/Iowa/terrain/Grass/"
-                                       "GroundGrassGreenPatchy002_NRM_500.jpg",
-                                   1000, 1000);
+                                   "/Environments/Iowa/terrain/Grass/"
+                                   "GroundGrassGreenPatchy002_NRM_500.jpg");
   grass_tex_2->SetWeightTexture(
       demo_data_path +
       "/Environments/Iowa/terrain/Terrain_Weightmap_Grass_B_v3.png");
@@ -2040,25 +2023,10 @@ float ControlFindSpeed_x_y(std::vector<float> time_vec,
   }
 }
 
-void CustomButtonCallback_r_2() {
-  static auto last_invoked_dummy_2 =
-      std::chrono::system_clock::now().time_since_epoch();
-  auto current_invoke_dummy_2 =
-      std::chrono::system_clock::now().time_since_epoch();
-
-  if (std::chrono::duration_cast<std::chrono::seconds>(current_invoke_dummy_2 -
-                                                       last_invoked_dummy_2)
-          .count() > 0.5) {
-    engage = !engage;
-  }
-
-  last_invoked_dummy_2 = current_invoke_dummy_2;
-}
-
 // dummy button call function
 // this section of the code should be optimized !
 // Wheel botton callback to record button press without any functionalities
-void CustomButtonCallback_r_3() {
+void DummyButtonCallback_r_3() {
   static auto last_invoked_dummy_1 =
       std::chrono::system_clock::now().time_since_epoch();
   auto current_invoke_dummy_1 =
@@ -2066,8 +2034,11 @@ void CustomButtonCallback_r_3() {
 
   if (std::chrono::duration_cast<std::chrono::seconds>(current_invoke_dummy_1 -
                                                        last_invoked_dummy_1)
-          .count() > 0.5) {
-    dash_mode = (DashMode)((dash_mode + 1) % 3);
+          .count() > 1.0) {
+    std::cout << "Button dummy r_3 Callback Invoked: " << std::endl;
+    time_t my_time = time(NULL);
+    button_buffer << "button dummy r_3 pressed; time: ";
+    button_buffer << ctime(&my_time);
   }
 
   last_invoked_dummy_1 = current_invoke_dummy_1;
@@ -2076,7 +2047,7 @@ void CustomButtonCallback_r_3() {
 // load irr dashboard textures
 void IrrDashLoadTextures(ChWheeledVehicleVisualSystemIrrlicht &app) {
   texture_DASH = app.GetDevice()->getVideoDriver()->getTexture(
-      (demo_data_path + "/miscellaneous/dash_10_20.jpg").c_str());
+      (demo_data_path + "/miscellaneous/dash_4_4.jpg").c_str());
   texture_GEAR1 = app.GetDevice()->getVideoDriver()->getTexture(
       (demo_data_path + "/miscellaneous/GEAR1.png").c_str());
   texture_GEAR2 = app.GetDevice()->getVideoDriver()->getTexture(
@@ -2091,12 +2062,6 @@ void IrrDashLoadTextures(ChWheeledVehicleVisualSystemIrrlicht &app) {
       (demo_data_path + "/miscellaneous/GEAR6.png").c_str());
   texture_AUTO = app.GetDevice()->getVideoDriver()->getTexture(
       (demo_data_path + "/miscellaneous/auto.png").c_str());
-  texture_MSG = app.GetDevice()->getVideoDriver()->getTexture(
-      (demo_data_path + "/miscellaneous/msg.png").c_str());
-  texture_GO = app.GetDevice()->getVideoDriver()->getTexture(
-      (demo_data_path + "/miscellaneous/go.png").c_str());
-  texture_NOGO = app.GetDevice()->getVideoDriver()->getTexture(
-      (demo_data_path + "/miscellaneous/nogo.png").c_str());
   texture_COLON = app.GetDevice()->getVideoDriver()->getTexture(
       (demo_data_path + "/miscellaneous/numerical/colon.png").c_str());
   texture_NUMERICAL[0] = app.GetDevice()->getVideoDriver()->getTexture(
@@ -2183,12 +2148,177 @@ void IrrDashUpdate(
     app.GetDevice()->getVideoDriver()->draw2DImage(texture_AUTO, auto_center);
   }
 
-  if (dash_mode == TEXT && engage) {
-    app.GetDevice()->getVideoDriver()->draw2DImage(texture_MSG, cur_left);
-  } else if (dash_mode == SIGN_GO && engage) {
-    app.GetDevice()->getVideoDriver()->draw2DImage(texture_GO, cur_left);
-  } else if (dash_mode == SIGN_NOGO && engage) {
-    app.GetDevice()->getVideoDriver()->draw2DImage(texture_NOGO, cur_left);
+  // display current time
+  time_t curr_time = time(NULL);
+  struct tm *tmp = localtime(&curr_time);
+
+  int h = tmp->tm_hour;
+  int m = tmp->tm_min;
+  int s = tmp->tm_sec;
+
+  std::vector<int> display_cur_int;
+  display_cur_int.push_back(h / 10);
+  display_cur_int.push_back(h % 10);
+  display_cur_int.push_back(m / 10);
+  display_cur_int.push_back(m % 10);
+  display_cur_int.push_back(s / 10);
+  display_cur_int.push_back(s % 10);
+
+  for (int i = 0; i < display_cur_int.size() + 2; i++) {
+    irr::core::position2d<irr::s32> offset(50, 0);
+    irr::core::position2d<irr::s32> colon_offset1(25, 0);
+    irr::core::position2d<irr::s32> colon_offset2(25, 0);
+
+    if (i < 2) {
+      app.GetDevice()->getVideoDriver()->draw2DImage(
+          texture_NUMERICAL[display_cur_int[i]], cur_left + offset * i);
+    } else if (i == 2) {
+      app.GetDevice()->getVideoDriver()->draw2DImage(texture_COLON,
+                                                     cur_left + offset * i);
+    } else if (i < 5) {
+      app.GetDevice()->getVideoDriver()->draw2DImage(
+          texture_NUMERICAL[display_cur_int[i - 1]],
+          cur_left + offset * (i - 1) + colon_offset1);
+    } else if (i == 5) {
+      app.GetDevice()->getVideoDriver()->draw2DImage(
+          texture_COLON, cur_left + offset * (i - 1) + colon_offset1);
+    } else if (i <= 7) {
+      app.GetDevice()->getVideoDriver()->draw2DImage(
+          texture_NUMERICAL[display_cur_int[i - 2]],
+          cur_left + offset * (i - 2) + colon_offset1 + colon_offset2);
+    }
+  }
+
+  static int end_s;
+  static int end_m;
+  static int end_h;
+
+  if (vehicle.GetSpeed() >= 0.5 && IG_started_driving == false) {
+    start_sim_time = sim_time;
+    auto t1_temp = high_resolution_clock::now();
+    start_wall_time += duration_cast<duration<double>>(t1_temp - t0).count();
+
+    time_t curr_time = time(NULL);
+    struct tm *tmp = localtime(&curr_time);
+
+    int temp_h = tmp->tm_hour;
+    int temp_m = tmp->tm_min;
+    int temp_s = tmp->tm_sec;
+
+    end_s = s;
+    end_m = m + meet_time;
+    end_h = h;
+
+    if (end_s >= 60) {
+      end_s = end_s - 60;
+      end_m = end_m + 1;
+    }
+    if (end_m >= 60) {
+      end_m = end_m - 60;
+      end_h = end_h + 1;
+    }
+    if (end_h >= 23) {
+      end_h = end_h % 24;
+    }
+
+    IG_started_driving = true;
+  }
+
+  if (IG_started_driving == true) {
+    std::vector<int> display_end_int;
+    display_end_int.push_back(end_h / 10);
+    display_end_int.push_back(end_h % 10);
+    display_end_int.push_back(end_m / 10);
+    display_end_int.push_back(end_m % 10);
+    display_end_int.push_back(end_s / 10);
+    display_end_int.push_back(end_s % 10);
+
+    for (int i = 0; i < display_end_int.size() + 2; i++) {
+      irr::core::position2d<irr::s32> offset(50, 0);
+      irr::core::position2d<irr::s32> colon_offset1(25, 0);
+      irr::core::position2d<irr::s32> colon_offset2(25, 0);
+
+      if (i < 2) {
+        app.GetDevice()->getVideoDriver()->draw2DImage(
+            texture_NUMERICAL[display_end_int[i]], end_left + offset * i);
+      } else if (i == 2) {
+        app.GetDevice()->getVideoDriver()->draw2DImage(texture_COLON,
+                                                       end_left + offset * i);
+      } else if (i < 5) {
+        app.GetDevice()->getVideoDriver()->draw2DImage(
+            texture_NUMERICAL[display_end_int[i - 1]],
+            end_left + offset * (i - 1) + colon_offset1);
+      } else if (i == 5) {
+        app.GetDevice()->getVideoDriver()->draw2DImage(
+            texture_COLON, end_left + offset * (i - 1) + colon_offset1);
+      } else if (i <= 7) {
+        app.GetDevice()->getVideoDriver()->draw2DImage(
+            texture_NUMERICAL[display_end_int[i - 2]],
+            end_left + offset * (i - 2) + colon_offset1 + colon_offset2);
+      }
+    }
+  }
+
+  // compute and display ETA
+
+  static int sec_remaining = 0;
+
+  if (step_number == 0) {
+    IG_prev_pos = ego_chassis->GetPos();
+  }
+
+  IG_dist = IG_dist + (ego_chassis->GetPos() - IG_prev_pos).Length();
+  IG_prev_pos = ego_chassis->GetPos();
+
+  if (step_number % 50 == 0) {
+    float remaining = eta_dist * MILE_TO_M - IG_dist;
+    float avg_speed = IG_speed_avg.Add(ego_chassis->GetSpeed());
+    sec_remaining = remaining / avg_speed;
+  }
+
+  // panic algorithm
+  // if below 0, set to 0
+  // if above max, set to 0
+
+  if (sec_remaining < 0 || sec_remaining > 356518) {
+    sec_remaining = 0;
+  }
+
+  int eta_h = sec_remaining / 3600;
+  int eta_m = (sec_remaining % 3600) / 60;
+  int eta_s = sec_remaining % 60;
+
+  std::vector<int> display_eta_int;
+  display_eta_int.push_back(eta_h / 10);
+  display_eta_int.push_back(eta_h % 10);
+  display_eta_int.push_back(eta_m / 10);
+  display_eta_int.push_back(eta_m % 10);
+  display_eta_int.push_back(eta_s / 10);
+  display_eta_int.push_back(eta_s % 10);
+
+  for (int i = 0; i < display_eta_int.size() + 2; i++) {
+    irr::core::position2d<irr::s32> offset(50, 0);
+    irr::core::position2d<irr::s32> colon_offset1(25, 0);
+    irr::core::position2d<irr::s32> colon_offset2(25, 0);
+
+    if (i < 2) {
+      app.GetDevice()->getVideoDriver()->draw2DImage(
+          texture_NUMERICAL[display_eta_int[i]], eta_left + offset * i);
+    } else if (i == 2) {
+      app.GetDevice()->getVideoDriver()->draw2DImage(texture_COLON,
+                                                     eta_left + offset * i);
+    } else if (i < 5) {
+      app.GetDevice()->getVideoDriver()->draw2DImage(
+          texture_NUMERICAL[display_eta_int[i - 1]],
+          eta_left + offset * (i - 1) + colon_offset1);
+    } else if (i == 5) {
+      app.GetDevice()->getVideoDriver()->draw2DImage(
+          texture_COLON, eta_left + offset * (i - 1) + colon_offset1);
+    } else if (i <= 7) {
+      app.GetDevice()->getVideoDriver()->draw2DImage(
+          texture_NUMERICAL[display_eta_int[i - 2]],
+          eta_left + offset * (i - 2) + colon_offset1 + colon_offset2);
+    }
   }
 
   app.GetDevice()->getVideoDriver()->endScene();

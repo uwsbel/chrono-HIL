@@ -80,7 +80,7 @@ Ch_8DOF_vehicle::Ch_8DOF_vehicle(std::string rom_json, float z_plane,
   setTireParamsJSON(tire_param, tire_json);
 
   // now we initialize each of our parameters
-  tireInit(tire_param);
+  tireInit(tire_param, step_size);
 }
 
 void Ch_8DOF_vehicle::Initialize(ChSystem *sys) {

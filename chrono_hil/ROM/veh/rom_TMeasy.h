@@ -133,7 +133,7 @@ struct TMeasyState {
 
 // sets the vertical tire deflection based on the vehicle weight
 // template based on which tire
-void tireInit(TMeasyParam &t_params);
+void tireInit(TMeasyParam &t_params, double step_size);
 
 // function to calculate the force from the force charactristics
 // used by tireSync

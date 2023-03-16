@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
   // Create the HMMWV vehicle, set parameters, and initialize
 
   VEH_TYPE rom_type = VEH_TYPE::HMMWV;
-  TEST_CASE test_case = TEST_CASE::STRAIGHT;
+  TEST_CASE test_case = TEST_CASE::TURN;
 
   float init_height = 0.45;
   std::string vehicle_filename;
@@ -213,16 +213,17 @@ int main(int argc, char *argv[]) {
       attached_body, // body camera is attached to
       35,            // update rate in Hz
       chrono::ChFrame<double>(
-          ChVector<>(20.0, -35.0, 1.0),
-          Q_from_Euler123(ChVector<>(0.0, 0.0, C_PI / 2))), // offset pose
-      1920,                                                 // image width
-      1080,                                                 // image
-      1.608f, 1); // fov, lag, exposure cam->SetName("Camera Sensor");
+          ChVector<>(20.0, -25.0, 10.0),
+          Q_from_Euler123(ChVector<>(0.0, C_PI / 6, C_PI / 2))), // offset pose
+      1920,                                                      // image width
+      1080,                                                      // image
+      1.608f, 2); // fov, lag, exposure cam->SetName("Camera Sensor");
 
   cam->PushFilter(
       chrono_types::make_shared<ChFilterVisualize>(1920, 1080, "test", false));
   // Provide the host access to the RGBA8 buffer
   // cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+  cam->PushFilter(chrono_types::make_shared<ChFilterSave>("cam/"));
   manager->AddSensor(cam);
   manager->Update();
 

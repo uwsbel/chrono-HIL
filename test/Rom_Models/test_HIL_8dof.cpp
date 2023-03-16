@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
   RigidTerrain terrain(&sys);
 
   // Define ROM vehicle type
-  VEH_TYPE rom_type = VEH_TYPE::SEDAN;
+  VEH_TYPE rom_type = VEH_TYPE::HMMWV;
   float init_height = 0.45;
 
   ChContactMaterialData minfo;
@@ -177,13 +177,13 @@ int main(int argc, char *argv[]) {
 
     time += step_size;
     step_number += 1;
-
+    std::cout << "test pt 4" << std::endl;
     sys.DoStepDynamics(step_size);
     manager->Update();
 
     realtime_timer.Spin(time);
     std::cout << "t:" << time << std::endl;
-
+    std::cout << "test pt 5" << std::endl;
     if (SDLDriver.Synchronize() == 1) {
       break;
     }
