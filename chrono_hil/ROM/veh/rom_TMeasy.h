@@ -147,6 +147,6 @@ void tireAdv(TMeasyState &t_states, const TMeasyParam &t_params,
              const std::vector<double> &controls, int tire_idx);
 
 // setting tire parameters using a JSON file
-void setTireParamsJSON(TMeasyParam &t_params, std::string fileName);
+void setTireParamsJSON(TMeasyParam &t_params, rapidjson::Document &d);
 
 #endif

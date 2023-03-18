@@ -16,8 +16,8 @@
 //
 // =============================================================================
 
-#ifndef CH_EIGHT_ROM_H
-#define CH_EIGHT_ROM_H
+#ifndef CH_EIGHT_ROM_ZOMBIE_H
+#define CH_EIGHT_ROM_ZOMBIE_H
 
 #include "../../ChApiHil.h"
 #include "chrono/core/ChQuaternion.h"
@@ -26,35 +26,30 @@
 #include "chrono/physics/ChSystem.h"
 #include "chrono_vehicle/ChSubsysDefs.h"
 #include "chrono_vehicle/utils/ChUtilsJSON.h"
-#include "rom_Eightdof.h"
 #include <string>
 
 using namespace chrono;
 using namespace chrono::vehicle;
 
-class CH_HIL_API Ch_8DOF_vehicle {
+class CH_HIL_API Ch_8DOF_zombie {
 
 public:
-  Ch_8DOF_vehicle(std::string rom_json, float z_plane, float step_size);
+  Ch_8DOF_zombie(std::string rom_json, float z_plane);
 
   void Initialize(ChSystem *sys);
 
-  void SetInitPos(ChVector<> init_pos);
+  void Update(ChVector<> pos, ChVector<> rot, float steering, float tire_rot_0,
+              float tire_rot_1, float tire_rot_2, float tire_rot_3);
 
-  void SetInitRot(float yaw);
+  void SetPos(ChVector<> pos);
 
-  void Advance(float time, DriverInputs inputs);
+  void SetRot(float roll, float yaw);
+
   ChVector<> GetPos();
-  ChQuaternion<> GetRot();
-  float GetStepSize();
 
-  ChVector<> GetVel();
+  ChQuaternion<> GetRot();
 
   std::shared_ptr<ChBodyAuxRef> GetChassisBody();
-
-  float GetTireRotation(int idx);
-
-  DriverInputs GetDriverInputs();
 
 private:
   void InitializeVisualization(std::string chassis_obj_path,
@@ -62,29 +57,8 @@ private:
 
   float rom_z_plane;
 
-  std::string vehicle_dyn_json;
-  std::string tire_json;
-  std::string engine_json;
-
   std::string chassis_mesh;
   std::string wheel_mesh;
-
-  VehicleState veh1_st;
-  VehicleParam veh1_param;
-
-  // lets define our tires, we have 4 different
-  // tires so 4 states
-  TMeasyState tirelf_st;
-  TMeasyState tirerf_st;
-  TMeasyState tirelr_st;
-  TMeasyState tirerr_st;
-
-  // but all of them have the same parameters
-  // so only one parameter structure
-  TMeasyParam tire_param;
-
-  // cached previous input
-  DriverInputs m_inputs;
 
   std::shared_ptr<ChBodyAuxRef> chassis_body;
   std::shared_ptr<ChBodyAuxRef> wheels_body[4];
@@ -92,7 +66,11 @@ private:
   ChVector<> wheels_offset_pos[4];
   ChQuaternion<> wheels_offset_rot[4];
 
-  float prev_tire_rotation[4];
+  ChVector<> rom_pos;
+  ChQuaternion<> rom_rot;
+
+  float tire_rotation[4];
+  float max_steer_angle;
 };
 
 #endif

@@ -297,16 +297,7 @@ void tireAdv(TMeasyState &t_states, const TMeasyParam &t_params,
 }
 
 // setting Tire parameters using a JSON file
-void setTireParamsJSON(TMeasyParam &t_params, std::string fileName) {
-
-  // parse the stream into DOM tree
-  rapidjson::Document d;
-  vehicle::ReadFileJSON(fileName, d);
-
-  if (d.HasParseError()) {
-    std::cout << "Error with rapidjson:" << std::endl
-              << d.GetParseError() << std::endl;
-  }
+void setTireParamsJSON(TMeasyParam &t_params, rapidjson::Document &d) {
 
   // pray to what ever you believe in and hope that the json file has all these
   t_params.m_jw = d["jw"].GetDouble();

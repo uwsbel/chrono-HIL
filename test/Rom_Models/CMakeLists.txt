@@ -11,6 +11,7 @@ set(DEMOS
 	test_HIL_8dof
   test_HIL_8dof_compare
   test_HIL_8dof_scaling
+  test_HIL_8dof_syn
 )
 
 #--------------------------------------------------------------

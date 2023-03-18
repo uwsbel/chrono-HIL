@@ -60,6 +60,10 @@
 
 #include "chrono_thirdparty/filesystem/path.h"
 
+#include "chrono_hil/network/ChBoostOutStreamer.h"
+
+#define IP_OUT "128.104.190.187"
+#define PORT_OUT 1204
 // Use the namespaces of Chrono
 using namespace chrono;
 using namespace chrono::irrlicht;
@@ -83,7 +87,7 @@ ChVector<> trackPoint(0.0, 0.0, 1.75);
 
 int main(int argc, char *argv[]) {
   ChSystemSMC my_system;
-  int num_rom = 900;
+  int num_rom = 300;
 
   vehicle::SetDataPath(CHRONO_DATA_DIR + std::string("vehicle/"));
 
@@ -175,10 +179,11 @@ int main(int argc, char *argv[]) {
 
   t_end = 14.0;
 
-  utils::CSV_writer csv(" ");
-
   auto tt_0 = std::chrono::high_resolution_clock::now();
   double start_time;
+
+  // create boost data streaming interface
+  ChBoostOutStreamer boost_streamer(IP_OUT, PORT_OUT);
 
   while (time <= t_end) {
 
@@ -202,7 +207,7 @@ int main(int argc, char *argv[]) {
       driver_inputs.m_steering = 0.0;
     } else if (time >= 8.0f && time < 12.0f) {
       driver_inputs.m_throttle = 0.0;
-      driver_inputs.m_braking = 0.4;
+      driver_inputs.m_braking = 0.6;
       driver_inputs.m_steering = 0.0;
     } else {
       driver_inputs.m_throttle = 0.0;
@@ -237,6 +242,13 @@ int main(int argc, char *argv[]) {
           start_time;
       std::cout << "RTF: " << wall_time / time << std::endl;
     }
+
+    // Send out data
+    for (int i = 0; i < num_rom; i++) {
+      boost_streamer.AddData(rom_vec[i]->GetPos().x()); // 18 - current RPM
+    }
+
+    boost_streamer.Synchronize();
 
     // Increment frame number
     step_number++;

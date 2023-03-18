@@ -211,19 +211,19 @@ int main(int argc, char *argv[]) {
 
   auto cam = chrono_types::make_shared<ChCameraSensor>(
       attached_body, // body camera is attached to
-      35,            // update rate in Hz
+      25,            // update rate in Hz
       chrono::ChFrame<double>(
           ChVector<>(20.0, -25.0, 10.0),
           Q_from_Euler123(ChVector<>(0.0, C_PI / 6, C_PI / 2))), // offset pose
       1920,                                                      // image width
       1080,                                                      // image
-      1.608f, 2); // fov, lag, exposure cam->SetName("Camera Sensor");
+      1.608f, 1); // fov, lag, exposure cam->SetName("Camera Sensor");
 
   cam->PushFilter(
       chrono_types::make_shared<ChFilterVisualize>(1920, 1080, "test", false));
   // Provide the host access to the RGBA8 buffer
   // cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
-  cam->PushFilter(chrono_types::make_shared<ChFilterSave>("cam/"));
+  // cam->PushFilter(chrono_types::make_shared<ChFilterSave>("cam/"));
   manager->AddSensor(cam);
   manager->Update();
 
@@ -303,7 +303,7 @@ int main(int argc, char *argv[]) {
         driver_inputs.m_steering = -0.4;
       } else if (time >= 10.0f && time < 14.0f) {
         driver_inputs.m_throttle = 0.0;
-        driver_inputs.m_braking = 0.2;
+        driver_inputs.m_braking = 0.8;
         driver_inputs.m_steering = 0.0;
       } else {
         driver_inputs.m_throttle = 0.0;

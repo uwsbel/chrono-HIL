@@ -177,13 +177,12 @@ int main(int argc, char *argv[]) {
 
     time += step_size;
     step_number += 1;
-    std::cout << "test pt 4" << std::endl;
+
     sys.DoStepDynamics(step_size);
     manager->Update();
 
     realtime_timer.Spin(time);
-    std::cout << "t:" << time << std::endl;
-    std::cout << "test pt 5" << std::endl;
+
     if (SDLDriver.Synchronize() == 1) {
       break;
     }

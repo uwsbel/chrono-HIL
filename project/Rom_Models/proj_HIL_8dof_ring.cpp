@@ -66,9 +66,9 @@ enum IDM_TYPE {
 std::vector<VEH_TYPE> vehicle_types = {
     HMMWV, AUDI,  PATROL, AUDI, SEDAN, HMMWV, HMMWV, AUDI, SEDAN, HMMWV,
     SEDAN, HMMWV, AUDI,   AUDI, HMMWV, SEDAN, HMMWV, AUDI, AUDI};
-std::vector<IDM_TYPE> idm_types = {
-    AGG, NORMAL, NORMAL, CONS, AGG,  CONS,   NORMAL, NORMAL, NORMAL, AGG,
-    AGG, CONS,   AGG,    CONS, CONS, NORMAL, AGG,    AGG,    CONS};
+std::vector<IDM_TYPE> idm_types = {AGG,  NORMAL, NORMAL, CONS, AGG,  CONS, AGG,
+                                   AGG,  NORMAL, AGG,    AGG,  CONS, AGG,  CONS,
+                                   CONS, NORMAL, AGG,    AGG,  CONS};
 
 std::random_device rd{};
 std::mt19937 gen{rd()};

@@ -142,10 +142,10 @@ void vehAdv(VehicleState &v_states, const VehicleParam &v_params,
             const double huf, const double hur);
 
 // setting vehicle parameters using a JSON file
-void setVehParamsJSON(VehicleParam &v_params, std::string fileName);
+void setVehParamsJSON(VehicleParam &v_params, rapidjson::Document &d);
 
 // setting engine parameters using a JSON file
-void setEngParamsJSON(VehicleParam &v_params, std::string fileName);
+void setEngParamsJSON(VehicleParam &v_params, rapidjson::Document &d);
 
 void vehToTireTransform(TMeasyState &tirelf_st, TMeasyState &tirerf_st,
                         TMeasyState &tirelr_st, TMeasyState &tirerr_st,

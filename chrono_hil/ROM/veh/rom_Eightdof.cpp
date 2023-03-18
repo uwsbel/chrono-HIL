@@ -295,17 +295,7 @@ void tireToVehTransform(TMeasyState &tirelf_st, TMeasyState &tirerf_st,
 }
 
 // setting Vehicle parameters using a JSON file
-void setVehParamsJSON(VehicleParam &v_params, std::string fileName) {
-
-  // parse the stream into DOM tree
-  rapidjson::Document d;
-  vehicle::ReadFileJSON(fileName, d);
-
-  if (d.HasParseError()) {
-    std::cout << "Error with rapidjson:" << std::endl
-              << d.GetParseError() << std::endl;
-  }
-
+void setVehParamsJSON(VehicleParam &v_params, rapidjson::Document &d) {
   // the file should have all these parameters defined
   v_params.m_a = d["a"].GetDouble();
   v_params.m_b = d["b"].GetDouble();
@@ -330,17 +320,7 @@ void setVehParamsJSON(VehicleParam &v_params, std::string fileName) {
 }
 
 // setting vehicle's engine parameters using a JSON file
-void setEngParamsJSON(VehicleParam &v_params, std::string fileName) {
-
-  // parse the stream into DOM tree
-  rapidjson::Document d;
-  vehicle::ReadFileJSON(fileName, d);
-
-  // check JSON file is valid
-  if (d.HasParseError()) {
-    std::cout << "Error with rapidjson:" << std::endl
-              << d.GetParseError() << std::endl;
-  }
+void setEngParamsJSON(VehicleParam &v_params, rapidjson::Document &d) {
 
   // assigning full throttle map data
   assert(d["Map Full Throttle"].IsArray());

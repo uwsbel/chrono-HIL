@@ -35,10 +35,16 @@ set(ROM_FILES
     ROM/veh/Ch_8DOF_vehicle.h
     ROM/veh/Ch_8DOF_vehicle.cpp
 
+
     ROM/driver/ChROM_PathFollowerDriver.h
     ROM/driver/ChROM_PathFollowerDriver.cpp
     ROM/driver/ChROM_IDMFollower.h
     ROM/driver/ChROM_IDMFollower.cpp
+
+    ROM/syn/Ch_8DOF_zombie.h
+    ROM/syn/Ch_8DOF_zombie.cpp
+
+
     )
 source_group("rom" FILES ${ROM_FILES})
 

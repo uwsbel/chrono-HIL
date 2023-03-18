@@ -38,8 +38,6 @@ ChBoostInStreamer::ChBoostInStreamer(int port_in, int data_len) {
 
 ChBoostInStreamer::~ChBoostInStreamer() {}
 
-void ChBoostInStreamer::Initialize() {}
-
 int ChBoostInStreamer::Synchronize() {
   float udp_float_arr[m_len];
 
