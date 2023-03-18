@@ -36,7 +36,7 @@ ChTCPClient::~ChTCPClient() {}
 void ChTCPClient::Initialize() {
   m_io_service = std::make_shared<boost::asio::io_service>();
   m_tcpendpt = std::make_shared<boost::asio::ip::tcp::endpoint>(
-      boost::asio::ip::address::from_string("127.0.0.1"), m_port);
+      boost::asio::ip::address::from_string(m_addr), m_port);
   m_socket = std::make_shared<boost::asio::ip::tcp::socket>(*m_io_service);
   m_socket->connect(*m_tcpendpt);
 }
