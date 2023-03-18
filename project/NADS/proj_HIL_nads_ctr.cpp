@@ -21,8 +21,8 @@
 
 #include "chrono_hil/driver/ChSDLInterface.h"
 
-#include "chrono_hil/network/ChBoostInStreamer.h"
-#include "chrono_hil/network/ChBoostOutStreamer.h"
+#include "chrono_hil/network/udp/ChBoostInStreamer.h"
+#include "chrono_hil/network/udp/ChBoostOutStreamer.h"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>

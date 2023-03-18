@@ -19,7 +19,7 @@
 
 #include <string>
 
-#include "../ChApiHil.h"
+#include "../../ChApiHil.h"
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>

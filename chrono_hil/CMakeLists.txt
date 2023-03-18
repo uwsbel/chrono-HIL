@@ -49,10 +49,15 @@ set(ROM_FILES
 source_group("rom" FILES ${ROM_FILES})
 
 set(NETWORK_FILES
-    network/ChBoostInStreamer.h
-    network/ChBoostInStreamer.cpp
-    network/ChBoostOutStreamer.h
-    network/ChBoostOutStreamer.cpp
+    network/udp/ChBoostInStreamer.h
+    network/udp/ChBoostInStreamer.cpp
+    network/udp/ChBoostOutStreamer.h
+    network/udp/ChBoostOutStreamer.cpp
+
+    network/tcp/ChTCPClient.h
+    network/tcp/ChTCPClient.cpp
+    network/tcp/ChTCPServer.h
+    network/tcp/ChTCPServer.cpp
     )
 source_group("network" FILES ${NETWORK_FILES})
 

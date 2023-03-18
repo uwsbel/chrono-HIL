@@ -70,8 +70,8 @@
 #include "chrono_synchrono/utils/SynDataLoader.h"
 #include "chrono_synchrono/utils/SynLog.h"
 
-#include "chrono_hil/network/ChBoostInStreamer.h"
-#include "chrono_hil/network/ChBoostOutStreamer.h"
+#include "chrono_hil/network/tcp/ChTCPClient.h"
+#include "chrono_hil/network/tcp/ChTCPServer.h"
 
 #include "chrono_hil/timer/ChRealtimeCumulative.h"
 // =============================================================================
@@ -242,7 +242,7 @@ int main(int argc, char *argv[]) {
 
   auto cam = chrono_types::make_shared<ChCameraSensor>(
       attached_body, // body camera is attached to
-      35,            // update rate in Hz
+      25,            // update rate in Hz
       chrono::ChFrame<double>(
           ChVector<>(20.0, -35.0, 1.0),
           Q_from_Euler123(ChVector<>(0.0, 0.0, C_PI / 2))), // offset pose
@@ -255,7 +255,7 @@ int main(int argc, char *argv[]) {
   // Provide the host access to the RGBA8 buffer
   // cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
   manager->AddSensor(cam);
-  manager->Update();
+  // manager->Update();
 
   // Set the time response for steering and throttle keyboard inputs.
   double steering_time = 1.0; // time to go from 0 to +1 (or from 0 to -1)
@@ -275,6 +275,15 @@ int main(int argc, char *argv[]) {
 
   // create boost data streaming interface
   ChRealtimeCumulative realtime_timer;
+
+  ChTCPServer rom_distributor(PORT_OUT, 3);
+  ChTCPClient chrono_1("127.0.0.1", PORT_OUT, 550);
+
+  if (node_id == 0) {
+    rom_distributor.Initialize();
+  } else if (node_id == 1) {
+    chrono_1.Initialize();
+  }
 
   while (time <= t_end) {
 
@@ -317,59 +326,70 @@ int main(int argc, char *argv[]) {
 
     // Advance simulation for one timestep for all modules
     if (node_id == 0) {
-      if (step_number == 0) {
-        ChBoostInStreamer boost_receiver(PORT_IN, 1);
-        std::cout << "waiting for start signal" << std::endl;
-        boost_receiver.Synchronize();
-        std::cout << "signal received" << std::endl;
+      std::vector<float> data_to_send;
+      if (step_number % 10 == 0) {
+        // send data to chrono
+        for (int i = 0; i < num_rom; i++) {
+          ChVector<> rom_pos = rom_vec[i]->GetPos();
+          ChQuaternion<> rom_rot = rom_vec[i]->GetRot();
+          ChVector<> rom_rot_vec = rom_rot.Q_to_Euler123();
+          DriverInputs rom_inputs = rom_vec[i]->GetDriverInputs();
+
+          data_to_send.push_back(rom_pos.x());
+          data_to_send.push_back(rom_pos.y());
+          data_to_send.push_back(rom_pos.z());
+          data_to_send.push_back(rom_rot_vec.x());
+          data_to_send.push_back(rom_rot_vec.y());
+          data_to_send.push_back(rom_rot_vec.z());
+          data_to_send.push_back(rom_inputs.m_steering);
+          data_to_send.push_back(rom_vec[i]->GetTireRotation(0));
+          data_to_send.push_back(rom_vec[i]->GetTireRotation(1));
+          data_to_send.push_back(rom_vec[i]->GetTireRotation(2));
+          data_to_send.push_back(rom_vec[i]->GetTireRotation(3));
+        }
+        rom_distributor.Write(data_to_send);
+
+        // receive data from chrono
+        rom_distributor.Read();
         std::vector<float> recv_data;
-        recv_data = boost_receiver.GetRecvData();
+        recv_data = rom_distributor.GetRecvData();
+        for (int i = 0; i < recv_data.size(); i++) {
+          std::cout << recv_data[i] << ",";
+        }
+        std::cout << std::endl;
       }
 
-      ChBoostOutStreamer boost_streamer(IP_OUT, PORT_OUT);
       for (int i = 0; i < num_rom; i++) {
         rom_vec[i]->Advance(time, driver_inputs);
-        ChVector<> rom_pos = rom_vec[i]->GetPos();
-        ChQuaternion<> rom_rot = rom_vec[i]->GetRot();
-        ChVector<> rom_rot_vec = rom_rot.Q_to_Euler123();
-        DriverInputs rom_inputs = rom_vec[i]->GetDriverInputs();
-
-        boost_streamer.AddData(rom_pos.x());
-        boost_streamer.AddData(rom_pos.y());
-        boost_streamer.AddData(rom_pos.z());
-        boost_streamer.AddData(rom_rot_vec.x());
-        boost_streamer.AddData(rom_rot_vec.y());
-        boost_streamer.AddData(rom_rot_vec.z());
-        boost_streamer.AddData(rom_inputs.m_steering);
-        boost_streamer.AddData(rom_vec[i]->GetTireRotation(0));
-        boost_streamer.AddData(rom_vec[i]->GetTireRotation(1));
-        boost_streamer.AddData(rom_vec[i]->GetTireRotation(2));
-        boost_streamer.AddData(rom_vec[i]->GetTireRotation(3));
       }
-      boost_streamer.Synchronize();
+
     } else if (node_id == 1) {
-      if (step_number == 0) {
-        ChBoostOutStreamer boost_streamer(IP_OUT, PORT_OUT);
-        boost_streamer.AddData(1.0);
-        boost_streamer.Synchronize();
+      if (step_number % 10 == 0) {
+        // read data from rom distributor
+        chrono_1.Read();
+        std::vector<float> recv_data;
+        recv_data = chrono_1.GetRecvData();
+        for (int i = 0; i < num_rom; i++) {
+          zombie_vec[i]->Update(
+              ChVector<>(recv_data[0 + i * 11], recv_data[1 + i * 11],
+                         recv_data[2 + i * 11]),
+              ChVector<>(recv_data[3 + i * 11], recv_data[4 + i * 11],
+                         recv_data[5 + i * 11]),
+              recv_data[6 + i * 11], recv_data[7 + i * 11],
+              recv_data[8 + i * 11], recv_data[9 + i * 11],
+              recv_data[10 + i * 11]);
+        }
+
+        // send data to distributor
+        std::vector<float> data_to_send;
+        data_to_send.push_back(my_vehicle.GetChassis()->GetPos().x());
+        data_to_send.push_back(my_vehicle.GetChassis()->GetPos().y());
+        data_to_send.push_back(my_vehicle.GetChassis()->GetPos().z());
+        chrono_1.Write(data_to_send);
       }
 
       my_vehicle.Synchronize(time, driver_inputs, terrain);
       my_vehicle.Advance(step_size);
-
-      ChBoostInStreamer boost_receiver(PORT_IN, 550);
-      boost_receiver.Synchronize();
-      std::vector<float> recv_data;
-      recv_data = boost_receiver.GetRecvData();
-      for (int i = 0; i < num_rom; i++) {
-        zombie_vec[i]->Update(
-            ChVector<>(recv_data[0 + i * 11], recv_data[1 + i * 11],
-                       recv_data[2 + i * 11]),
-            ChVector<>(recv_data[3 + i * 11], recv_data[4 + i * 11],
-                       recv_data[5 + i * 11]),
-            recv_data[6 + i * 11], recv_data[7 + i * 11], recv_data[8 + i * 11],
-            recv_data[9 + i * 11], recv_data[10 + i * 11]);
-      }
     }
 
     terrain.Advance(step_size);
@@ -377,7 +397,9 @@ int main(int argc, char *argv[]) {
 
     std::cout << "time:" << time << std::endl;
 
-    // manager->Update();
+    if (node_id == 1) {
+      manager->Update();
+    }
 
     // Increment frame number
     step_number++;

@@ -26,9 +26,6 @@
 #include "chrono_vehicle/driver/ChInteractiveDriverIRR.h"
 #include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
 
-#include "chrono_vehicle/driver/ChInteractiveDriverIRR.h"
-#include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
-
 #include "chrono_models/vehicle/sedan/Sedan.h"
 
 #include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
@@ -60,7 +57,7 @@
 
 #include "chrono_thirdparty/filesystem/path.h"
 
-#include "chrono_hil/network/ChBoostOutStreamer.h"
+#include "chrono_hil/network/udp/ChBoostOutStreamer.h"
 
 #define IP_OUT "128.104.190.187"
 #define PORT_OUT 1204

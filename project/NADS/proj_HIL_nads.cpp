@@ -41,8 +41,8 @@
 
 #include "chrono_thirdparty/filesystem/path.h"
 
-#include "chrono_hil/network/ChBoostInStreamer.h"
-#include "chrono_hil/network/ChBoostOutStreamer.h"
+#include "chrono_hil/network/udp/ChBoostInStreamer.h"
+#include "chrono_hil/network/udp/ChBoostOutStreamer.h"
 
 using namespace chrono;
 using namespace chrono::irrlicht;
