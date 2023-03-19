@@ -11,7 +11,10 @@
 // =============================================================================
 // Author: Jason Zhou
 // =============================================================================
-// This demo conducts a scaling test on the 8dof vehicle model
+// Introduces ROM distibutor to Synchrono framework to allow parallel
+// computation
+// This is the Synchrono side
+// Launch 2 ranks with rank_id as 1 and 2
 // =============================================================================
 
 #include <chrono>
@@ -85,10 +88,8 @@ using namespace eprosima::fastdds::rtps;
 using namespace eprosima::fastrtps::rtps;
 
 #define IP_OUT "127.0.0.1"
-#define PORT_OUT 1204
-#define PORT_IN 1204
-#define PORT_SIG_OUT 1209
-#define PORT_SIG_IN 1209
+#define PORT_IN_1 1204
+#define PORT_IN_2 1209
 // Use the namespaces of Chrono
 using namespace chrono;
 using namespace chrono::irrlicht;
@@ -101,6 +102,7 @@ using namespace chrono::synchrono;
 // Simulation step sizes
 double step_size = 2e-3;
 double tire_step_size = 1e-3;
+float heartbeat = 1e-2;
 
 // Time interval between two render frames
 double render_step_size = 1.0 / 50; // FPS = 50
@@ -110,6 +112,17 @@ ChQuaternion<> initRot(1, 0, 0, 0);
 
 // Point on chassis tracked by the camera
 ChVector<> trackPoint(0.0, 0.0, 1.75);
+
+// =============================================================================
+// Quality of Service
+#include <fastdds/dds/domain/qos/DomainParticipantQos.hpp>
+#include <fastdds/rtps/transport/UDPv4TransportDescriptor.h>
+#include <fastdds/rtps/transport/UDPv6TransportDescriptor.h>
+
+using namespace eprosima::fastdds::dds;
+using namespace eprosima::fastdds::rtps;
+using namespace eprosima::fastrtps::rtps;
+// =============================================================================
 
 // =============================================================================
 void AddCommandLineOptions(ChCLI &cli) {
@@ -139,6 +152,31 @@ int main(int argc, char *argv[]) {
 
   vehicle::SetDataPath(CHRONO_DATA_DIR + std::string("vehicle/"));
 
+  // -----------------------
+  // Create SynChronoManager
+  // -----------------------
+
+  // Use UDP4
+  DomainParticipantQos qos;
+  qos.name("/syn/node/" + std::to_string(node_id) + ".0");
+  qos.transport().user_transports.push_back(
+      std::make_shared<UDPv4TransportDescriptor>());
+
+  qos.transport().use_builtin_transports = false;
+  qos.wire_protocol().builtin.avoid_builtin_multicast = false;
+
+  // Set the initialPeersList
+  for (const auto &ip : ip_list) {
+    Locator_t locator;
+    locator.kind = LOCATOR_KIND_UDPv4;
+    IPLocator::setIPv4(locator, ip);
+    qos.wire_protocol().builtin.initialPeersList.push_back(locator);
+  }
+  auto communicator = chrono_types::make_shared<SynDDSCommunicator>(qos);
+  SynChronoManager syn_manager(node_id, num_nodes, communicator);
+
+  syn_manager.SetHeartbeat(heartbeat);
+
   // Vehicle, node_id = 1
   std::string vehicle_filename =
       vehicle::GetDataFile("hmmwv/vehicle/HMMWV_Vehicle.json");
@@ -146,69 +184,58 @@ int main(int argc, char *argv[]) {
       vehicle::GetDataFile("hmmwv/tire/HMMWV_TMeasyTire.json");
   std::string powertrain_filename =
       vehicle::GetDataFile("hmmwv/powertrain/HMMWV_ShaftsPowertrain.json");
+  std::string zombie_filename =
+      CHRONO_DATA_DIR + std::string("synchrono/vehicle/HMMWV.json");
 
-  std::vector<std::shared_ptr<Ch_8DOF_vehicle>>
-      rom_vec; // rom vector, for node 0
+  // Create the HMMWV vehicle, set parameters, and initialize
+  WheeledVehicle my_vehicle((ChSystem *)&my_system, vehicle_filename);
   std::vector<std::shared_ptr<Ch_8DOF_zombie>> zombie_vec;
 
-  // Create the Sedan vehicle, set parameters, and initialize
-  WheeledVehicle my_vehicle((ChSystem *)&my_system, vehicle_filename);
+  auto ego_chassis = my_vehicle.GetChassis();
+  my_vehicle.Initialize(ChCoordsys<>(
+      initLoc + ChVector<>(0.0, 0.0 + (num_rom + (node_id - 1)) * 3.0, 0.25),
+      initRot));
+  my_vehicle.GetChassis()->SetFixed(false);
+  auto powertrain = ReadPowertrainJSON(powertrain_filename);
+  my_vehicle.InitializePowertrain(powertrain);
+  my_vehicle.SetChassisVisualizationType(VisualizationType::MESH);
+  my_vehicle.SetSuspensionVisualizationType(VisualizationType::MESH);
+  my_vehicle.SetSteeringVisualizationType(VisualizationType::MESH);
+  my_vehicle.SetWheelVisualizationType(VisualizationType::MESH);
 
-  if (node_id == 0) {
-    float init_height = 0.45;
-    std::string rom_json =
-        std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/hmmwv/hmmwv_rom.json";
-
-    for (int i = 0; i < num_rom; i++) {
-      std::shared_ptr<Ch_8DOF_vehicle> rom_veh =
-          chrono_types::make_shared<Ch_8DOF_vehicle>(rom_json, init_height,
-                                                     step_size);
-      rom_veh->SetInitPos(initLoc +
-                          ChVector<>(0.0, 0.0 + i * 2.0, init_height));
-      rom_veh->SetInitRot(0.0);
-      rom_veh->Initialize(&my_system);
-      rom_vec.push_back(rom_veh);
-      std::cout << "initialize: " << i << std::endl;
-    }
-  } else if (node_id == 1) {
-    auto ego_chassis = my_vehicle.GetChassis();
-    my_vehicle.Initialize(ChCoordsys<>(
-        initLoc + ChVector<>(0.0, 0.0 + num_rom * 2.0, 0.25), initRot));
-    my_vehicle.GetChassis()->SetFixed(false);
-    auto powertrain = ReadPowertrainJSON(powertrain_filename);
-    my_vehicle.InitializePowertrain(powertrain);
-    my_vehicle.SetChassisVisualizationType(VisualizationType::MESH);
-    my_vehicle.SetSuspensionVisualizationType(VisualizationType::MESH);
-    my_vehicle.SetSteeringVisualizationType(VisualizationType::MESH);
-    my_vehicle.SetWheelVisualizationType(VisualizationType::MESH);
-
-    // Create and initialize the tires
-    for (auto &axle : my_vehicle.GetAxles()) {
-      for (auto &wheel : axle->GetWheels()) {
-        auto tire = ReadTireJSON(tire_filename);
-        tire->SetStepsize(step_size / 2);
-        my_vehicle.InitializeTire(tire, wheel, VisualizationType::MESH);
-      }
-    }
-
-    float init_height = 0.45;
-    std::string rom_json =
-        std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/hmmwv/hmmwv_rom.json";
-
-    for (int i = 0; i < num_rom; i++) {
-      auto rom_zombie =
-          chrono_types::make_shared<Ch_8DOF_zombie>(rom_json, init_height);
-      zombie_vec.push_back(rom_zombie);
-      rom_zombie->Initialize(&my_system);
-      std::cout << "zombie: " << i << std::endl;
+  // Create and initialize the tires
+  for (auto &axle : my_vehicle.GetAxles()) {
+    for (auto &wheel : axle->GetWheels()) {
+      auto tire = ReadTireJSON(tire_filename);
+      tire->SetStepsize(step_size / 2);
+      my_vehicle.InitializeTire(tire, wheel, VisualizationType::MESH);
     }
   }
+
+  // Initialize ROM zombie
+  float init_height = 0.45;
+  std::string rom_json =
+      std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/hmmwv/hmmwv_rom.json";
+
+  for (int i = 0; i < num_rom; i++) {
+    auto rom_zombie =
+        chrono_types::make_shared<Ch_8DOF_zombie>(rom_json, init_height);
+    zombie_vec.push_back(rom_zombie);
+    rom_zombie->Initialize(&my_system);
+    std::cout << "zombie: " << i << std::endl;
+  }
+
+  // Add vehicle as an agent and initialize SynChronoManager
+  auto agent = chrono_types::make_shared<SynWheeledVehicleAgent>(
+      &my_vehicle, zombie_filename);
+  syn_manager.AddAgent(agent);
+  syn_manager.Initialize(my_vehicle.GetSystem());
 
   // Initialize terrain
   RigidTerrain terrain(&my_system);
 
-  double terrainLength = 200.0; // size in X direction
-  double terrainWidth = 200.0;  // size in Y direction
+  double terrainLength = 500.0; // size in X direction
+  double terrainWidth = 500.0;  // size in Y direction
 
   ChContactMaterialData minfo;
   minfo.mu = 0.9f;
@@ -244,10 +271,10 @@ int main(int argc, char *argv[]) {
       attached_body, // body camera is attached to
       25,            // update rate in Hz
       chrono::ChFrame<double>(
-          ChVector<>(20.0, -35.0, 1.0),
-          Q_from_Euler123(ChVector<>(0.0, 0.0, C_PI / 2))), // offset pose
-      1920,                                                 // image width
-      1080,                                                 // image
+          ChVector<>(20.0, -13.0, 18.0),
+          Q_from_Euler123(ChVector<>(0.0, C_PI / 8, C_PI / 2))), // offset pose
+      1920,                                                      // image width
+      1080,                                                      // image
       1.608f, 1); // fov, lag, exposure cam->SetName("Camera Sensor");
 
   cam->PushFilter(
@@ -276,13 +303,17 @@ int main(int argc, char *argv[]) {
   // create boost data streaming interface
   ChRealtimeCumulative realtime_timer;
 
-  ChTCPServer rom_distributor(PORT_OUT, 3);
-  ChTCPClient chrono_1("127.0.0.1", PORT_OUT, 550);
+  ChTCPClient chrono_1("127.0.0.1", PORT_IN_1,
+                       550); // create a TCP client for rank 1 (may not be used)
+  ChTCPClient chrono_2("127.0.0.1", PORT_IN_2,
+                       550); // create a TCP client for rank 2 (may not be used)
 
-  if (node_id == 0) {
-    rom_distributor.Initialize();
-  } else if (node_id == 1) {
-    chrono_1.Initialize();
+  if (node_id == 1) {
+    chrono_1.Initialize(); // initialize TCP connection for rank 1
+  } else if (node_id == 2) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(
+        2000)); // wait for 2000 seconds to prevent duplicated connection
+    chrono_2.Initialize(); // initialize TCP connection for rank 2
   }
 
   while (time <= t_end) {
@@ -291,10 +322,9 @@ int main(int argc, char *argv[]) {
 
     if (step_number == 1) {
       realtime_timer.Reset();
-    } else if (step_number != 1 && step_number != 0) {
+    } else if (step_number != 1 && step_number != 0 && node_id == 1) {
       realtime_timer.Spin(time);
     }
-    // std::cout << "time: " << time << std::endl;
 
     // End simulation
     if (time >= t_end)
@@ -308,12 +338,19 @@ int main(int argc, char *argv[]) {
       driver_inputs.m_braking = 0.0;
       driver_inputs.m_steering = 0.0;
     } else if (time >= 3.0f && time < 8.0f) {
-      driver_inputs.m_throttle = 0.5;
+      if (node_id == 1)
+        driver_inputs.m_throttle = 0.5;
+      else if (node_id == 2)
+        driver_inputs.m_throttle = 0.3;
       driver_inputs.m_braking = 0.0;
       driver_inputs.m_steering = 0.0;
     } else if (time >= 8.0f && time < 12.0f) {
+
       driver_inputs.m_throttle = 0.0;
-      driver_inputs.m_braking = 0.6;
+      if (node_id == 1)
+        driver_inputs.m_braking = 0.6;
+      else if (node_id == 2)
+        driver_inputs.m_braking = 0.7;
       driver_inputs.m_steering = 0.0;
     } else {
       driver_inputs.m_throttle = 0.0;
@@ -324,48 +361,13 @@ int main(int argc, char *argv[]) {
     // Update modules (process inputs from other modules)
     // terrain.Synchronize(time);
 
-    // Advance simulation for one timestep for all modules
-    if (node_id == 0) {
-      std::vector<float> data_to_send;
+    // ==================================================
+    // TCP Synchronization Section
+    // ==================================================
+    if (node_id == 1) {
+      // read data from rom distributor 1
       if (step_number % 10 == 0) {
-        // send data to chrono
-        for (int i = 0; i < num_rom; i++) {
-          ChVector<> rom_pos = rom_vec[i]->GetPos();
-          ChQuaternion<> rom_rot = rom_vec[i]->GetRot();
-          ChVector<> rom_rot_vec = rom_rot.Q_to_Euler123();
-          DriverInputs rom_inputs = rom_vec[i]->GetDriverInputs();
 
-          data_to_send.push_back(rom_pos.x());
-          data_to_send.push_back(rom_pos.y());
-          data_to_send.push_back(rom_pos.z());
-          data_to_send.push_back(rom_rot_vec.x());
-          data_to_send.push_back(rom_rot_vec.y());
-          data_to_send.push_back(rom_rot_vec.z());
-          data_to_send.push_back(rom_inputs.m_steering);
-          data_to_send.push_back(rom_vec[i]->GetTireRotation(0));
-          data_to_send.push_back(rom_vec[i]->GetTireRotation(1));
-          data_to_send.push_back(rom_vec[i]->GetTireRotation(2));
-          data_to_send.push_back(rom_vec[i]->GetTireRotation(3));
-        }
-        rom_distributor.Write(data_to_send);
-
-        // receive data from chrono
-        rom_distributor.Read();
-        std::vector<float> recv_data;
-        recv_data = rom_distributor.GetRecvData();
-        for (int i = 0; i < recv_data.size(); i++) {
-          std::cout << recv_data[i] << ",";
-        }
-        std::cout << std::endl;
-      }
-
-      for (int i = 0; i < num_rom; i++) {
-        rom_vec[i]->Advance(time, driver_inputs);
-      }
-
-    } else if (node_id == 1) {
-      if (step_number % 10 == 0) {
-        // read data from rom distributor
         chrono_1.Read();
         std::vector<float> recv_data;
         recv_data = chrono_1.GetRecvData();
@@ -380,13 +382,43 @@ int main(int argc, char *argv[]) {
               recv_data[10 + i * 11]);
         }
 
-        // send data to distributor
+        // send data to distributor 1
         std::vector<float> data_to_send;
         data_to_send.push_back(my_vehicle.GetChassis()->GetPos().x());
         data_to_send.push_back(my_vehicle.GetChassis()->GetPos().y());
         data_to_send.push_back(my_vehicle.GetChassis()->GetPos().z());
         chrono_1.Write(data_to_send);
       }
+      my_vehicle.Synchronize(time, driver_inputs, terrain);
+      my_vehicle.Advance(step_size);
+    } else if (node_id == 2) {
+      if (step_number % 10 == 0) {
+        // read data from rom distributor 2
+        chrono_2.Read();
+        std::vector<float> recv_data;
+        recv_data = chrono_2.GetRecvData();
+        for (int i = 0; i < num_rom; i++) {
+          zombie_vec[i]->Update(
+              ChVector<>(recv_data[0 + i * 11], recv_data[1 + i * 11],
+                         recv_data[2 + i * 11]),
+              ChVector<>(recv_data[3 + i * 11], recv_data[4 + i * 11],
+                         recv_data[5 + i * 11]),
+              recv_data[6 + i * 11], recv_data[7 + i * 11],
+              recv_data[8 + i * 11], recv_data[9 + i * 11],
+              recv_data[10 + i * 11]);
+        }
+
+        // send data to distributor 2
+        std::vector<float> data_to_send;
+        data_to_send.push_back(my_vehicle.GetChassis()->GetPos().x());
+        data_to_send.push_back(my_vehicle.GetChassis()->GetPos().y());
+        data_to_send.push_back(my_vehicle.GetChassis()->GetPos().z());
+        chrono_2.Write(data_to_send);
+      }
+
+      // ==================================================
+      // END OF TCP Synchronization Section
+      // ==================================================
 
       my_vehicle.Synchronize(time, driver_inputs, terrain);
       my_vehicle.Advance(step_size);
@@ -394,6 +426,9 @@ int main(int argc, char *argv[]) {
 
     terrain.Advance(step_size);
     my_system.DoStepDynamics(step_size);
+    if (node_id == 1 || node_id == 2) {
+      syn_manager.Synchronize(time);
+    }
 
     std::cout << "time:" << time << std::endl;
 

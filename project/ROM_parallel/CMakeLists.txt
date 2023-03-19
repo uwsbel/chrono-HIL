@@ -8,9 +8,8 @@
 #--------------------------------------------------------------
 
 set(DEMOS
-	test_HIL_8dof
-  test_HIL_8dof_compare
-  test_HIL_8dof_scaling
+  test_HIL_rom_synchrono_dis
+  test_HIL_rom_synchrono
 )
 
 #--------------------------------------------------------------
@@ -22,13 +21,13 @@ find_package(Chrono
              COMPONENTS SynChrono Vehicle Sensor Irrlicht
              CONFIG
 )
+find_package(SDL2 REQUIRED)
 
 # If Chrono and/or the required component(s) were not found, return now.
 if(NOT Chrono_FOUND)
   message("Could not find requirements for the SynChrono Highway Project")
   return()
 endif()
-
 
 #--------------------------------------------------------------
 # Include paths and libraries
