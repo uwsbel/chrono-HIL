@@ -83,6 +83,7 @@
 #define IP_OUT "127.0.0.1"
 #define PORT_IN_1 1204
 #define PORT_IN_2 1209
+#define PORT_IN_3 1210
 // Use the namespaces of Chrono
 using namespace chrono;
 using namespace chrono::hil;
@@ -108,7 +109,7 @@ int main(int argc, char *argv[]) {
 
   ChSystemSMC my_system;
   my_system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
-  int num_rom = 50;
+  int num_rom = 200;
 
   std::vector<std::shared_ptr<Ch_8DOF_vehicle>>
       rom_vec; // rom vector, for node 0
@@ -178,9 +179,13 @@ int main(int argc, char *argv[]) {
   ChTCPServer rom_distributor_2(
       PORT_IN_2,
       3); // creat the 2nd TCP server to send data to synchrono rank 2
+  ChTCPServer rom_distributor_3(
+      PORT_IN_3,
+      3); // creat the 2nd TCP server to send data to synchrono rank 2
 
   rom_distributor_1.Initialize(); // initialize connection to synchrono rank 1
   rom_distributor_2.Initialize(); // initialize connection to synchrono rank 2
+  rom_distributor_3.Initialize(); // initialize connection to synchrono rank 2
 
   while (time <= t_end) {
 
@@ -247,6 +252,8 @@ int main(int argc, char *argv[]) {
           data_to_send); // send rom data to synchrono rank 1
       rom_distributor_2.Write(
           data_to_send); // send rom data to synchrono rank 2
+      rom_distributor_3.Write(
+          data_to_send); // send rom data to synchrono rank 3
 
       // receive data from chrono_1
       rom_distributor_1.Read();
@@ -263,6 +270,15 @@ int main(int argc, char *argv[]) {
       recv_data_2 = rom_distributor_2.GetRecvData();
       for (int i = 0; i < recv_data_2.size(); i++) {
         std::cout << recv_data_2[i] << ",";
+      }
+      std::cout << std::endl;
+
+      // receive data from chrono_3
+      rom_distributor_3.Read();
+      std::vector<float> recv_data_3;
+      recv_data_3 = rom_distributor_3.GetRecvData();
+      for (int i = 0; i < recv_data_3.size(); i++) {
+        std::cout << recv_data_3[i] << ",";
       }
       std::cout << std::endl;
     }

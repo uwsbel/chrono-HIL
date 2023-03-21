@@ -90,6 +90,7 @@ using namespace eprosima::fastrtps::rtps;
 #define IP_OUT "127.0.0.1"
 #define PORT_IN_1 1204
 #define PORT_IN_2 1209
+#define PORT_IN_3 1210
 // Use the namespaces of Chrono
 using namespace chrono;
 using namespace chrono::irrlicht;
@@ -148,7 +149,7 @@ int main(int argc, char *argv[]) {
 
   ChSystemSMC my_system;
   my_system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
-  int num_rom = 50;
+  int num_rom = 200;
 
   vehicle::SetDataPath(CHRONO_DATA_DIR + std::string("vehicle/"));
 
@@ -303,17 +304,26 @@ int main(int argc, char *argv[]) {
   // create boost data streaming interface
   ChRealtimeCumulative realtime_timer;
 
-  ChTCPClient chrono_1("127.0.0.1", PORT_IN_1,
-                       550); // create a TCP client for rank 1 (may not be used)
-  ChTCPClient chrono_2("127.0.0.1", PORT_IN_2,
-                       550); // create a TCP client for rank 2 (may not be used)
+  ChTCPClient chrono_1(
+      "127.0.0.1", PORT_IN_1,
+      num_rom * 11); // create a TCP client for rank 1 (may not be used)
+  ChTCPClient chrono_2(
+      "127.0.0.1", PORT_IN_2,
+      num_rom * 11); // create a TCP client for rank 2 (may not be used)
+  ChTCPClient chrono_3(
+      "127.0.0.1", PORT_IN_3,
+      num_rom * 11); // create a TCP client for rank 3 (may not be used)
 
   if (node_id == 1) {
     chrono_1.Initialize(); // initialize TCP connection for rank 1
   } else if (node_id == 2) {
     std::this_thread::sleep_for(std::chrono::milliseconds(
-        2000)); // wait for 2000 seconds to prevent duplicated connection
+        5000)); // wait for 2000 seconds to prevent duplicated connection
     chrono_2.Initialize(); // initialize TCP connection for rank 2
+  } else if (node_id == 3) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(
+        10000)); // wait for 2000 seconds to prevent duplicated connection
+    chrono_3.Initialize(); // initialize TCP connection for rank 2
   }
 
   while (time <= t_end) {
@@ -341,16 +351,14 @@ int main(int argc, char *argv[]) {
       if (node_id == 1)
         driver_inputs.m_throttle = 0.5;
       else if (node_id == 2)
+        driver_inputs.m_throttle = 0.4;
+      else if (node_id == 3)
         driver_inputs.m_throttle = 0.3;
       driver_inputs.m_braking = 0.0;
       driver_inputs.m_steering = 0.0;
     } else if (time >= 8.0f && time < 12.0f) {
-
       driver_inputs.m_throttle = 0.0;
-      if (node_id == 1)
-        driver_inputs.m_braking = 0.6;
-      else if (node_id == 2)
-        driver_inputs.m_braking = 0.7;
+      driver_inputs.m_braking = 0.6;
       driver_inputs.m_steering = 0.0;
     } else {
       driver_inputs.m_throttle = 0.0;
@@ -364,69 +372,58 @@ int main(int argc, char *argv[]) {
     // ==================================================
     // TCP Synchronization Section
     // ==================================================
-    if (node_id == 1) {
-      // read data from rom distributor 1
-      if (step_number % 10 == 0) {
-
+    // read data from rom distributor 1
+    if (step_number % 10 == 0) {
+      if (node_id == 1) {
         chrono_1.Read();
-        std::vector<float> recv_data;
-        recv_data = chrono_1.GetRecvData();
-        for (int i = 0; i < num_rom; i++) {
-          zombie_vec[i]->Update(
-              ChVector<>(recv_data[0 + i * 11], recv_data[1 + i * 11],
-                         recv_data[2 + i * 11]),
-              ChVector<>(recv_data[3 + i * 11], recv_data[4 + i * 11],
-                         recv_data[5 + i * 11]),
-              recv_data[6 + i * 11], recv_data[7 + i * 11],
-              recv_data[8 + i * 11], recv_data[9 + i * 11],
-              recv_data[10 + i * 11]);
-        }
-
-        // send data to distributor 1
-        std::vector<float> data_to_send;
-        data_to_send.push_back(my_vehicle.GetChassis()->GetPos().x());
-        data_to_send.push_back(my_vehicle.GetChassis()->GetPos().y());
-        data_to_send.push_back(my_vehicle.GetChassis()->GetPos().z());
-        chrono_1.Write(data_to_send);
-      }
-      my_vehicle.Synchronize(time, driver_inputs, terrain);
-      my_vehicle.Advance(step_size);
-    } else if (node_id == 2) {
-      if (step_number % 10 == 0) {
-        // read data from rom distributor 2
+      } else if (node_id == 2) {
         chrono_2.Read();
-        std::vector<float> recv_data;
-        recv_data = chrono_2.GetRecvData();
-        for (int i = 0; i < num_rom; i++) {
-          zombie_vec[i]->Update(
-              ChVector<>(recv_data[0 + i * 11], recv_data[1 + i * 11],
-                         recv_data[2 + i * 11]),
-              ChVector<>(recv_data[3 + i * 11], recv_data[4 + i * 11],
-                         recv_data[5 + i * 11]),
-              recv_data[6 + i * 11], recv_data[7 + i * 11],
-              recv_data[8 + i * 11], recv_data[9 + i * 11],
-              recv_data[10 + i * 11]);
-        }
-
-        // send data to distributor 2
-        std::vector<float> data_to_send;
-        data_to_send.push_back(my_vehicle.GetChassis()->GetPos().x());
-        data_to_send.push_back(my_vehicle.GetChassis()->GetPos().y());
-        data_to_send.push_back(my_vehicle.GetChassis()->GetPos().z());
-        chrono_2.Write(data_to_send);
+      } else if (node_id == 3) {
+        chrono_3.Read();
       }
 
-      // ==================================================
-      // END OF TCP Synchronization Section
-      // ==================================================
+      std::vector<float> recv_data;
+      if (node_id == 1) {
+        recv_data = chrono_1.GetRecvData();
+      } else if (node_id == 2) {
+        recv_data = chrono_2.GetRecvData();
+      } else if (node_id == 3) {
+        recv_data = chrono_3.GetRecvData();
+      }
 
-      my_vehicle.Synchronize(time, driver_inputs, terrain);
-      my_vehicle.Advance(step_size);
+      for (int i = 0; i < num_rom; i++) {
+        zombie_vec[i]->Update(
+            ChVector<>(recv_data[0 + i * 11], recv_data[1 + i * 11],
+                       recv_data[2 + i * 11]),
+            ChVector<>(recv_data[3 + i * 11], recv_data[4 + i * 11],
+                       recv_data[5 + i * 11]),
+            recv_data[6 + i * 11], recv_data[7 + i * 11], recv_data[8 + i * 11],
+            recv_data[9 + i * 11], recv_data[10 + i * 11]);
+      }
+
+      // send data to distributor 1
+      std::vector<float> data_to_send;
+      data_to_send.push_back(my_vehicle.GetChassis()->GetPos().x());
+      data_to_send.push_back(my_vehicle.GetChassis()->GetPos().y());
+      data_to_send.push_back(my_vehicle.GetChassis()->GetPos().z());
+
+      if (node_id == 1) {
+        chrono_1.Write(data_to_send);
+      } else if (node_id == 2) {
+        chrono_2.Write(data_to_send);
+      } else if (node_id == 3) {
+        chrono_3.Write(data_to_send);
+      }
     }
+    // ==================================================
+    // END OF TCP Synchronization Section
+    // ==================================================
+    my_vehicle.Synchronize(time, driver_inputs, terrain);
+    my_vehicle.Advance(step_size);
 
     terrain.Advance(step_size);
     my_system.DoStepDynamics(step_size);
-    if (node_id == 1 || node_id == 2) {
+    if (node_id == 1 || node_id == 2 || node_id == 3) {
       syn_manager.Synchronize(time);
     }
 
