@@ -588,6 +588,10 @@ int main(int argc, char *argv[]) {
   std::ofstream record_filestream = std::ofstream(record_file_path);
   std::stringstream record_buffer;
 
+  std::string render_file_path = "./render.csv";
+  std::ofstream render_filestream = std::ofstream(render_file_path);
+  std::stringstream render_buffer;
+
   std::string output_file_path = "./output.csv";
   std::ofstream output_filestream = std::ofstream(output_file_path);
   std::stringstream output_buffer;
@@ -776,6 +780,80 @@ int main(int argc, char *argv[]) {
 
       float theta = abs(acos(temp));
       act_dis = theta * radius;
+
+      // store rendering data
+      if (render_scene == 4) {
+        for (int i = 0; i < num_nodes; i++) {
+          if (i != node_id) {
+            // body
+            ChVector<> temp_pos = id_map.at(i)->GetZombiePos();
+            ChQuaternion<> temp_rot = id_map.at(i)->GetZombieRot();
+            ChVector<> temp_rot_euler = temp_rot.Q_to_Euler123();
+
+            render_buffer << std::to_string(temp_pos.x()) + ",";
+            render_buffer << std::to_string(temp_pos.y()) + ",";
+            render_buffer << std::to_string(temp_pos.z()) + ",";
+            render_buffer << std::to_string(temp_rot_euler.x()) + ",";
+            render_buffer << std::to_string(temp_rot_euler.y()) + ",";
+            render_buffer << std::to_string(temp_rot_euler.z()) + ",";
+
+            // wheels
+            for (int j = 0; j < 4; j++) {
+              ChVector<> temp_wheel_pos = id_map.at(i)->GetZombieWheelPos(j);
+              ChQuaternion<> temp_wheel_rot =
+                  id_map.at(i)->GetZombieWheelRot(j);
+              ChVector<> temp_wheel_rot_euler = temp_wheel_rot.Q_to_Euler123();
+
+              render_buffer << std::to_string(temp_wheel_pos.x()) + ",";
+              render_buffer << std::to_string(temp_wheel_pos.y()) + ",";
+              render_buffer << std::to_string(temp_wheel_pos.z()) + ",";
+              render_buffer << std::to_string(temp_wheel_rot_euler.x()) + ",";
+              render_buffer << std::to_string(temp_wheel_rot_euler.y()) + ",";
+              render_buffer << std::to_string(temp_wheel_rot_euler.z()) + ",";
+            }
+          } else {
+            // ego body
+            ChVector<> temp_pos = my_vehicle.GetChassis()->GetPos();
+            ChQuaternion<> temp_rot = my_vehicle.GetChassis()->GetRot();
+            ChVector<> temp_rot_euler = temp_rot.Q_to_Euler123();
+
+            render_buffer << std::to_string(temp_pos.x()) + ",";
+            render_buffer << std::to_string(temp_pos.y()) + ",";
+            render_buffer << std::to_string(temp_pos.z()) + ",";
+            render_buffer << std::to_string(temp_rot_euler.x()) + ",";
+            render_buffer << std::to_string(temp_rot_euler.y()) + ",";
+            render_buffer << std::to_string(temp_rot_euler.z()) + ",";
+
+            // ego_wheels
+            for (int j = 0; j < 4; j++) {
+              std::shared_ptr<ChWheel> temp_wheel;
+              if (j % 2 == 0) {
+                temp_wheel = my_vehicle.GetWheel(int(j / 2), VehicleSide::LEFT);
+              } else {
+                temp_wheel =
+                    my_vehicle.GetWheel(int(j / 2), VehicleSide::RIGHT);
+              }
+
+              ChVector<> temp_wheel_pos = temp_wheel->GetState().pos;
+              ChQuaternion<> temp_wheel_rot = temp_wheel->GetState().rot;
+              ChVector<> temp_wheel_rot_euler = temp_wheel_rot.Q_to_Euler123();
+
+              render_buffer << std::to_string(temp_wheel_pos.x()) + ",";
+              render_buffer << std::to_string(temp_wheel_pos.y()) + ",";
+              render_buffer << std::to_string(temp_wheel_pos.z()) + ",";
+              render_buffer << std::to_string(temp_wheel_rot_euler.x()) + ",";
+              render_buffer << std::to_string(temp_wheel_rot_euler.y()) + ",";
+              render_buffer << std::to_string(temp_wheel_rot_euler.z()) + ",";
+            }
+          }
+        }
+
+        render_buffer << std::endl;
+
+        SynLog() << ("Writing to render file...") << "\n";
+        render_filestream << render_buffer.rdbuf();
+        render_buffer.str("");
+      }
     }
 
     // Render scene and output POV-Ray data
