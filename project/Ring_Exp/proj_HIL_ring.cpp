@@ -889,7 +889,7 @@ int main(int argc, char *argv[]) {
 
     // record ring experiment output data
     if (output == 1) {
-      if (step_number % 100 == 0) {
+      if (step_number % 10 == 0) {
         output_buffer << time << ",";
         for (int j = 0; j < num_nodes; j++) {
           output_buffer << std::to_string(all_x[j]) + ",";
