@@ -16,14 +16,6 @@
 #include "chrono/utils/ChFilters.h"
 #include "chrono/utils/ChUtilsInputOutput.h"
 
-#include "chrono_sensor/ChSensorManager.h"
-#include "chrono_sensor/filters/ChFilterAccess.h"
-#include "chrono_sensor/filters/ChFilterCameraNoise.h"
-#include "chrono_sensor/filters/ChFilterGrayscale.h"
-#include "chrono_sensor/filters/ChFilterImageOps.h"
-#include "chrono_sensor/filters/ChFilterSave.h"
-#include "chrono_sensor/filters/ChFilterVisualize.h"
-#include "chrono_sensor/sensors/ChSegmentationCamera.h"
 #include "chrono_vehicle/driver/ChPathFollowerDriver.h"
 
 #include "chrono_hil/timer/ChRealtimeCumulative.h"
@@ -49,7 +41,6 @@ using namespace chrono::irrlicht;
 using namespace chrono::vehicle;
 using namespace chrono::vehicle::sedan;
 using namespace chrono::geometry;
-using namespace chrono::sensor;
 using namespace chrono::hil;
 
 const double RADS_2_RPM = 30 / CH_C_PI;
@@ -57,7 +48,7 @@ const double MS_2_MPH = 2.2369;
 
 #define PORT_IN 1209
 #define PORT_OUT 1204
-#define IP_OUT "128.104.190.70"
+#define IP_OUT "127.0.0.1"
 bool render = true;
 
 // =============================================================================
@@ -162,6 +153,20 @@ int main(int argc, char *argv[]) {
   my_vehicle.GetSystem()->Add(terrain_body);
 
   // ------------------------
+  // Create a Irrlicht vis
+  // ------------------------
+  ChVector<> trackPoint(0.0, 0.0, 1.75);
+  int render_step = 100;
+  auto vis = chrono_types::make_shared<ChWheeledVehicleVisualSystemIrrlicht>();
+  vis->SetWindowTitle("NADS");
+  vis->SetChaseCamera(trackPoint, 6.0, 0.5);
+  vis->Initialize();
+  vis->AddLightDirectional();
+  vis->AddSkyBox();
+  vis->AddLogo();
+  vis->AttachVehicle(&my_vehicle);
+
+  // ------------------------
   // Create the driver system
   // ------------------------
 
@@ -175,36 +180,6 @@ int main(int argc, char *argv[]) {
 
   // Initialize simulation frame counters
   int step_number = 0;
-
-  // Create the camera sensor
-  auto manager =
-      chrono_types::make_shared<ChSensorManager>(my_vehicle.GetSystem());
-  if (render) {
-    float intensity = 1.2;
-    manager->scene->AddPointLight({0, 0, 1e8}, {1.0, 1.0, 1.0}, 1e12);
-    manager->scene->SetAmbientLight({.2, .2, .2});
-    manager->scene->SetSceneEpsilon(1e-3);
-    manager->scene->EnableDynamicOrigin(true);
-    manager->scene->SetOriginOffsetThreshold(500.f);
-
-    auto cam = chrono_types::make_shared<ChCameraSensor>(
-        attached_body, // body camera is attached to
-        30,            // update rate in Hz
-        chrono::ChFrame<double>(
-            ChVector<>(-12.0, 0.0, 2.0),
-            Q_from_Euler123(ChVector<>(0.0, 0.11, 0.0))), // offset pose
-        5760,                                             // image width
-        1080,                                             // image height
-        1.408f,
-        2); // fov, lag, exposure
-    cam->SetName("Camera Sensor");
-
-    cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
-        1280, 720, "hwwmv", false));
-    // Provide the host access to the RGBA8 buffer
-    cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
-    manager->AddSensor(cam);
-  }
 
   my_vehicle.EnableRealtime(false);
 
@@ -231,10 +206,6 @@ int main(int argc, char *argv[]) {
     attached_body->SetPos(pos);
     attached_body->SetRot(y_0_rot);
 
-    if (render) {
-      manager->Update();
-    }
-
     // End simulation
     if (time >= t_end)
       break;
@@ -249,7 +220,6 @@ int main(int argc, char *argv[]) {
     driver_inputs.m_braking = recv_data[2];
 
     float gear = recv_data[3];
-    std::cout << gear << std::endl;
     if (gear == 0.0) {
       my_vehicle.GetPowertrain()->SetDriveMode(
           ChPowertrain::DriveMode::NEUTRAL);
@@ -336,6 +306,12 @@ int main(int argc, char *argv[]) {
       std::cout << (wall_time.count()) / (time - last_time) << "\n";
       last_time = time;
       start = std::chrono::high_resolution_clock::now();
+    }
+
+    if (render == true) {
+      vis->BeginScene();
+      vis->Render();
+      vis->EndScene();
     }
   }
 

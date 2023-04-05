@@ -3,8 +3,6 @@ message(STATUS "==== Chrono::HIL Module ====")
 set(DRIVER_FILES
     #driver/ChCSLDriver.h
     #driver/ChCSLDriver.cpp
-    driver/ChLidarWaypointDriver.h
-    driver/ChLidarWaypointDriver.cpp
     driver/ChNSF_Drivers.h
     driver/ChNSF_Drivers.cpp
     driver/ChSDLInterface.h
@@ -13,6 +11,14 @@ set(DRIVER_FILES
     driver/ChIDM_Follower.cpp
     #driver/joystick.h
 )
+
+if(ENABLE_MODULE_SENSOR)
+    set(DRIVER_FILES ${DRIVER_FILES}
+    driver/ChLidarWaypointDriver.h
+    driver/ChLidarWaypointDriver.cpp
+    )  
+endif()
+
 source_group("driver" FILES ${DRIVER_FILES})
 
 set(TIMER_FILES

@@ -44,7 +44,7 @@ using boost::asio::ip::udp;
 
 #define PORT_IN 1204
 #define PORT_OUT 1209
-#define IP_OUT "128.104.190.187"
+#define IP_OUT "127.0.0.1"
 
 int main(int argc, char *argv[]) {
   ChSDLInterface SDLDriver;

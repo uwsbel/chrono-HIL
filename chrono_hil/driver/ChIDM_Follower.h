@@ -24,7 +24,6 @@
 #include <string>
 
 #include "../ChApiHil.h"
-#include "chrono_sensor/sensors/ChLidarSensor.h"
 #include "chrono_vehicle/ChApiVehicle.h"
 #include "chrono_vehicle/ChDriver.h"
 #include "chrono_vehicle/driver/ChDataDriver.h"
@@ -32,7 +31,6 @@
 #include "chrono_vehicle/driver/ChPathFollowerDriver.h"
 
 using namespace chrono::vehicle;
-using namespace chrono::sensor;
 
 #define MS_TO_MPH 2.23694
 #define MPH_TO_MS 0.44704
