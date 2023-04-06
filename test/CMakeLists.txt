@@ -5,7 +5,7 @@ if(ENABLE_TESTS)
   add_subdirectory(sdl_driver)
   add_subdirectory(networking)
 
-  if(ENABLE_MODULE_SENSOR)
+  if(CHRONO_SENSOR_FOUND)
     add_subdirectory(Rom_Models)
     add_subdirectory(convoy)
   endif()

@@ -5,7 +5,7 @@ if(ENABLE_PROJECTS)
 
   add_subdirectory(NADS)
 
-  if(ENABLE_MODULE_SENSOR)
+  if(CHRONO_SENSOR_FOUND)
     add_subdirectory(Iowa_Highway)
     add_subdirectory(SanFran_City)
     add_subdirectory(Jsonfy_Env)

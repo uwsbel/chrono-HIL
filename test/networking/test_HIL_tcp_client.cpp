@@ -19,6 +19,7 @@ int main(int argc, char *argv[]) {
   write_data.push_back(3.f);
 
   client.Write(write_data);
+  client.Write(write_data);
 
   return 0;
 }
