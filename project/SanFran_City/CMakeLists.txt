@@ -10,6 +10,7 @@
 set(DEMOS
 	#proj_HIL_city
   #proj_HIL_city_NSF
+  proj_HIL_city_mixed
 )
 
 #--------------------------------------------------------------
