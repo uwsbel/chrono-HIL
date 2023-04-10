@@ -43,10 +43,13 @@ void ChROM_PathFollowerDriver::Advance(double time_step) {
 
   ChVector<> sentinel_vec = sentinel - cur_pos;
   ChWorldFrame::Project(sentinel_vec);
+
   ChVector<> target_vec = target - cur_pos;
   ChWorldFrame::Project(target_vec);
 
   ChVector<> err_vec = target - sentinel;
+  // to do
+  err_vec.z() = 0.0;
 
   double temp =
       Vdot(Vcross(sentinel_vec, target_vec), ChWorldFrame::Vertical());
@@ -59,8 +62,6 @@ void ChROM_PathFollowerDriver::Advance(double time_step) {
 
   m_inputs.m_steering =
       m_st_kp * m_st_err + m_st_ki * m_st_err_i + m_st_kd * m_st_err_d;
-  // std::cout << "m_steering inner: " << m_inputs.m_steering << std::endl;
-
   ChClampValue(m_inputs.m_steering, -1.0, 1.0);
 
   // control speed of the vehicle

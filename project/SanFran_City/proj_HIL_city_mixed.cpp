@@ -60,6 +60,11 @@
 #include "chrono_hil/driver/ChLidarWaypointDriver.h"
 #include "chrono_hil/driver/ChSDLInterface.h"
 
+#include "chrono_hil/ROM/syn/Ch_8DOF_zombie.h"
+
+#include "chrono_hil/network/tcp/ChTCPClient.h"
+#include "chrono_hil/network/tcp/ChTCPServer.h"
+
 // =============================================================================
 
 using namespace chrono;
@@ -71,7 +76,22 @@ using namespace chrono::hil;
 // =============================================================================
 const double RADS_2_RPM = 30 / CH_C_PI;
 const double MS_2_MPH = 2.2369;
-// =============================================================================
+// =====================================================
+
+struct rom_item {
+  int type;
+  ChVector<double> pos;
+  ChVector<double> rot;
+  int path;
+  int ld_id;
+  int idm_type;
+};
+
+// =====================================================
+
+void ReadRomInitFile(std::string csv_filename, std::vector<rom_item> &rom_arr);
+
+// =====================================================
 
 // Visualization type for vehicle parts (PRIMITIVES, MESH, or NONE)
 VisualizationType chassis_vis_type = VisualizationType::MESH;
@@ -118,20 +138,7 @@ float cam_offset = 0.54;
 
 int port_id = 6078;
 
-// dashboard
-int port_out = 7021;
-std::string dash_out_ip = "192.168.0.2";
-
 std::string demo_data_path = std::string(STRINGIFY(HIL_DATA_DIR));
-
-struct PathVehicleSetup {
-  VehicleType vehicle_type;
-  ChVector<double> pos;
-  ChQuaternion<double> rot;
-  std::string path_file;
-  double lookahead;
-  double speed_gain_p;
-};
 
 double suv_lookahead = 5.0;
 double audi_tight_lookahead = 6.0;
@@ -156,6 +163,13 @@ int main(int argc, char *argv[]) {
   // all the demo data will be in user-specified location
   SetChronoDataPath(demo_data_path);
   vehicle::SetDataPath(CHRONO_DATA_DIR + std::string("vehicle/"));
+
+  // read rom data csv
+  std::vector<rom_item> rom_data;
+  std::string filename = std::string(STRINGIFY(HIL_DATA_DIR)) +
+                         "/Environments/SanFrancisco/rom_init/test.csv";
+  std::cout << filename << std::endl;
+  ReadRomInitFile(filename, rom_data);
 
   // --------------
   // Create vehicle
@@ -269,17 +283,53 @@ int main(int argc, char *argv[]) {
   // Create control
   // --------------
   ChSDLInterface SDLDriver;
-  // Set the time response for steering and throttle keyboard inputs.
 
   SDLDriver.Initialize();
 
-  joystick_filename = "/joystick/controller_G27.json";
+  SDLDriver.SetJoystickConfigFile(std::string(STRINGIFY(HIL_DATA_DIR)) +
+                                  std::string("/joystick/controller_G27.json"));
 
-  SDLDriver.SetJoystickConfigFile(demo_data_path + joystick_filename);
+  // Create Zombies
+  int num_rom = rom_data.size();
+
+  std::string hmmwv_json =
+      std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/hmmwv/hmmwv_rom.json";
+  std::string sedan_json =
+      std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/sedan/sedan_rom.json";
+  std::string patrol_json =
+      std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/patrol/patrol_rom.json";
+  std::string audi_json =
+      std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/audi/audi_rom.json";
+
+  std::vector<std::shared_ptr<Ch_8DOF_zombie>> zombie_vec;
+  for (int i = 0; i < num_rom; i++) {
+    std::string rom_json;
+    if (rom_data[i].type == 0) {
+      rom_json = hmmwv_json;
+    } else if (rom_data[i].type == 1) {
+      rom_json = sedan_json;
+    } else if (rom_data[i].type == 2) {
+      rom_json = patrol_json;
+    } else if (rom_data[i].type == 3) {
+      rom_json = audi_json;
+    }
+
+    auto rom_zombie = chrono_types::make_shared<Ch_8DOF_zombie>(rom_json, 0.0);
+    zombie_vec.push_back(rom_zombie);
+    rom_zombie->Initialize(my_vehicle.GetSystem());
+    std::cout << "zombie: " << i << std::endl;
+  }
+
+  // Create TCP Tunnel
+  ChTCPClient chrono_1(
+      "127.0.0.1", 1204,
+      num_rom * 11);     // create a TCP client for rank 1 (may not be used)
+  chrono_1.Initialize(); // initialize TCP connection for rank 1
 
   double sim_time = 0.f;
   double last_time = 0.f;
   int step_number = 0;
+  manager->Update();
 
   std::chrono::high_resolution_clock::time_point start =
       std::chrono::high_resolution_clock::now();
@@ -290,13 +340,14 @@ int main(int argc, char *argv[]) {
 
     // Get driver inputs
     DriverInputs driver_inputs;
-
     driver_inputs.m_throttle = SDLDriver.GetThrottle();
     driver_inputs.m_steering = SDLDriver.GetSteering();
     driver_inputs.m_braking = SDLDriver.GetBraking();
 
-    // Update modules (process inputs from other modules)
+    if (SDLDriver.Synchronize() == 1)
+      break;
 
+    // Update modules (process inputs from other modules)
     my_vehicle.Synchronize(sim_time, driver_inputs, terrain);
     terrain.Synchronize(sim_time);
 
@@ -306,8 +357,44 @@ int main(int argc, char *argv[]) {
 
     manager->Update();
 
-    if (SDLDriver.Synchronize() == 1)
-      break;
+    // Synchronize
+    if (step_number == 0) {
+      std::vector<float> data_to_send;
+      data_to_send.push_back(1.0);
+      data_to_send.push_back(1.0);
+      data_to_send.push_back(1.0);
+      chrono_1.Write(data_to_send);
+    }
+
+    // Update zombies
+    // ==================================================
+    // TCP Synchronization Section
+    // ==================================================
+    // read data from rom distributor 1
+    if (step_number % 20 == 0) {
+      chrono_1.Read();
+
+      std::vector<float> recv_data;
+      recv_data = chrono_1.GetRecvData();
+
+      for (int i = 0; i < num_rom; i++) {
+        zombie_vec[i]->Update(
+            ChVector<>(recv_data[0 + i * 11], recv_data[1 + i * 11],
+                       recv_data[2 + i * 11]),
+            ChVector<>(recv_data[3 + i * 11], recv_data[4 + i * 11],
+                       recv_data[5 + i * 11]),
+            recv_data[6 + i * 11], recv_data[7 + i * 11], recv_data[8 + i * 11],
+            recv_data[9 + i * 11], recv_data[10 + i * 11]);
+      }
+
+      // send data to distributor 1
+      std::vector<float> data_to_send;
+      data_to_send.push_back(my_vehicle.GetChassis()->GetPos().x());
+      data_to_send.push_back(my_vehicle.GetChassis()->GetPos().y());
+      data_to_send.push_back(my_vehicle.GetChassis()->GetPos().z());
+
+      chrono_1.Write(data_to_send);
+    }
 
     // Increment frame number
     step_number++;
@@ -419,5 +506,63 @@ void AddSceneMeshes(ChSystem *chsystem, RigidTerrain *terrain) {
     }
     std::cout << "Total meshes: " << meshes_added
               << " | Unique meshes: " << mesh_map.size() << std::endl;
+  }
+}
+
+void ReadRomInitFile(std::string csv_filename, std::vector<rom_item> &rom_vec) {
+  std::ifstream inputFile(csv_filename);
+
+  if (!inputFile.is_open()) {
+    std::cout << "Failed to open the file." << std::endl;
+  }
+
+  std::vector<std::vector<float>> data; // 2D vector to store the float numbers
+
+  std::string line;
+
+  int line_count = 0;
+
+  while (std::getline(inputFile, line)) {
+    if (line_count != 0) {
+      std::istringstream iss(line);
+      std::string token;
+      std::vector<float> row; // Vector to store a row of float numbers
+      while (std::getline(iss, token, ',')) { // Assuming comma as the delimiter
+        float number;
+        try {
+          number = std::stof(token); // Convert string to float
+          row.push_back(number);     // Store the float number in the row vector
+        } catch (const std::exception &e) {
+          // Failed to convert to float, ignore and continue
+        }
+      }
+      data.push_back(row); // Add the row vector to the 2D vector
+    }
+
+    line_count++;
+  }
+
+  inputFile.close(); // Close the input file
+
+  for (int i = 0; i < data.size(); i++) {
+    rom_item temp_struct;
+    temp_struct.type = int(data[i][1]);
+    temp_struct.pos =
+        ChVector<>(float(data[i][2]), float(data[i][3]), float(data[i][4]));
+
+    temp_struct.rot =
+        ChVector<>(float(data[i][5]), float(data[i][6]), float(data[i][7]));
+
+    temp_struct.path = int(data[i][8]);
+    temp_struct.ld_id = int(data[i][9]);
+    temp_struct.idm_type = int(data[i][10]);
+    rom_vec.push_back(temp_struct);
+  }
+
+  // Print the float numbers in the 2D vector
+  std::cout << "test struct print" << std::endl;
+  for (auto temp_data : rom_vec) {
+    std::cout << temp_data.type << ", " << temp_data.pos << ", "
+              << temp_data.rot << ", " << temp_data.path << std::endl;
   }
 }
