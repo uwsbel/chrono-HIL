@@ -175,16 +175,25 @@ int main(int argc, char *argv[]) {
     rom_vec.push_back(rom_veh);
 
     // DRIVER
-    auto path = ChBezierCurve::read(demo_data_path + "/paths/2.txt", true);
+    std::shared_ptr<ChBezierCurve> path;
+    if (rom_data[i].path == 2) {
+      path = ChBezierCurve::read(demo_data_path + "/paths/2.txt", true);
+    } else if (rom_data[i].path == 3) {
+      path = ChBezierCurve::read(demo_data_path + "/paths/3.txt", true);
+    } else if (rom_data[i].path == 5) {
+      path = ChBezierCurve::read(demo_data_path + "/paths/5.txt", true);
+    } else if (rom_data[i].path == 1) {
+      path = ChBezierCurve::read(demo_data_path + "/paths/1.txt", true);
+    }
 
     std::shared_ptr<ChROM_PathFollowerDriver> driver =
         chrono_types::make_shared<ChROM_PathFollowerDriver>(
-            rom_vec[i], path, 6.0, 1.0, 0.4, 0.0, 0.02, 0.5, 0.0, 0.0);
+            rom_vec[i], path, 6.0, 10.0, 0.3, 0.0, 0.0, 0.5, 0.0, 0.0);
     driver_vec.push_back(driver);
 
     std::vector<double> params;
     if (rom_data[i].idm_type == 0) {
-      params.push_back(11.0);
+      params.push_back(10.0);
       params.push_back(0.1);
       params.push_back(5.0);
       params.push_back(3.5);

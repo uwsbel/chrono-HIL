@@ -183,7 +183,8 @@ int main(int argc, char *argv[]) {
       vehicle::GetDataFile("audi/json/audi_Pac02Tire.json");
 
   // Initial vehicle location and orientation
-  ChVector<> initLoc(925.434, -53.47, -65.2);
+  ChVector<> initLoc(926.17, -293.5, -65.2);
+  // ChVector<> initLoc(727.784, -27.22, -65.2);
   ChQuaternion<> initRot(1, 0, 0, 0);
 
   // Create the Sedan vehicle, set parameters, and initialize
