@@ -184,6 +184,10 @@ int main(int argc, char *argv[]) {
       path = ChBezierCurve::read(demo_data_path + "/paths/5.txt", true);
     } else if (rom_data[i].path == 1) {
       path = ChBezierCurve::read(demo_data_path + "/paths/1.txt", true);
+    } else if (rom_data[i].path == 6) {
+      path = ChBezierCurve::read(demo_data_path + "/paths/6.txt", true);
+    } else if (rom_data[i].path == 7) {
+      path = ChBezierCurve::read(demo_data_path + "/paths/7.txt", true);
     }
 
     std::shared_ptr<ChROM_PathFollowerDriver> driver =

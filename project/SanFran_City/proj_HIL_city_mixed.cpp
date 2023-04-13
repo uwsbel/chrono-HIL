@@ -183,7 +183,7 @@ int main(int argc, char *argv[]) {
       vehicle::GetDataFile("audi/json/audi_Pac02Tire.json");
 
   // Initial vehicle location and orientation
-  ChVector<> initLoc(926.17, -293.5, -65.2);
+  ChVector<> initLoc(1062.6, 6.8977, -65.2);
   // ChVector<> initLoc(727.784, -27.22, -65.2);
   ChQuaternion<> initRot(1, 0, 0, 0);
 
@@ -212,6 +212,12 @@ int main(int argc, char *argv[]) {
   my_vehicle.GetSystem()->AddBody(attached_body);
   attached_body->SetCollide(false);
   attached_body->SetBodyFixed(true);
+  auto box = chrono_types::make_shared<ChBoxShape>();
+  box->GetBoxGeometry().Size = ChVector<>(10000.0, 10000.0, 0.001);
+  auto black_mat = chrono_types::make_shared<ChVisualMaterial>();
+  black_mat->SetDiffuseColor(ChColor(0.3f, 0.3f, 0.3f));
+  box->AddMaterial(black_mat);
+  attached_body->AddVisualShape(box, ChFrame<>(ChVector<>(0, 0, -65.6), QUNIT));
 
   // --------------
   // Create systems
@@ -336,7 +342,6 @@ int main(int argc, char *argv[]) {
       std::chrono::high_resolution_clock::now();
 
   while (true) {
-
     sim_time = my_vehicle.GetSystem()->GetChTime();
 
     // Get driver inputs
