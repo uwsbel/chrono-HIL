@@ -190,9 +190,15 @@ int main(int argc, char *argv[]) {
       path = ChBezierCurve::read(demo_data_path + "/paths/7.txt", true);
     }
 
-    std::shared_ptr<ChROM_PathFollowerDriver> driver =
-        chrono_types::make_shared<ChROM_PathFollowerDriver>(
-            rom_vec[i], path, 6.0, 10.0, 0.3, 0.0, 0.0, 0.5, 0.0, 0.0);
+    std::shared_ptr<ChROM_PathFollowerDriver> driver;
+    if (rom_data[i].path == 3) {
+      driver = chrono_types::make_shared<ChROM_PathFollowerDriver>(
+          rom_vec[i], path, 6.0, 10.0, 0.1, 0.0, 0.0, 0.5, 0.0, 0.0);
+    } else {
+      driver = chrono_types::make_shared<ChROM_PathFollowerDriver>(
+          rom_vec[i], path, 6.0, 10.0, 0.3, 0.0, 0.0, 0.5, 0.0, 0.0);
+    }
+
     driver_vec.push_back(driver);
 
     std::vector<double> params;

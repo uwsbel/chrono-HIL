@@ -183,9 +183,9 @@ int main(int argc, char *argv[]) {
       vehicle::GetDataFile("audi/json/audi_Pac02Tire.json");
 
   // Initial vehicle location and orientation
-  ChVector<> initLoc(1062.6, 6.8977, -65.2);
+  ChVector<> initLoc(930.434, -150.87, -65.2);
   // ChVector<> initLoc(727.784, -27.22, -65.2);
-  ChQuaternion<> initRot(1, 0, 0, 0);
+  ChQuaternion<> initRot = Q_from_AngZ(3.14 / 2);
 
   // Create the Sedan vehicle, set parameters, and initialize
   WheeledVehicle my_vehicle(vehicle_filename, ChContactMethod::SMC);
@@ -289,12 +289,23 @@ int main(int argc, char *argv[]) {
   // --------------
   // Create control
   // --------------
+  /*
   ChSDLInterface SDLDriver;
 
   SDLDriver.Initialize();
 
   SDLDriver.SetJoystickConfigFile(std::string(STRINGIFY(HIL_DATA_DIR)) +
                                   std::string("/joystick/controller_G27.json"));
+  */
+  std::string path_file("paths/output.txt");
+
+  auto path = ChBezierCurve::read(demo_data_path + "/paths/output.txt", true);
+
+  ChPathFollowerDriver driver(my_vehicle, path, "my_path", 6.0);
+  driver.GetSteeringController().SetLookAheadDistance(5);
+  driver.GetSteeringController().SetGains(0.2, 0, 0);
+  driver.GetSpeedController().SetGains(0.4, 0, 0);
+  driver.Initialize();
 
   // Create Zombies
   int num_rom = rom_data.size();
@@ -346,18 +357,22 @@ int main(int argc, char *argv[]) {
 
     // Get driver inputs
     DriverInputs driver_inputs;
-    driver_inputs.m_throttle = SDLDriver.GetThrottle();
-    driver_inputs.m_steering = SDLDriver.GetSteering();
-    driver_inputs.m_braking = SDLDriver.GetBraking();
+    // driver_inputs.m_throttle = SDLDriver.GetThrottle();
+    // driver_inputs.m_steering = SDLDriver.GetSteering();
+    // driver_inputs.m_braking = SDLDriver.GetBraking();
 
+    driver_inputs = driver.GetInputs();
+    /*
     if (SDLDriver.Synchronize() == 1)
       break;
-
+*/
     // Update modules (process inputs from other modules)
+    driver.Synchronize(sim_time);
     my_vehicle.Synchronize(sim_time, driver_inputs, terrain);
     terrain.Synchronize(sim_time);
 
     // Advance simulation for one timestep for all modules
+    driver.Advance(step_size);
     my_vehicle.Advance(step_size);
     terrain.Advance(step_size);
 
