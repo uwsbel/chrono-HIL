@@ -101,6 +101,36 @@ struct rom_item {
 void ReadRomInitFile(std::string csv_filename, std::vector<rom_item> &rom_arr);
 void AddCommandLineOptions(ChCLI &cli);
 
+void readvectors(std::vector<float> &throttle_ref,
+                 std::vector<float> &brakes_ref,
+                 std::vector<float> &steerings_ref) {
+  std::vector<std::vector<std::string>> content;
+  std::vector<std::string> row;
+  std::string line, word;
+
+  std::fstream file("input.csv", std::ios::in);
+  if (file.is_open()) {
+    while (getline(file, line)) {
+      row.clear();
+
+      std::stringstream str(line);
+
+      while (getline(str, word, ','))
+        row.push_back(word);
+      content.push_back(row);
+    }
+  } else
+    std::cout << "Could not open the file\n";
+
+  for (int i = 0; i < content.size(); i++) {
+    throttle_ref.push_back(std::stof(content[i][0]));
+    brakes_ref.push_back(std::stof(content[i][1]));
+    steerings_ref.push_back(std::stof(content[i][2]));
+  }
+
+  std::cout << "done reading records" << std::endl;
+}
+
 // =====================================================
 
 // Visualization type for vehicle parts (PRIMITIVES, MESH, or NONE)
@@ -155,6 +185,10 @@ double audi_tight_lookahead = 6.0;
 double suv_pgain = .5;
 double audi_pgain = .5;
 
+std::vector<float> throttles;
+std::vector<float> brakes;
+std::vector<float> steerings;
+
 // =============================================================================
 
 // Forward declares for straight forward helper functions
@@ -180,6 +214,7 @@ int main(int argc, char *argv[]) {
   const int num_nodes = cli.GetAsType<int>("num_nodes");
   const std::vector<std::string> ip_list =
       cli.GetAsType<std::vector<std::string>>("ip");
+  const int record = cli.GetAsType<int>("record");
 
   // -----------------------
   // Create SynChronoManager
@@ -219,6 +254,10 @@ int main(int argc, char *argv[]) {
                          "/Environments/SanFrancisco/rom_init/test.csv";
   std::cout << filename << std::endl;
   ReadRomInitFile(filename, rom_data);
+
+  if (record == 2) {
+    readvectors(throttles, brakes, steerings);
+  }
 
   // --------------
   // Create vehicle
@@ -423,24 +462,24 @@ int main(int argc, char *argv[]) {
                                   {brightness, brightness, brightness}, 100000);
     manager->scene->SetAmbientLight({.1, .1, .1});
     manager->scene->SetSceneEpsilon(1e-3);
-    manager->scene->EnableDynamicOrigin(true);
-    manager->scene->SetOriginOffsetThreshold(500.f);
+    // manager->scene->EnableDynamicOrigin(true);
+    // manager->scene->SetOriginOffsetThreshold(500.f);
 
     // camera at driver's eye location for Audi
     auto driver_cam = chrono_types::make_shared<ChCameraSensor>(
         my_vehicle.GetChassisBody(), // body camera is attached to
         25,                          // update rate in Hz
-        chrono::ChFrame<double>({-.3, .4, .98},
+        chrono::ChFrame<double>({-.35, .4, .98},
                                 Q_from_AngAxis(0.0, {0, 1, 0})), // offset pose
-        1280,                                                    // image width
-        720,                                                     // image height
+        1920 * 3,                                                // image width
+        1080,                                                    // image height
         3.14 / 1.5,                                              // fov
-        1);
+        2);
 
     driver_cam->SetName("DriverCam");
     driver_cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
-        1280, 720, "Camera1", false));
-    driver_cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+        1920 * 3, 1080, "Camera1", false));
+    // driver_cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
     manager->AddSensor(driver_cam);
   }
 
@@ -455,7 +494,7 @@ int main(int argc, char *argv[]) {
 
     SDLDriver.SetJoystickConfigFile(
         std::string(STRINGIFY(HIL_DATA_DIR)) +
-        std::string("/joystick/controller_G27.json"));
+        std::string("/joystick/controller_G29.json"));
   }
 
   std::string path_file("paths/output.txt");
@@ -546,9 +585,9 @@ int main(int argc, char *argv[]) {
   std::map<AgentKey, std::shared_ptr<SynAgent>> zombie_map;
   std::map<int, std::shared_ptr<SynWheeledVehicleAgent>> id_map;
 
-  if (node_id == 1) {
-    manager->Update();
-  }
+  std::string record_file_path = "./record.csv";
+  std::ofstream record_filestream = std::ofstream(record_file_path);
+  std::stringstream record_buffer;
 
   std::chrono::high_resolution_clock::time_point start =
       std::chrono::high_resolution_clock::now();
@@ -560,9 +599,17 @@ int main(int argc, char *argv[]) {
     DriverInputs driver_inputs;
 
     if (node_id == 1) {
-      driver_inputs.m_throttle = SDLDriver.GetThrottle();
-      driver_inputs.m_steering = SDLDriver.GetSteering();
-      driver_inputs.m_braking = SDLDriver.GetBraking();
+      if (record == 2) {
+        driver_inputs.m_throttle = throttles[step_number];
+        driver_inputs.m_steering = steerings[step_number];
+        driver_inputs.m_braking = brakes[step_number];
+
+      } else {
+        driver_inputs.m_throttle = SDLDriver.GetThrottle();
+        driver_inputs.m_steering = SDLDriver.GetSteering();
+        driver_inputs.m_braking = SDLDriver.GetBraking();
+      }
+
     } else if (node_id == 0) {
       driver_inputs = driver.GetInputs();
     } else if (node_id == 2) {
@@ -618,7 +665,7 @@ int main(int argc, char *argv[]) {
     my_vehicle.Advance(step_size);
     terrain.Advance(step_size);
 
-    if (node_id == 1) {
+    if (node_id == 1 && step_number % int(heartbeat / step_size) == 0) {
       manager->Update();
     }
 
@@ -700,6 +747,18 @@ int main(int argc, char *argv[]) {
       last_time = sim_time;
       start = std::chrono::high_resolution_clock::now();
     }
+
+    if (record == 1) {
+      record_buffer << std::to_string(driver_inputs.m_throttle) + ",";
+      record_buffer << std::to_string(driver_inputs.m_braking) + ",";
+      record_buffer << std::to_string(driver_inputs.m_steering);
+      record_buffer << std::endl;
+      if (step_number % 5000 == 0) {
+        SynLog() << ("Writing to record file...") << "\n";
+        record_filestream << record_buffer.rdbuf();
+        record_buffer.str("");
+      }
+    }
   }
   // Properly shuts down other ranks when one rank ends early
   syn_manager.QuitSimulation();
@@ -711,7 +770,7 @@ void AddSceneMeshes(ChSystem *chsystem, RigidTerrain *terrain) {
   std::string base_path =
       GetChronoDataFile("/Environments/SanFrancisco/components_new/");
   std::string input_file = base_path + "instance_map_03.csv";
-  // std::string input_file = base_path + "instance_map_roads_only.csv";
+  // std::string input_file = base_path + "instance1280_map_roads_only.csv";
 
   std::ifstream infile(input_file);
   if (!infile.is_open())
@@ -863,4 +922,8 @@ void AddCommandLineOptions(ChCLI &cli) {
   cli.AddOption<int>("DDS", "n,num_nodes", "Number of Nodes", "2");
   cli.AddOption<std::vector<std::string>>(
       "DDS", "ip", "IP Addresses for initialPeersList", "127.0.0.1");
+  cli.AddOption<int>("Simulation", "record", "record driver input",
+                     "0"); // record 0 - normal
+                           // record 1 - record input
+                           // record 2 - replay
 }
