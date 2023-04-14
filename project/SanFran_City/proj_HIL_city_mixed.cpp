@@ -55,10 +55,10 @@
 #include "chrono_sensor/sensors/ChCameraSensor.h"
 #include "chrono_sensor/sensors/ChLidarSensor.h"
 
-#include "chrono_thirdparty/cxxopts/ChCLI.h"
-
+#include "chrono_hil/driver/ChIDM_Follower.h"
 #include "chrono_hil/driver/ChLidarWaypointDriver.h"
 #include "chrono_hil/driver/ChSDLInterface.h"
+#include "chrono_thirdparty/cxxopts/ChCLI.h"
 
 #include "chrono_hil/ROM/syn/Ch_8DOF_zombie.h"
 
@@ -231,20 +231,20 @@ int main(int argc, char *argv[]) {
   std::string tire_filename =
       vehicle::GetDataFile("audi/json/audi_Pac02Tire.json");
   std::string zombie_filename =
-      CHRONO_DATA_DIR + std::string("synchrono/vehicle/Sedan.json");
+      CHRONO_DATA_DIR + std::string("vehicle/audi/json/audi.json");
 
   // Initial vehicle location and orientation
   ChVector<> initLoc;
   ChQuaternion<> initRot;
   if (node_id == 0) {
-    initLoc = ChVector<>(930.434, -150.87, -65.2);
-    ChQuaternion<> initRot = Q_from_AngZ(3.14 / 2);
+    initLoc = ChVector<>(930.434, 0, -65.2);
+    initRot = Q_from_AngZ(3.14 / 2);
   } else if (node_id == 1) {
     initLoc = ChVector<>(930.434, -50.87, -65.2);
-    ChQuaternion<> initRot = Q_from_AngZ(3.14 / 2);
+    initRot = Q_from_AngZ(3.14 / 2);
   } else if (node_id == 2) {
-    initLoc = ChVector<>(930.434, 0, -65.2);
-    ChQuaternion<> initRot = Q_from_AngZ(3.14 / 2);
+    initLoc = ChVector<>(930.434, -150.87, -65.2);
+    initRot = Q_from_AngZ(3.14 / 2);
   }
 
   // Create the Sedan vehicle, set parameters, and initialize
@@ -324,6 +324,94 @@ int main(int argc, char *argv[]) {
   std::shared_ptr<ChSensorManager> manager;
 
   if (node_id == 1) {
+    // mirrors position and rotations
+    ChVector<> mirror_rearview_pos = {0.253, 0.0, 1.10};
+    ChQuaternion<> mirror_rearview_rot = Q_from_Euler123(
+        ChVector<>(2.0 * 0.01745, -6.0 * 0.01745, -12.0 * 0.01745));
+    ChVector<> mirror_wingleft_pos = {0.47, 0.945, 0.815};
+    ChQuaternion<> mirror_wingleft_rot =
+        Q_from_Euler123(ChVector<>(0.0, 5.0 * 0.01745, 17.0 * 0.01745));
+    ChVector<> mirror_wingright_pos = {0.4899, -0.95925, 0.80857};
+    ChQuaternion<> mirror_wingright_rot =
+        Q_from_Euler123(ChVector<>(0.0, 3.5 * 0.01745, -28.0 * 0.01745));
+
+    // change the ego vehicle vis out for windowless audi
+    my_vehicle.GetChassisBody()->GetVisualModel()->Clear();
+
+    auto audi_mesh = chrono_types::make_shared<ChTriangleMeshConnected>();
+    audi_mesh->LoadWavefrontMesh(
+        std::string(STRINGIFY(HIL_DATA_DIR)) +
+            "/Environments/Iowa/vehicles/audi_chassis_windowless_2.obj",
+        false, true);
+    audi_mesh->Transform(ChVector<>(0, 0, 0),
+                         ChMatrix33<>(1)); // scale to a different size
+    auto audi_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+    audi_shape->SetMesh(audi_mesh);
+    audi_shape->SetName("Windowless Audi");
+    audi_shape->SetMutable(false);
+    // audi_shape->SetStatic(true);
+    my_vehicle.GetChassisBody()->AddVisualShape(audi_shape);
+
+    // add rearview mirror
+    auto mirror_mesh = chrono_types::make_shared<ChTriangleMeshConnected>();
+    mirror_mesh->LoadWavefrontMesh(
+        std::string(STRINGIFY(HIL_DATA_DIR)) +
+            "/Environments/Iowa/vehicles/audi_rearview_mirror.obj",
+        false, true);
+    mirror_mesh->Transform(ChVector<>(0, 0, 0),
+                           ChMatrix33<>(1)); // scale to a different size
+
+    auto mirror_mat = chrono_types::make_shared<ChVisualMaterial>();
+    mirror_mat->SetDiffuseColor({0.2f, 0.2f, 0.2f});
+    mirror_mat->SetRoughness(0.f);
+    mirror_mat->SetMetallic(1.0f);
+    mirror_mat->SetUseSpecularWorkflow(false);
+
+    auto rvw_mirror_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+    rvw_mirror_shape->SetMesh(mirror_mesh);
+    rvw_mirror_shape->SetName("Windowless Audi");
+    rvw_mirror_shape->SetMutable(false);
+    rvw_mirror_shape->SetScale({1, 1.8, 1.2});
+    rvw_mirror_shape->GetMaterials()[0] = mirror_mat;
+    my_vehicle.GetChassisBody()->AddVisualShape(
+        rvw_mirror_shape, ChFrame<>(mirror_rearview_pos, mirror_rearview_rot));
+
+    // add left wing mirror
+    auto lwm_mesh = chrono_types::make_shared<ChTriangleMeshConnected>();
+    lwm_mesh->LoadWavefrontMesh(
+        std::string(STRINGIFY(HIL_DATA_DIR)) +
+            "/Environments/Iowa/vehicles/audi_left_wing_mirror.obj",
+        false, true);
+    lwm_mesh->Transform(ChVector<>(0, 0, 0),
+                        ChMatrix33<>(1)); // scale to a different size
+
+    auto lwm_mirror_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+    lwm_mirror_shape->SetMesh(lwm_mesh);
+    lwm_mirror_shape->SetName("Windowless Audi");
+    lwm_mirror_shape->GetMaterials()[0] = mirror_mat;
+    lwm_mirror_shape->SetMutable(false);
+    my_vehicle.GetChassisBody()->AddVisualShape(
+        lwm_mirror_shape, ChFrame<>(mirror_wingleft_pos, mirror_wingleft_rot));
+
+    // add left wing mirror
+    auto rwm_mesh = chrono_types::make_shared<ChTriangleMeshConnected>();
+    rwm_mesh->LoadWavefrontMesh(
+        std::string(STRINGIFY(HIL_DATA_DIR)) +
+            "/Environments/Iowa/vehicles/audi_right_wing_mirror.obj",
+        false, true);
+    rwm_mesh->Transform(ChVector<>(0, 0, 0),
+                        ChMatrix33<>(1)); // scale to a different size
+
+    auto rwm_mirror_shape = chrono_types::make_shared<ChTriangleMeshShape>();
+    rwm_mirror_shape->SetMesh(rwm_mesh);
+    rwm_mirror_shape->SetName("Windowless Audi");
+    rwm_mirror_shape->SetScale({1, .98, .98});
+    rwm_mirror_shape->GetMaterials()[0] = mirror_mat;
+    rwm_mirror_shape->SetMutable(false);
+    my_vehicle.GetChassisBody()->AddVisualShape(
+        rwm_mirror_shape,
+        ChFrame<>(mirror_wingright_pos, mirror_wingright_rot));
+
     manager =
         chrono_types::make_shared<ChSensorManager>(my_vehicle.GetSystem());
     Background b;
@@ -342,7 +430,7 @@ int main(int argc, char *argv[]) {
     auto driver_cam = chrono_types::make_shared<ChCameraSensor>(
         my_vehicle.GetChassisBody(), // body camera is attached to
         25,                          // update rate in Hz
-        chrono::ChFrame<double>({-5, .381, 2.04},
+        chrono::ChFrame<double>({-.3, .4, .98},
                                 Q_from_AngAxis(0.0, {0, 1, 0})), // offset pose
         1280,                                                    // image width
         720,                                                     // image height
@@ -359,14 +447,17 @@ int main(int argc, char *argv[]) {
   // --------------
   // Create control
   // --------------
-  /*
+
   ChSDLInterface SDLDriver;
 
-  SDLDriver.Initialize();
+  if (node_id == 1) {
+    SDLDriver.Initialize();
 
-  SDLDriver.SetJoystickConfigFile(std::string(STRINGIFY(HIL_DATA_DIR)) +
-                                  std::string("/joystick/controller_G27.json"));
-  */
+    SDLDriver.SetJoystickConfigFile(
+        std::string(STRINGIFY(HIL_DATA_DIR)) +
+        std::string("/joystick/controller_G27.json"));
+  }
+
   std::string path_file("paths/output.txt");
 
   auto path = ChBezierCurve::read(demo_data_path + "/paths/output.txt", true);
@@ -376,6 +467,22 @@ int main(int argc, char *argv[]) {
   driver.GetSteeringController().SetGains(0.2, 0, 0);
   driver.GetSpeedController().SetGains(0.4, 0, 0);
   driver.Initialize();
+
+  std::vector<double> followerParam;
+  followerParam.push_back(8.9408);
+  followerParam.push_back(0.2);
+  followerParam.push_back(6.0);
+  followerParam.push_back(3.0);
+  followerParam.push_back(2.1);
+  followerParam.push_back(4.0);
+  followerParam.push_back(4.86);
+  std::string steer_controller =
+      std::string(STRINGIFY(HIL_DATA_DIR)) + "/ring/SteeringController.json";
+  std::string speed_controller =
+      std::string(STRINGIFY(HIL_DATA_DIR)) + "/ring/SpeedController.json";
+  ChIDMFollower idm_driver(my_vehicle, steer_controller, speed_controller, path,
+                           "road", 20.0 * MPH_TO_MS, followerParam);
+  idm_driver.Initialize();
 
   // Create Zombies
   int num_rom = rom_data.size();
@@ -431,6 +538,14 @@ int main(int argc, char *argv[]) {
   double sim_time = 0.f;
   double last_time = 0.f;
   int step_number = 0;
+  ChVector<> ego_cur_pos;
+  ChVector<> ego_prev_pos;
+  float ego_spd;
+
+  // obtain and initiate all zombie instances
+  std::map<AgentKey, std::shared_ptr<SynAgent>> zombie_map;
+  std::map<int, std::shared_ptr<SynWheeledVehicleAgent>> id_map;
+
   if (node_id == 1) {
     manager->Update();
   }
@@ -443,23 +558,63 @@ int main(int argc, char *argv[]) {
 
     // Get driver inputs
     DriverInputs driver_inputs;
-    // driver_inputs.m_throttle = SDLDriver.GetThrottle();
-    // driver_inputs.m_steering = SDLDriver.GetSteering();
-    // driver_inputs.m_braking = SDLDriver.GetBraking();
 
-    driver_inputs = driver.GetInputs();
-    /*
-    if (SDLDriver.Synchronize() == 1)
-      break;
-*/
+    if (node_id == 1) {
+      driver_inputs.m_throttle = SDLDriver.GetThrottle();
+      driver_inputs.m_steering = SDLDriver.GetSteering();
+      driver_inputs.m_braking = SDLDriver.GetBraking();
+    } else if (node_id == 0) {
+      driver_inputs = driver.GetInputs();
+    } else if (node_id == 2) {
+      driver_inputs = idm_driver.GetInputs();
+    }
+
+    if (node_id == 1) {
+      if (SDLDriver.Synchronize() == 1)
+        break;
+    }
+
+    // obtain map
+    if (step_number == 0 && node_id == 2) {
+      zombie_map = syn_manager.GetZombies();
+      for (std::map<AgentKey, std::shared_ptr<SynAgent>>::iterator it =
+               zombie_map.begin();
+           it != zombie_map.end(); ++it) {
+        std::shared_ptr<SynAgent> temp_ptr = it->second;
+        std::shared_ptr<SynWheeledVehicleAgent> converted_ptr =
+            std::dynamic_pointer_cast<SynWheeledVehicleAgent>(temp_ptr);
+        id_map.insert(std::make_pair(it->first.GetNodeID(), converted_ptr));
+      }
+    }
+
+    // update necessary zombie info for IDM
+    if (step_number % int(heartbeat / step_size) == 0 && node_id == 2) {
+      ego_cur_pos = id_map.at(1)->GetZombiePos();
+      if (step_number == 0) {
+        ego_prev_pos = ego_cur_pos;
+      }
+      ego_spd = (ego_cur_pos - ego_prev_pos).Length() / heartbeat;
+      ego_prev_pos = ego_cur_pos;
+    }
+
     // Update modules (process inputs from other modules)
-    driver.Synchronize(sim_time);
+    if (node_id == 0)
+      driver.Synchronize(sim_time);
+    else if (node_id == 2)
+      idm_driver.Synchronize(
+          sim_time, step_size,
+          (my_vehicle.GetChassis()->GetPos() - ego_cur_pos).Length(), ego_spd);
     my_vehicle.Synchronize(sim_time, driver_inputs, terrain);
     terrain.Synchronize(sim_time);
     syn_manager.Synchronize(sim_time);
 
     // Advance simulation for one timestep for all modules
-    driver.Advance(step_size);
+    if (node_id == 0) {
+      driver.Advance(step_size);
+    } else if (node_id == 2) {
+      idm_driver.Advance(step_size);
+    }
+
     my_vehicle.Advance(step_size);
     terrain.Advance(step_size);
 
@@ -528,7 +683,6 @@ int main(int argc, char *argv[]) {
       } else if (node_id == 2) {
         chrono_2.Write(data_to_send);
       }
-      std::cout << my_vehicle.GetChassis()->GetPos() << std::endl;
     }
 
     // Increment frame number
