@@ -67,6 +67,15 @@
 
 // =============================================================================
 
+// Quality of Service
+#include <fastdds/dds/domain/qos/DomainParticipantQos.hpp>
+#include <fastdds/rtps/transport/UDPv4TransportDescriptor.h>
+#include <fastdds/rtps/transport/UDPv6TransportDescriptor.h>
+
+using namespace eprosima::fastdds::dds;
+using namespace eprosima::fastdds::rtps;
+using namespace eprosima::fastrtps::rtps;
+
 using namespace chrono;
 using namespace chrono::geometry;
 using namespace chrono::synchrono;
@@ -90,6 +99,7 @@ struct rom_item {
 // =====================================================
 
 void ReadRomInitFile(std::string csv_filename, std::vector<rom_item> &rom_arr);
+void AddCommandLineOptions(ChCLI &cli);
 
 // =====================================================
 
@@ -119,7 +129,7 @@ double step_size = 2e-3;
 double end_time = 1000;
 
 // How often SynChrono state messages are interchanged
-double heartbeat = 2e-2; // 50[Hz]
+double heartbeat = 4e-2;
 
 bool use_fullscreen = false;
 
@@ -160,9 +170,48 @@ void VehicleProcessMessageCallback(
 
 int main(int argc, char *argv[]) {
 
+  ChCLI cli(argv[0]);
+
+  AddCommandLineOptions(cli);
+  if (!cli.Parse(argc, argv, true))
+    return 0;
+
+  const int node_id = cli.GetAsType<int>("node_id");
+  const int num_nodes = cli.GetAsType<int>("num_nodes");
+  const std::vector<std::string> ip_list =
+      cli.GetAsType<std::vector<std::string>>("ip");
+
+  // -----------------------
+  // Create SynChronoManager
+  // -----------------------
+
+  // Use UDP4
+  DomainParticipantQos qos;
+  qos.name("/syn/node/" + std::to_string(node_id) + ".0");
+  qos.transport().user_transports.push_back(
+      std::make_shared<UDPv4TransportDescriptor>());
+
+  qos.transport().use_builtin_transports = false;
+  qos.wire_protocol().builtin.avoid_builtin_multicast = false;
+
+  // Set the initialPeersList
+  for (const auto &ip : ip_list) {
+    Locator_t locator;
+    locator.kind = LOCATOR_KIND_UDPv4;
+    IPLocator::setIPv4(locator, ip);
+    qos.wire_protocol().builtin.initialPeersList.push_back(locator);
+  }
+  auto communicator = chrono_types::make_shared<SynDDSCommunicator>(qos);
+  SynChronoManager syn_manager(node_id, num_nodes, communicator);
+
+  syn_manager.SetHeartbeat(heartbeat);
+
+  // ===========================================
+
   // all the demo data will be in user-specified location
   SetChronoDataPath(demo_data_path);
   vehicle::SetDataPath(CHRONO_DATA_DIR + std::string("vehicle/"));
+  synchrono::SetDataPath(CHRONO_DATA_DIR + std::string("synchrono/"));
 
   // read rom data csv
   std::vector<rom_item> rom_data;
@@ -181,11 +230,22 @@ int main(int argc, char *argv[]) {
       vehicle::GetDataFile("audi/json/audi_SimpleMapPowertrain.json");
   std::string tire_filename =
       vehicle::GetDataFile("audi/json/audi_Pac02Tire.json");
+  std::string zombie_filename =
+      CHRONO_DATA_DIR + std::string("synchrono/vehicle/Sedan.json");
 
   // Initial vehicle location and orientation
-  ChVector<> initLoc(930.434, -150.87, -65.2);
-  // ChVector<> initLoc(727.784, -27.22, -65.2);
-  ChQuaternion<> initRot = Q_from_AngZ(3.14 / 2);
+  ChVector<> initLoc;
+  ChQuaternion<> initRot;
+  if (node_id == 0) {
+    initLoc = ChVector<>(930.434, -150.87, -65.2);
+    ChQuaternion<> initRot = Q_from_AngZ(3.14 / 2);
+  } else if (node_id == 1) {
+    initLoc = ChVector<>(930.434, -50.87, -65.2);
+    ChQuaternion<> initRot = Q_from_AngZ(3.14 / 2);
+  } else if (node_id == 2) {
+    initLoc = ChVector<>(930.434, 0, -65.2);
+    ChQuaternion<> initRot = Q_from_AngZ(3.14 / 2);
+  }
 
   // Create the Sedan vehicle, set parameters, and initialize
   WheeledVehicle my_vehicle(vehicle_filename, ChContactMethod::SMC);
@@ -207,6 +267,12 @@ int main(int argc, char *argv[]) {
       my_vehicle.InitializeTire(tire, wheel, VisualizationType::MESH);
     }
   }
+
+  // Add vehicle as an agent and initialize SynChronoManager
+  auto agent = chrono_types::make_shared<SynWheeledVehicleAgent>(
+      &my_vehicle, zombie_filename);
+  syn_manager.AddAgent(agent);
+  syn_manager.Initialize(my_vehicle.GetSystem());
 
   auto attached_body = std::make_shared<ChBody>();
   my_vehicle.GetSystem()->AddBody(attached_body);
@@ -255,36 +321,40 @@ int main(int argc, char *argv[]) {
   // Create cam
   // --------------
   // add a sensor manager
-  auto manager =
-      chrono_types::make_shared<ChSensorManager>(my_vehicle.GetSystem());
-  Background b;
-  b.mode = BackgroundMode::ENVIRONMENT_MAP; // GRADIENT
-  b.env_tex = GetChronoDataFile("/Environments/sky_2_4k.hdr");
-  manager->scene->SetBackground(b);
-  float brightness = 1.5f;
-  manager->scene->AddPointLight({0, 0, 10000},
-                                {brightness, brightness, brightness}, 100000);
-  manager->scene->SetAmbientLight({.1, .1, .1});
-  manager->scene->SetSceneEpsilon(1e-3);
-  manager->scene->EnableDynamicOrigin(true);
-  manager->scene->SetOriginOffsetThreshold(500.f);
+  std::shared_ptr<ChSensorManager> manager;
 
-  // camera at driver's eye location for Audi
-  auto driver_cam = chrono_types::make_shared<ChCameraSensor>(
-      my_vehicle.GetChassisBody(), // body camera is attached to
-      25,                          // update rate in Hz
-      chrono::ChFrame<double>({-5, .381, 2.04},
-                              Q_from_AngAxis(0, {0, 1, 0})), // offset pose
-      1280,                                                  // image width
-      720,                                                   // image height
-      3.14 / 1.5,                                            // fov
-      1);
+  if (node_id == 1) {
+    manager =
+        chrono_types::make_shared<ChSensorManager>(my_vehicle.GetSystem());
+    Background b;
+    b.mode = BackgroundMode::ENVIRONMENT_MAP; // GRADIENT
+    b.env_tex = GetChronoDataFile("/Environments/sky_2_4k.hdr");
+    manager->scene->SetBackground(b);
+    float brightness = 1.5f;
+    manager->scene->AddPointLight({0, 0, 10000},
+                                  {brightness, brightness, brightness}, 100000);
+    manager->scene->SetAmbientLight({.1, .1, .1});
+    manager->scene->SetSceneEpsilon(1e-3);
+    manager->scene->EnableDynamicOrigin(true);
+    manager->scene->SetOriginOffsetThreshold(500.f);
 
-  driver_cam->SetName("DriverCam");
-  driver_cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
-      1280, 720, "Camera1", false));
-  driver_cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
-  manager->AddSensor(driver_cam);
+    // camera at driver's eye location for Audi
+    auto driver_cam = chrono_types::make_shared<ChCameraSensor>(
+        my_vehicle.GetChassisBody(), // body camera is attached to
+        25,                          // update rate in Hz
+        chrono::ChFrame<double>({-5, .381, 2.04},
+                                Q_from_AngAxis(0.0, {0, 1, 0})), // offset pose
+        1280,                                                    // image width
+        720,                                                     // image height
+        3.14 / 1.5,                                              // fov
+        1);
+
+    driver_cam->SetName("DriverCam");
+    driver_cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
+        1280, 720, "Camera1", false));
+    driver_cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+    manager->AddSensor(driver_cam);
+  }
 
   // --------------
   // Create control
@@ -339,20 +409,36 @@ int main(int argc, char *argv[]) {
   }
 
   // Create TCP Tunnel
-  ChTCPClient chrono_1(
-      "127.0.0.1", 1204,
-      num_rom * 11);     // create a TCP client for rank 1 (may not be used)
-  chrono_1.Initialize(); // initialize TCP connection for rank 1
+  ChTCPClient chrono_0("127.0.0.1", 1204,
+                       num_rom * 11); // create a TCP client for rank 0
+  ChTCPClient chrono_1("127.0.0.1", 1205,
+                       num_rom * 11); // create a TCP client for rank 1
+  ChTCPClient chrono_2("127.0.0.1", 1206,
+                       num_rom * 11); // create a TCP client for rank 2
+
+  if (node_id == 0) {
+    chrono_0.Initialize(); // initialize TCP connection for rank 1
+  } else if (node_id == 1) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(
+        5000)); // wait for 2000 seconds to prevent duplicated connection
+    chrono_1.Initialize(); // initialize TCP connection for rank 2
+  } else if (node_id == 2) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(
+        10000)); // wait for 2000 seconds to prevent duplicated connection
+    chrono_2.Initialize(); // initialize TCP connection for rank 2
+  }
 
   double sim_time = 0.f;
   double last_time = 0.f;
   int step_number = 0;
-  manager->Update();
+  if (node_id == 1) {
+    manager->Update();
+  }
 
   std::chrono::high_resolution_clock::time_point start =
       std::chrono::high_resolution_clock::now();
 
-  while (true) {
+  while (syn_manager.IsOk()) {
     sim_time = my_vehicle.GetSystem()->GetChTime();
 
     // Get driver inputs
@@ -370,13 +456,16 @@ int main(int argc, char *argv[]) {
     driver.Synchronize(sim_time);
     my_vehicle.Synchronize(sim_time, driver_inputs, terrain);
     terrain.Synchronize(sim_time);
+    syn_manager.Synchronize(sim_time);
 
     // Advance simulation for one timestep for all modules
     driver.Advance(step_size);
     my_vehicle.Advance(step_size);
     terrain.Advance(step_size);
 
-    manager->Update();
+    if (node_id == 1) {
+      manager->Update();
+    }
 
     // Synchronize
     if (step_number == 0) {
@@ -384,7 +473,13 @@ int main(int argc, char *argv[]) {
       data_to_send.push_back(1.0);
       data_to_send.push_back(1.0);
       data_to_send.push_back(1.0);
-      chrono_1.Write(data_to_send);
+      if (node_id == 0) {
+        chrono_0.Write(data_to_send);
+      } else if (node_id == 1) {
+        chrono_1.Write(data_to_send);
+      } else if (node_id == 2) {
+        chrono_2.Write(data_to_send);
+      }
     }
 
     // Update zombies
@@ -393,10 +488,22 @@ int main(int argc, char *argv[]) {
     // ==================================================
     // read data from rom distributor 1
     if (step_number % 20 == 0) {
-      chrono_1.Read();
+      if (node_id == 0) {
+        chrono_0.Read();
+      } else if (node_id == 1) {
+        chrono_1.Read();
+      } else if (node_id == 2) {
+        chrono_2.Read();
+      }
 
       std::vector<float> recv_data;
-      recv_data = chrono_1.GetRecvData();
+      if (node_id == 0) {
+        recv_data = chrono_0.GetRecvData();
+      } else if (node_id == 1) {
+        recv_data = chrono_1.GetRecvData();
+      } else if (node_id == 2) {
+        recv_data = chrono_2.GetRecvData();
+      }
 
       for (int i = 0; i < num_rom; i++) {
         zombie_vec[i]->Update(
@@ -414,7 +521,14 @@ int main(int argc, char *argv[]) {
       data_to_send.push_back(my_vehicle.GetChassis()->GetPos().y());
       data_to_send.push_back(my_vehicle.GetChassis()->GetPos().z());
 
-      chrono_1.Write(data_to_send);
+      if (node_id == 0) {
+        chrono_0.Write(data_to_send);
+      } else if (node_id == 1) {
+        chrono_1.Write(data_to_send);
+      } else if (node_id == 2) {
+        chrono_2.Write(data_to_send);
+      }
+      std::cout << my_vehicle.GetChassis()->GetPos() << std::endl;
     }
 
     // Increment frame number
@@ -433,7 +547,8 @@ int main(int argc, char *argv[]) {
       start = std::chrono::high_resolution_clock::now();
     }
   }
-
+  // Properly shuts down other ranks when one rank ends early
+  syn_manager.QuitSimulation();
   return 0;
 }
 
@@ -586,4 +701,12 @@ void ReadRomInitFile(std::string csv_filename, std::vector<rom_item> &rom_vec) {
     std::cout << temp_data.type << ", " << temp_data.pos << ", "
               << temp_data.rot << ", " << temp_data.path << std::endl;
   }
+}
+
+void AddCommandLineOptions(ChCLI &cli) {
+  // DDS Specific
+  cli.AddOption<int>("DDS", "d,node_id", "ID for this Node", "1");
+  cli.AddOption<int>("DDS", "n,num_nodes", "Number of Nodes", "2");
+  cli.AddOption<std::vector<std::string>>(
+      "DDS", "ip", "IP Addresses for initialPeersList", "127.0.0.1");
 }

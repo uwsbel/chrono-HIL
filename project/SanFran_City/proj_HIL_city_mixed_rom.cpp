@@ -268,18 +268,34 @@ int main(int argc, char *argv[]) {
   // create boost data streaming interface
   ChRealtimeCumulative realtime_timer;
 
-  ChTCPServer rom_distributor_1(
-      PORT_IN_1,
+  ChTCPServer rom_distributor_0(
+      1204,
       3); // create the 1st TCP server to send data to synchrono rank 1
+  ChTCPServer rom_distributor_1(
+      1205,
+      3); // creat the 2nd TCP server to send data to synchrono rank 2
+  ChTCPServer rom_distributor_2(
+      1206,
+      3); // creat the 2nd TCP server to send data to synchrono rank 2
 
-  rom_distributor_1.Initialize(); // initialize connection to synchrono rank 1
+  rom_distributor_0.Initialize(); // initialize connection to synchrono rank 1
+  rom_distributor_1.Initialize(); // initialize connection to synchrono rank 2
+  rom_distributor_2.Initialize(); // initialize connection to synchrono rank 2
 
   while (true) {
 
     if (step_number == 0) {
+      rom_distributor_0.Read();
+      std::vector<float> recv_data_0;
+      recv_data_0 = rom_distributor_0.GetRecvData();
+
       rom_distributor_1.Read();
       std::vector<float> recv_data_1;
       recv_data_1 = rom_distributor_1.GetRecvData();
+
+      rom_distributor_2.Read();
+      std::vector<float> recv_data_2;
+      recv_data_2 = rom_distributor_2.GetRecvData();
     }
 
     time = my_system.GetChTime();
@@ -313,13 +329,25 @@ int main(int argc, char *argv[]) {
         data_to_send.push_back(rom_vec[i]->GetTireRotation(2));
         data_to_send.push_back(rom_vec[i]->GetTireRotation(3));
       }
+      rom_distributor_0.Write(
+          data_to_send); // send rom data to synchrono rank 1
       rom_distributor_1.Write(
           data_to_send); // send rom data to synchrono rank 1
+      rom_distributor_2.Write(
+          data_to_send); // send rom data to synchrono rank 1
 
+      // receive data from chrono_0
+      rom_distributor_0.Read();
       // receive data from chrono_1
       rom_distributor_1.Read();
+      // receive data from chrono_2
+      rom_distributor_2.Read();
+      std::vector<float> recv_data_0;
+      recv_data_0 = rom_distributor_0.GetRecvData();
       std::vector<float> recv_data_1;
       recv_data_1 = rom_distributor_1.GetRecvData();
+      std::vector<float> recv_data_2;
+      recv_data_2 = rom_distributor_2.GetRecvData();
     }
 
     for (int i = 0; i < rom_data.size(); i++) {
