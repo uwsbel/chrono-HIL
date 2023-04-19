@@ -56,6 +56,10 @@ public:
 
   DriverInputs GetDriverInputs();
 
+  int GetGear() { return veh1_st.m_cur_gear; }
+
+  double GetMotorSpeed() { return veh1_st.m_motor_speed; }
+
 private:
   void InitializeVisualization(std::string chassis_obj_path,
                                std::string wheel_obj_path, ChSystem *sys);

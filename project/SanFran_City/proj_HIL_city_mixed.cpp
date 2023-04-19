@@ -215,6 +215,12 @@ int main(int argc, char *argv[]) {
   const std::vector<std::string> ip_list =
       cli.GetAsType<std::vector<std::string>>("ip");
   const int record = cli.GetAsType<int>("record");
+  const int output_state = cli.GetAsType<int>("output");
+
+  std::string output_file_path =
+      "./syn_output" + std::to_string(node_id) + ".csv";
+  std::ofstream output_filestream = std::ofstream(output_file_path);
+  std::stringstream output_buffer;
 
   // -----------------------
   // Create SynChronoManager
@@ -356,13 +362,45 @@ int main(int argc, char *argv[]) {
       10000.0, 10000.0, 2, false, 1, false);
   terrain.Initialize();
 
+  // Create Zombies
+  int num_rom = rom_data.size();
+
+  std::string hmmwv_json =
+      std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/hmmwv/hmmwv_rom.json";
+  std::string sedan_json =
+      std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/sedan/sedan_rom.json";
+  std::string patrol_json =
+      std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/patrol/patrol_rom.json";
+  std::string audi_json =
+      std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/audi/audi_rom.json";
+
+  std::vector<std::shared_ptr<Ch_8DOF_zombie>> zombie_vec;
+  for (int i = 0; i < num_rom; i++) {
+    std::string rom_json;
+    if (rom_data[i].type == 0) {
+      rom_json = hmmwv_json;
+    } else if (rom_data[i].type == 1) {
+      rom_json = sedan_json;
+    } else if (rom_data[i].type == 2) {
+      rom_json = patrol_json;
+    } else if (rom_data[i].type == 3) {
+      rom_json = audi_json;
+    }
+
+    auto rom_zombie = chrono_types::make_shared<Ch_8DOF_zombie>(rom_json, 0.0);
+    zombie_vec.push_back(rom_zombie);
+    rom_zombie->Initialize(my_vehicle.GetSystem());
+    std::cout << "zombie: " << i << std::endl;
+  }
+
   // --------------
   // Create cam
   // --------------
   // add a sensor manager
   std::shared_ptr<ChSensorManager> manager;
 
-  if (node_id == 1) {
+  if (node_id == 0) {
+    /*
     // mirrors position and rotations
     ChVector<> mirror_rearview_pos = {0.253, 0.0, 1.10};
     ChQuaternion<> mirror_rearview_rot = Q_from_Euler123(
@@ -450,7 +488,7 @@ int main(int argc, char *argv[]) {
     my_vehicle.GetChassisBody()->AddVisualShape(
         rwm_mirror_shape,
         ChFrame<>(mirror_wingright_pos, mirror_wingright_rot));
-
+*/
     manager =
         chrono_types::make_shared<ChSensorManager>(my_vehicle.GetSystem());
     Background b;
@@ -467,19 +505,21 @@ int main(int argc, char *argv[]) {
 
     // camera at driver's eye location for Audi
     auto driver_cam = chrono_types::make_shared<ChCameraSensor>(
-        my_vehicle.GetChassisBody(), // body camera is attached to
-        25,                          // update rate in Hz
-        chrono::ChFrame<double>({-.35, .4, .98},
+        zombie_vec[38]->GetChassisBody(), // body camera is attached to
+                                          // my_vehicle.GetChassisBody()
+        25,                               // update rate in Hz
+        chrono::ChFrame<double>({-6.0, 0.0, 2.5},
                                 Q_from_AngAxis(0.0, {0, 1, 0})), // offset pose
-        1920 * 3,                                                // image width
+        1920,                                                    // image width
         1080,                                                    // image height
         3.14 / 1.5,                                              // fov
         2);
 
     driver_cam->SetName("DriverCam");
-    driver_cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
-        1920 * 3, 1080, "Camera1", false));
-    // driver_cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+    // driver_cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
+    //     1920 * 3, 1080, "Camera1", false));
+    //  driver_cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+    driver_cam->PushFilter(chrono_types::make_shared<ChFilterSave>("rom/"));
     manager->AddSensor(driver_cam);
   }
 
@@ -522,37 +562,6 @@ int main(int argc, char *argv[]) {
   ChIDMFollower idm_driver(my_vehicle, steer_controller, speed_controller, path,
                            "road", 20.0 * MPH_TO_MS, followerParam);
   idm_driver.Initialize();
-
-  // Create Zombies
-  int num_rom = rom_data.size();
-
-  std::string hmmwv_json =
-      std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/hmmwv/hmmwv_rom.json";
-  std::string sedan_json =
-      std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/sedan/sedan_rom.json";
-  std::string patrol_json =
-      std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/patrol/patrol_rom.json";
-  std::string audi_json =
-      std::string(STRINGIFY(HIL_DATA_DIR)) + "/rom/audi/audi_rom.json";
-
-  std::vector<std::shared_ptr<Ch_8DOF_zombie>> zombie_vec;
-  for (int i = 0; i < num_rom; i++) {
-    std::string rom_json;
-    if (rom_data[i].type == 0) {
-      rom_json = hmmwv_json;
-    } else if (rom_data[i].type == 1) {
-      rom_json = sedan_json;
-    } else if (rom_data[i].type == 2) {
-      rom_json = patrol_json;
-    } else if (rom_data[i].type == 3) {
-      rom_json = audi_json;
-    }
-
-    auto rom_zombie = chrono_types::make_shared<Ch_8DOF_zombie>(rom_json, 0.0);
-    zombie_vec.push_back(rom_zombie);
-    rom_zombie->Initialize(my_vehicle.GetSystem());
-    std::cout << "zombie: " << i << std::endl;
-  }
 
   // Create TCP Tunnel
   ChTCPClient chrono_0("127.0.0.1", 1204,
@@ -665,8 +674,8 @@ int main(int argc, char *argv[]) {
     my_vehicle.Advance(step_size);
     terrain.Advance(step_size);
 
-    if (node_id == 1 && step_number % int(heartbeat / step_size) == 0) {
-      manager->Update();
+    if (node_id == 0 && step_number % int(heartbeat / step_size) == 0) {
+      // manager->Update();
     }
 
     // Synchronize
@@ -729,6 +738,27 @@ int main(int argc, char *argv[]) {
         chrono_1.Write(data_to_send);
       } else if (node_id == 2) {
         chrono_2.Write(data_to_send);
+      }
+    }
+
+    if (output_state == 1 && step_number % 20 == 0) {
+      output_buffer << sim_time << ",";
+      output_buffer << my_vehicle.GetSpeed() << ",";
+      ChQuaternion<> temp_qua = my_vehicle.GetRot();
+      ChVector<> temp_vec = temp_qua.Q_to_Euler123();
+      output_buffer << temp_vec.x() << ",";
+      output_buffer << temp_vec.y() << ",";
+      output_buffer << temp_vec.z() << ",";
+      output_buffer << driver_inputs.m_throttle << ",";
+      output_buffer << driver_inputs.m_braking << ",";
+      output_buffer << driver_inputs.m_steering << ",";
+      output_buffer << my_vehicle.GetPowertrain()->GetMotorSpeed() << ",";
+      output_buffer << my_vehicle.GetPowertrain()->GetCurrentTransmissionGear();
+      output_buffer << std::endl;
+      if (step_number % 10000 == 0) {
+        std::cout << "Writing to output file..." << std::endl;
+        output_filestream << output_buffer.rdbuf();
+        output_buffer.str("");
       }
     }
 
@@ -926,4 +956,5 @@ void AddCommandLineOptions(ChCLI &cli) {
                      "0"); // record 0 - normal
                            // record 1 - record input
                            // record 2 - replay
+  cli.AddOption<int>("Simulation", "output", "output vehicle state", "0");
 }

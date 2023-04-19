@@ -87,6 +87,12 @@
 #define IP_OUT "127.0.0.1"
 #define PORT_IN_1 1204
 
+// ==============================================================================
+int output = 0;
+int focus_idx[10] = {5, 22, 34, 38, 45, 61, 73, 92, 104, 140};
+
+// =======================================================================
+
 // Use the namespaces of Chrono
 using namespace chrono;
 using namespace chrono::hil;
@@ -151,6 +157,12 @@ int main(int argc, char *argv[]) {
       driver_vec; // rom driver vector
   std::vector<std::shared_ptr<ChROM_IDMFollower>>
       idm_vec; // rom idm driver vector
+
+  std::string output_file_path = "./rom_output.csv";
+  std::ofstream output_filestream = std::ofstream(output_file_path);
+  std::stringstream output_buffer;
+
+  std::vector<DriverInputs> input_record;
 
   // initialize vehicle and drivers
   for (int i = 0; i < rom_data.size(); i++) {
@@ -365,6 +377,18 @@ int main(int argc, char *argv[]) {
         driver_inputs.m_throttle = 0.0;
         driver_inputs.m_braking = 0.2;
       }
+
+      if (output == 1) {
+        if (i == focus_idx[0] || i == focus_idx[1] || i == focus_idx[2] ||
+            i == focus_idx[3] || i == focus_idx[4] || i == focus_idx[5] ||
+            i == focus_idx[6] || i == focus_idx[7] || i == focus_idx[8] ||
+            i == focus_idx[9]) {
+          if (step_number % 20 == 0) {
+            input_record.push_back(driver_inputs);
+          }
+        }
+      }
+
       rom_vec[i]->Advance(time, driver_inputs);
     }
 
@@ -372,6 +396,36 @@ int main(int argc, char *argv[]) {
     my_system.DoStepDynamics(step_size);
 
     std::cout << "time:" << time << std::endl;
+
+    if (output == 1) {
+      if (step_number % 20 == 0) {
+        output_buffer << time << ",";
+
+        for (int j = 0; j < 10; j++) {
+          output_buffer << (rom_vec[focus_idx[j]]->GetVel()).Length() << ",";
+
+          output_buffer << input_record[j].m_throttle << ",";
+          output_buffer << input_record[j].m_braking << ",";
+          output_buffer << input_record[j].m_steering << ",";
+
+          ChQuaternion<> temp_qua = rom_vec[focus_idx[j]]->GetRot();
+          ChVector<> temp_vec = temp_qua.Q_to_Euler123();
+          output_buffer << temp_vec.x() << ",";
+          output_buffer << rom_vec[focus_idx[j]]->GetGear() << ",";
+          output_buffer << rom_vec[focus_idx[j]]->GetMotorSpeed() << ",";
+        }
+        output_buffer << std::endl;
+
+        std::cout << "record size: " << input_record.size() << std::endl;
+        input_record.clear();
+      }
+
+      if (step_number % 10000 == 0) {
+        std::cout << "Writing to output file..." << std::endl;
+        output_filestream << output_buffer.rdbuf();
+        output_buffer.str("");
+      }
+    }
 
     // Increment frame number
     step_number++;

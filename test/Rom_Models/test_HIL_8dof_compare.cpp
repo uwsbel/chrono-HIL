@@ -82,7 +82,7 @@ ChQuaternion<> initRot(1, 0, 0, 0);
 // Point on chassis tracked by the camera
 ChVector<> trackPoint(0.0, 0.0, 1.75);
 
-bool output = false;
+bool output = true;
 const std::string out_dir = GetChronoOutputPath() + "8dof";
 
 enum VEH_TYPE { HMMWV, PATROL, AUDI, SEDAN };
@@ -217,7 +217,7 @@ int main(int argc, char *argv[]) {
           Q_from_Euler123(ChVector<>(0.0, C_PI / 6, C_PI / 2))), // offset pose
       1920,                                                      // image width
       1080,                                                      // image
-      1.608f, 1); // fov, lag, exposure cam->SetName("Camera Sensor");
+      1.608f, 2); // fov, lag, exposure cam->SetName("Camera Sensor");
 
   cam->PushFilter(
       chrono_types::make_shared<ChFilterVisualize>(1920, 1080, "test", false));
@@ -323,9 +323,9 @@ int main(int argc, char *argv[]) {
     if (output && step_number % 20 == 0) {
       // initialize output
       if (step_number == 0) {
-        csv << "time,cv_x,cv_y,cv_sp,cv_pitch,cv_row,cv_yaw,rom_x,rom_y,rom_sp,"
-               "rom_"
-               "pitch,rom_row,rom_yaw"
+        csv << "time,cv_x,cv_y,cv_sp,cv_pitch,cv_row,cv_yaw,cv_speed,rom_x,rom_"
+               "y,rom_sp,"
+               "rom_pitch,rom_row,rom_yaw, rom_speed"
             << std::endl;
       }
 
@@ -341,10 +341,12 @@ int main(int argc, char *argv[]) {
       // write drive torques of all four wheels into file
       csv << time << "," << veh_pos.x() << "," << veh_pos.y() << ","
           << my_vehicle.GetChassis()->GetSpeed() << "," << veh_rot_euler.y()
-          << "," << veh_rot_euler.x() << "," << veh_rot_euler.z() << ",";
+          << "," << veh_rot_euler.x() << "," << veh_rot_euler.z() << ","
+          << my_vehicle.GetSpeed() << ",";
       csv << rom_pos.x() << "," << rom_pos.y() << ","
           << rom_veh->GetVel().Length() << "," << rom_rot_euler.y() << ","
-          << rom_rot_euler.x() << "," << rom_rot_euler.z() << std::endl;
+          << rom_rot_euler.x() << "," << rom_rot_euler.z() << ","
+          << (rom_veh->GetVel()).Length() << std::endl;
       csv.write_to_file(out_dir + "/output.csv");
     }
 
