@@ -52,9 +52,6 @@ public:
   std::shared_ptr<ChBodyAuxRef> GetChassisBody();
 
 private:
-  void InitializeVisualization(std::string chassis_obj_path,
-                               std::string wheel_obj_path, ChSystem *sys);
-
   float rom_z_plane;
   bool enable_vis;
 

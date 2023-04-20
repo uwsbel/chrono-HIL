@@ -109,8 +109,77 @@ Ch_8DOF_vehicle::Ch_8DOF_vehicle(std::string rom_json, float z_plane,
 }
 
 void Ch_8DOF_vehicle::Initialize(ChSystem *sys) {
+
+  chassis_body = chrono_types::make_shared<ChBodyAuxRef>();
+
+  chassis_body->SetCollide(false);
+
+  chassis_body->SetBodyFixed(true);
+
   if (enable_vis) {
-    InitializeVisualization(chassis_mesh, wheel_mesh, sys);
+    auto chassis_mmesh = chrono_types::make_shared<ChTriangleMeshConnected>();
+    chassis_mmesh->LoadWavefrontMesh(chassis_mesh, false, true);
+
+    auto chassis_trimesh_shape =
+        chrono_types::make_shared<ChTriangleMeshShape>();
+    chassis_trimesh_shape->SetMesh(chassis_mmesh);
+    chassis_trimesh_shape->SetMutable(false);
+
+    chassis_body->AddVisualShape(chassis_trimesh_shape);
+  }
+
+  sys->AddBody(chassis_body);
+
+  // Express relative frame in global
+  ChFrame<> X_LF = chassis_body->GetFrame_REF_to_abs() *
+                   ChFrame<>(wheels_offset_pos[0], wheels_offset_rot[0]);
+  ChFrame<> X_RF = chassis_body->GetFrame_REF_to_abs() *
+                   ChFrame<>(wheels_offset_pos[1], wheels_offset_rot[1]);
+  ChFrame<> X_LR = chassis_body->GetFrame_REF_to_abs() *
+                   ChFrame<>(wheels_offset_pos[2], wheels_offset_rot[2]);
+  ChFrame<> X_RR = chassis_body->GetFrame_REF_to_abs() *
+                   ChFrame<>(wheels_offset_pos[3], wheels_offset_rot[3]);
+
+  for (int i = 0; i < 4; i++) {
+
+    wheels_body[i] = chrono_types::make_shared<ChBodyAuxRef>();
+    wheels_body[i]->SetCollide(false);
+
+    wheels_body[i]->SetBodyFixed(true);
+
+    if (enable_vis) {
+      auto wheel_mmesh = chrono_types::make_shared<ChTriangleMeshConnected>();
+      wheel_mmesh->LoadWavefrontMesh(wheel_mesh, false, true);
+
+      // transform all wheel rotations, to the meshes
+      wheel_mmesh->Transform(ChVector<>(0.0, 0.0, 0.0), wheels_offset_rot[i]);
+
+      auto wheel_trimesh_shape =
+          chrono_types::make_shared<ChTriangleMeshShape>();
+      wheel_trimesh_shape->SetMesh(wheel_mmesh);
+      wheel_trimesh_shape->SetMutable(false);
+      wheels_body[i]->AddVisualShape(wheel_trimesh_shape);
+    }
+
+    if (i == 0) {
+      wheels_body[i]->SetPos(X_LF.GetPos());
+      wheels_body[i]->SetRot(X_LF.GetRot());
+    }
+
+    if (i == 1) {
+      wheels_body[i]->SetPos(X_RF.GetPos());
+      wheels_body[i]->SetRot(X_RF.GetRot());
+    }
+    if (i == 2) {
+      wheels_body[i]->SetPos(X_LR.GetPos());
+      wheels_body[i]->SetRot(X_LR.GetRot());
+    }
+    if (i == 3) {
+      wheels_body[i]->SetPos(X_RR.GetPos());
+      wheels_body[i]->SetRot(X_RR.GetRot());
+    }
+
+    sys->AddBody(wheels_body[i]);
   }
 }
 
@@ -156,135 +225,65 @@ void Ch_8DOF_vehicle::Advance(float time, DriverInputs inputs) {
 
   vehAdv(veh1_st, veh1_param, fx, fy, huf, hur);
 
-  if (enable_vis) {
-    chassis_body->SetPos(this->GetPos());
+  chassis_body->SetPos(this->GetPos());
 
-    chassis_body->SetRot(this->GetRot());
+  chassis_body->SetRot(this->GetRot());
 
-    ChFrame<> chassis_body_fr = ChFrame<>(this->GetPos(), this->GetRot());
+  ChFrame<> chassis_body_fr = ChFrame<>(this->GetPos(), this->GetRot());
 
-    ChFrame<> X_LF =
-        chassis_body_fr * ChFrame<>(wheels_offset_pos[0], wheels_offset_rot[0]);
-    ChFrame<> X_RF =
-        chassis_body_fr * ChFrame<>(wheels_offset_pos[1], wheels_offset_rot[1]);
-    ChFrame<> X_LR =
-        chassis_body_fr * ChFrame<>(wheels_offset_pos[2], wheels_offset_rot[2]);
-    ChFrame<> X_RR =
-        chassis_body_fr * ChFrame<>(wheels_offset_pos[3], wheels_offset_rot[3]);
-
-    for (int i = 0; i < 4; i++) {
-      // 1 - vehicle rotation
-      // step one to obtain vehicle chassis orientation and wheel offset
-      ChQuaternion<> rot_operator = chassis_body_fr.GetRot();
-
-      // 2 - steer offset
-      // step two only applies to front wheels which need to take care of
-      // steering
-      if (i == 0 || i == 1) {
-        ChQuaternion<> temp = ChQuaternion<>(1, 0, 0, 0);
-        temp.Q_from_AngZ(inputs.m_steering * veh1_param.m_maxSteer);
-        rot_operator = rot_operator * temp;
-      }
-
-      // 3 - take into tire rotation
-      // apply to all tires
-      ChQuaternion<> temp(1, 0, 0, 0);
-      temp.Q_from_AngY(prev_tire_rotation[i] +
-                       veh1_param.m_step * tirelf_st.m_omega);
-      prev_tire_rotation[i] =
-          prev_tire_rotation[i] + veh1_param.m_step * tirelf_st.m_omega;
-      if (prev_tire_rotation[i] > C_2PI) {
-        prev_tire_rotation[i] = 0.f;
-      }
-      rot_operator = rot_operator * temp;
-
-      // final rotation step
-      if (i == 0) {
-        wheels_body[i]->SetPos(X_LF.GetPos());
-        wheels_body[i]->SetRot(rot_operator);
-      }
-
-      if (i == 1) {
-        wheels_body[i]->SetPos(X_RF.GetPos());
-        wheels_body[i]->SetRot(rot_operator);
-      }
-      if (i == 2) {
-        wheels_body[i]->SetPos(X_LR.GetPos());
-        wheels_body[i]->SetRot(rot_operator);
-      }
-      if (i == 3) {
-        wheels_body[i]->SetPos(X_RR.GetPos());
-        wheels_body[i]->SetRot(rot_operator);
-      }
-    }
-  }
-}
-
-void Ch_8DOF_vehicle::InitializeVisualization(std::string chassis_obj_path,
-                                              std::string wheel_obj_path,
-                                              ChSystem *sys) {
-  auto chassis_mmesh = chrono_types::make_shared<ChTriangleMeshConnected>();
-  chassis_mmesh->LoadWavefrontMesh(chassis_obj_path, false, true);
-
-  auto chassis_trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
-  chassis_trimesh_shape->SetMesh(chassis_mmesh);
-  chassis_trimesh_shape->SetMutable(false);
-
-  chassis_body = chrono_types::make_shared<ChBodyAuxRef>();
-
-  chassis_body->SetCollide(false);
-
-  chassis_body->SetBodyFixed(true);
-  chassis_body->AddVisualShape(chassis_trimesh_shape);
-
-  sys->AddBody(chassis_body);
-
-  // Express relative frame in global
-  ChFrame<> X_LF = chassis_body->GetFrame_REF_to_abs() *
-                   ChFrame<>(wheels_offset_pos[0], wheels_offset_rot[0]);
-  ChFrame<> X_RF = chassis_body->GetFrame_REF_to_abs() *
-                   ChFrame<>(wheels_offset_pos[1], wheels_offset_rot[1]);
-  ChFrame<> X_LR = chassis_body->GetFrame_REF_to_abs() *
-                   ChFrame<>(wheels_offset_pos[2], wheels_offset_rot[2]);
-  ChFrame<> X_RR = chassis_body->GetFrame_REF_to_abs() *
-                   ChFrame<>(wheels_offset_pos[3], wheels_offset_rot[3]);
+  ChFrame<> X_LF =
+      chassis_body_fr * ChFrame<>(wheels_offset_pos[0], wheels_offset_rot[0]);
+  ChFrame<> X_RF =
+      chassis_body_fr * ChFrame<>(wheels_offset_pos[1], wheels_offset_rot[1]);
+  ChFrame<> X_LR =
+      chassis_body_fr * ChFrame<>(wheels_offset_pos[2], wheels_offset_rot[2]);
+  ChFrame<> X_RR =
+      chassis_body_fr * ChFrame<>(wheels_offset_pos[3], wheels_offset_rot[3]);
 
   for (int i = 0; i < 4; i++) {
-    auto wheel_mmesh = chrono_types::make_shared<ChTriangleMeshConnected>();
-    wheel_mmesh->LoadWavefrontMesh(wheel_obj_path, false, true);
+    // 1 - vehicle rotation
+    // step one to obtain vehicle chassis orientation and wheel offset
+    ChQuaternion<> rot_operator = chassis_body_fr.GetRot();
 
-    // transform all wheel rotations, to the meshes
-    wheel_mmesh->Transform(ChVector<>(0.0, 0.0, 0.0), wheels_offset_rot[i]);
+    // 2 - steer offset
+    // step two only applies to front wheels which need to take care of
+    // steering
+    if (i == 0 || i == 1) {
+      ChQuaternion<> temp = ChQuaternion<>(1, 0, 0, 0);
+      temp.Q_from_AngZ(inputs.m_steering * veh1_param.m_maxSteer);
+      rot_operator = rot_operator * temp;
+    }
 
-    auto wheel_trimesh_shape = chrono_types::make_shared<ChTriangleMeshShape>();
-    wheel_trimesh_shape->SetMesh(wheel_mmesh);
-    wheel_trimesh_shape->SetMutable(false);
+    // 3 - take into tire rotation
+    // apply to all tires
+    ChQuaternion<> temp(1, 0, 0, 0);
+    temp.Q_from_AngY(prev_tire_rotation[i] +
+                     veh1_param.m_step * tirelf_st.m_omega);
+    prev_tire_rotation[i] =
+        prev_tire_rotation[i] + veh1_param.m_step * tirelf_st.m_omega;
+    if (prev_tire_rotation[i] > C_2PI) {
+      prev_tire_rotation[i] = 0.f;
+    }
+    rot_operator = rot_operator * temp;
 
-    wheels_body[i] = chrono_types::make_shared<ChBodyAuxRef>();
-    wheels_body[i]->SetCollide(false);
-
-    wheels_body[i]->SetBodyFixed(true);
-    wheels_body[i]->AddVisualShape(wheel_trimesh_shape);
-
+    // final rotation step
     if (i == 0) {
       wheels_body[i]->SetPos(X_LF.GetPos());
-      wheels_body[i]->SetRot(X_LF.GetRot());
+      wheels_body[i]->SetRot(rot_operator);
     }
 
     if (i == 1) {
       wheels_body[i]->SetPos(X_RF.GetPos());
-      wheels_body[i]->SetRot(X_RF.GetRot());
+      wheels_body[i]->SetRot(rot_operator);
     }
     if (i == 2) {
       wheels_body[i]->SetPos(X_LR.GetPos());
-      wheels_body[i]->SetRot(X_LR.GetRot());
+      wheels_body[i]->SetRot(rot_operator);
     }
     if (i == 3) {
       wheels_body[i]->SetPos(X_RR.GetPos());
-      wheels_body[i]->SetRot(X_RR.GetRot());
+      wheels_body[i]->SetRot(rot_operator);
     }
-
-    sys->AddBody(wheels_body[i]);
   }
 }
 

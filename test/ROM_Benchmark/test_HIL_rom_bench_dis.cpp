@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
 
   ChSystemSMC my_system;
   my_system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
-  int num_rom = 2500; // number of rom on each distributor
+  int num_rom = 25; // number of rom on each distributor
 
   std::vector<std::shared_ptr<Ch_8DOF_vehicle>>
       rom_vec; // rom vector, for node 0

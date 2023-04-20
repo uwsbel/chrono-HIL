@@ -94,6 +94,8 @@ using namespace eprosima::fastrtps::rtps;
 #define PORT_IN_4 1207
 #define PORT_IN_5 1208
 #define PORT_IN_6 1209
+#define PORT_IN_7 1210
+#define PORT_IN_8 1211
 // Use the namespaces of Chrono
 using namespace chrono;
 using namespace chrono::irrlicht;
@@ -152,8 +154,8 @@ int main(int argc, char *argv[]) {
 
   ChSystemSMC my_system;
   my_system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
-  int num_rom = 2500;
-  int num_dis = 6;
+  int num_rom = 25;
+  int num_dis = 1;
 
   vehicle::SetDataPath(CHRONO_DATA_DIR + std::string("vehicle/"));
 
@@ -319,13 +321,36 @@ int main(int argc, char *argv[]) {
                        num_rom * 11); // create a TCP client
   ChTCPClient chrono_6("127.0.0.1", PORT_IN_6,
                        num_rom * 11); // create a TCP client
-
+  ChTCPClient chrono_7("128.104.190.187", PORT_IN_1,
+                       num_rom * 11); // create a TCP client
+  ChTCPClient chrono_8("128.104.190.187", PORT_IN_2,
+                       num_rom * 11); // create a TCP client
+  ChTCPClient chrono_9("128.104.190.187", PORT_IN_3,
+                       num_rom * 11); // create a TCP client
+  ChTCPClient chrono_10("128.104.190.187", PORT_IN_4,
+                        num_rom * 11); // create a TCP client
+  ChTCPClient chrono_11("128.104.190.187", PORT_IN_5,
+                        num_rom * 11); // create a TCP client
+  ChTCPClient chrono_12("128.104.190.187", PORT_IN_6,
+                        num_rom * 11); // create a TCP client
+  ChTCPClient chrono_13("128.104.190.187", PORT_IN_7,
+                        num_rom * 11); // create a TCP client
+  ChTCPClient chrono_14("128.104.190.187", PORT_IN_8,
+                        num_rom * 11); // create a TCP client
   client_vec.push_back(chrono_1);
   client_vec.push_back(chrono_2);
   client_vec.push_back(chrono_3);
   client_vec.push_back(chrono_4);
   client_vec.push_back(chrono_5);
   client_vec.push_back(chrono_6);
+  client_vec.push_back(chrono_7);
+  client_vec.push_back(chrono_8);
+  client_vec.push_back(chrono_9);
+  client_vec.push_back(chrono_10);
+  client_vec.push_back(chrono_11);
+  client_vec.push_back(chrono_12);
+  client_vec.push_back(chrono_13);
+  client_vec.push_back(chrono_14);
 
   for (int j = 0; j < num_dis; j++) {
     client_vec[j].Initialize();
@@ -427,7 +452,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (node_id == 1) {
-      // manager->Update();
+      manager->Update();
     }
 
     // Increment frame number
