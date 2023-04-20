@@ -89,8 +89,8 @@ using namespace eprosima::fastrtps::rtps;
 
 #define IP_OUT "127.0.0.1"
 #define PORT_IN_1 1204
-#define PORT_IN_2 1209
-#define PORT_IN_3 1210
+#define PORT_IN_2 1205
+#define PORT_IN_3 1206
 // Use the namespaces of Chrono
 using namespace chrono;
 using namespace chrono::irrlicht;

@@ -34,7 +34,7 @@ using namespace chrono::vehicle;
 class CH_HIL_API Ch_8DOF_zombie {
 
 public:
-  Ch_8DOF_zombie(std::string rom_json, float z_plane);
+  Ch_8DOF_zombie(std::string rom_json, float z_plane, bool vis = false);
 
   void Initialize(ChSystem *sys);
 
@@ -56,6 +56,7 @@ private:
                                std::string wheel_obj_path, ChSystem *sys);
 
   float rom_z_plane;
+  bool enable_vis;
 
   std::string chassis_mesh;
   std::string wheel_mesh;

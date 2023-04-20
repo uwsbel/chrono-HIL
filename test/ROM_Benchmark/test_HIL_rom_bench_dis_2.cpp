@@ -82,8 +82,9 @@
 
 #define IP_OUT "127.0.0.1"
 #define PORT_IN_1 1204
-#define PORT_IN_2 1209
-#define PORT_IN_3 1210
+#define PORT_IN_2 1205
+#define PORT_IN_3 1206
+
 // Use the namespaces of Chrono
 using namespace chrono;
 using namespace chrono::hil;
@@ -109,7 +110,7 @@ int main(int argc, char *argv[]) {
 
   ChSystemSMC my_system;
   my_system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
-  int num_rom = 20;
+  int num_rom = 2500; // number of rom on each distributor
 
   std::vector<std::shared_ptr<Ch_8DOF_vehicle>>
       rom_vec; // rom vector, for node 0
@@ -121,7 +122,7 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < num_rom; i++) {
     std::shared_ptr<Ch_8DOF_vehicle> rom_veh =
         chrono_types::make_shared<Ch_8DOF_vehicle>(rom_json, init_height,
-                                                   step_size);
+                                                   step_size, false);
     rom_veh->SetInitPos(initLoc + ChVector<>(0.0, 0.0 + i * 3.0, init_height));
     rom_veh->SetInitRot(0.0);
     rom_veh->Initialize(&my_system);
@@ -170,32 +171,15 @@ int main(int argc, char *argv[]) {
   // Simulation end time
   double t_end = 14.0;
 
-  // create boost data streaming interface
-  ChRealtimeCumulative realtime_timer;
-
   ChTCPServer rom_distributor_1(
-      PORT_IN_1,
-      3); // create the 1st TCP server to send data to synchrono rank 1
-  ChTCPServer rom_distributor_2(
       PORT_IN_2,
-      3); // creat the 2nd TCP server to send data to synchrono rank 2
-  ChTCPServer rom_distributor_3(
-      PORT_IN_3,
-      3); // creat the 2nd TCP server to send data to synchrono rank 2
+      3); // create the 1st TCP server to send data to synchrono rank 1
 
-  rom_distributor_1.Initialize(); // initialize connection to synchrono rank 1
-  rom_distributor_2.Initialize(); // initialize connection to synchrono rank 2
-  rom_distributor_3.Initialize(); // initialize connection to synchrono rank 2
+  rom_distributor_1.Initialize();
 
   while (time <= t_end) {
 
     time = my_system.GetChTime();
-
-    if (step_number == 1) {
-      realtime_timer.Reset();
-    } else if (step_number != 1 && step_number != 0) {
-      realtime_timer.Spin(time);
-    }
 
     // End simulation
     if (time >= t_end)
@@ -227,9 +211,9 @@ int main(int argc, char *argv[]) {
 
     // Advance simulation for one timestep for all modules
 
-    std::vector<float> data_to_send;
-    if (step_number % 10 == 0) {
+    if (step_number % 20 == 0) {
       // send data to chrono
+      std::vector<float> data_to_send;
       for (int i = 0; i < num_rom; i++) {
         ChVector<> rom_pos = rom_vec[i]->GetPos();
         ChQuaternion<> rom_rot = rom_vec[i]->GetRot();
@@ -248,39 +232,15 @@ int main(int argc, char *argv[]) {
         data_to_send.push_back(rom_vec[i]->GetTireRotation(2));
         data_to_send.push_back(rom_vec[i]->GetTireRotation(3));
       }
-      rom_distributor_1.Write(
-          data_to_send); // send rom data to synchrono rank 1
-      rom_distributor_2.Write(
-          data_to_send); // send rom data to synchrono rank 2
-      rom_distributor_3.Write(
-          data_to_send); // send rom data to synchrono rank 3
-
+      rom_distributor_1.Write(data_to_send);
       // receive data from chrono_1
       rom_distributor_1.Read();
-      std::vector<float> recv_data_1;
-      recv_data_1 = rom_distributor_1.GetRecvData();
-      for (int i = 0; i < recv_data_1.size(); i++) {
-        std::cout << recv_data_1[i] << ",";
+      std::vector<float> recv_data;
+      recv_data = rom_distributor_1.GetRecvData();
+      for (int i = 0; i < recv_data.size(); i++) {
+        // std::cout << recv_data[i] << ",";
       }
-      std::cout << std::endl;
-
-      // receive data from chrono_2
-      rom_distributor_2.Read();
-      std::vector<float> recv_data_2;
-      recv_data_2 = rom_distributor_2.GetRecvData();
-      for (int i = 0; i < recv_data_2.size(); i++) {
-        std::cout << recv_data_2[i] << ",";
-      }
-      std::cout << std::endl;
-
-      // receive data from chrono_3
-      rom_distributor_3.Read();
-      std::vector<float> recv_data_3;
-      recv_data_3 = rom_distributor_3.GetRecvData();
-      for (int i = 0; i < recv_data_3.size(); i++) {
-        std::cout << recv_data_3[i] << ",";
-      }
-      std::cout << std::endl;
+      // std::cout << std::endl;
     }
 
     for (int i = 0; i < num_rom; i++) {
@@ -290,7 +250,7 @@ int main(int argc, char *argv[]) {
     terrain.Advance(step_size);
     my_system.DoStepDynamics(step_size);
 
-    std::cout << "time:" << time << std::endl;
+    // std::cout << "time:" << time << std::endl;
 
     // Increment frame number
     step_number++;
