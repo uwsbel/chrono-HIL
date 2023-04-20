@@ -154,8 +154,8 @@ int main(int argc, char *argv[]) {
 
   ChSystemSMC my_system;
   my_system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
-  int num_rom = 25;
-  int num_dis = 1;
+  int num_rom = 2500;
+  int num_dis = 6;
 
   vehicle::SetDataPath(CHRONO_DATA_DIR + std::string("vehicle/"));
 
@@ -407,7 +407,7 @@ int main(int argc, char *argv[]) {
         recv_data = client_vec[j].GetRecvData();
 
         for (int i = 0; i < num_rom; i++) {
-          zombie_vec[i + j * num_rom]->Update(
+          zombie_vec[i + j * num_dis]->Update(
               ChVector<>(recv_data[0 + i * 11], recv_data[1 + i * 11],
                          recv_data[2 + i * 11]),
               ChVector<>(recv_data[3 + i * 11], recv_data[4 + i * 11],
@@ -452,7 +452,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (node_id == 1) {
-      manager->Update();
+      // manager->Update();
     }
 
     // Increment frame number
