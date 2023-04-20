@@ -1068,15 +1068,15 @@ int main(int argc, char *argv[]) {
   // Create the interactive driver system
   // ChCSLDriver driver(vehicle);
   // driver = chrono_types::make_shared<ChCSLDriver>(vehicle);
-  auto IGdriver = chrono_types::make_shared<ChIrrGuiDriver>(app);
+  auto IGdriver = chrono_types::make_shared<ChInteractiveDriverIRR>(app);
   IGdriver->SetButtonCallback(r_1, &CustomButtonCallback);
   IGdriver->SetButtonCallback(r_2, &CustomButtonCallback_r_2);
   IGdriver->SetButtonCallback(r_3, &CustomButtonCallback_r_3);
 
   if (keyboard_control) {
-    IGdriver->SetInputMode(ChIrrGuiDriver::InputMode::KEYBOARD);
+    IGdriver->SetInputMode(ChInteractiveDriverIRR::InputMode::KEYBOARD);
   } else {
-    IGdriver->SetInputMode(ChIrrGuiDriver::InputMode::JOYSTICK);
+    IGdriver->SetInputMode(ChInteractiveDriverIRR::InputMode::JOYSTICK);
     std::cout << "joystick config: " << joystick_filename << std::endl;
     IGdriver->SetJoystickConfigFile(joystick_filename);
   }
@@ -1316,7 +1316,7 @@ int main(int argc, char *argv[]) {
     terrain.Synchronize(sim_time);
     vehicle.Synchronize(sim_time, driver_inputs, terrain);
 
-    app.Synchronize("", driver_inputs);
+    app.Synchronize(sim_time, driver_inputs);
 #ifdef CHRONO_IRRKLANG
     soundEng.Synchronize(sim_time);
 #endif
@@ -1891,11 +1891,11 @@ void AddTerrain(ChSystem *chsystem) {
       demo_data_path +
       "/Environments/Iowa/terrain/Grass/GroundMudTireTracks001_COL_500.jpg");
   gravel_tex->SetRoughnessTexture(demo_data_path +
-                                      "/Environments/Iowa/terrain/Grass/"
-                                      "GroundMudTireTracks001_ROUGH_500.png";
+                                  "/Environments/Iowa/terrain/Grass/"
+                                  "GroundMudTireTracks001_ROUGH_500.png");
   gravel_tex->SetNormalMapTexture(
       demo_data_path +
-          "/Environments/Iowa/terrain/Grass/GroundMudTireTracks001_NRM_500.jpg");
+      "/Environments/Iowa/terrain/Grass/GroundMudTireTracks001_NRM_500.jpg");
   gravel_tex->SetWeightTexture(
       demo_data_path +
       "/Environments/Iowa/terrain/Terrain_Weightmap_Gravel_v3.png");

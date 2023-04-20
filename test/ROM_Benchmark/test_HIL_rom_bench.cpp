@@ -96,6 +96,8 @@ using namespace eprosima::fastrtps::rtps;
 #define PORT_IN_6 1209
 #define PORT_IN_7 1210
 #define PORT_IN_8 1211
+#define PORT_IN_9 1212
+#define PORT_IN_10 1213
 // Use the namespaces of Chrono
 using namespace chrono;
 using namespace chrono::irrlicht;
@@ -155,7 +157,7 @@ int main(int argc, char *argv[]) {
   ChSystemSMC my_system;
   my_system.Set_G_acc(ChVector<>(0.0, 0.0, -9.81));
   int num_rom = 2500;
-  int num_dis = 6;
+  int num_dis = 16;
 
   vehicle::SetDataPath(CHRONO_DATA_DIR + std::string("vehicle/"));
 
@@ -337,6 +339,10 @@ int main(int argc, char *argv[]) {
                         num_rom * 11); // create a TCP client
   ChTCPClient chrono_14("128.104.190.187", PORT_IN_8,
                         num_rom * 11); // create a TCP client
+  ChTCPClient chrono_15("128.104.190.187", PORT_IN_9,
+                        num_rom * 11); // create a TCP client
+  ChTCPClient chrono_16("128.104.190.187", PORT_IN_10,
+                        num_rom * 11); // create a TCP client
   client_vec.push_back(chrono_1);
   client_vec.push_back(chrono_2);
   client_vec.push_back(chrono_3);
@@ -351,7 +357,8 @@ int main(int argc, char *argv[]) {
   client_vec.push_back(chrono_12);
   client_vec.push_back(chrono_13);
   client_vec.push_back(chrono_14);
-
+  client_vec.push_back(chrono_15);
+  client_vec.push_back(chrono_16);
   for (int j = 0; j < num_dis; j++) {
     client_vec[j].Initialize();
   }
