@@ -94,8 +94,8 @@ int main(int argc, char *argv[]) {
   // ========== Chrono::Vehicle HMMWV vehicle ===============
   // Create the HMMWV vehicle, set parameters, and initialize
 
-  VEH_TYPE rom_type = VEH_TYPE::HMMWV;
-  TEST_CASE test_case = TEST_CASE::TURN;
+  VEH_TYPE rom_type = VEH_TYPE::PATROL;
+  TEST_CASE test_case = TEST_CASE::STRAIGHT;
 
   float init_height = 0.45;
   std::string vehicle_filename;
@@ -167,7 +167,7 @@ int main(int argc, char *argv[]) {
 
   std::shared_ptr<Ch_8DOF_vehicle> rom_veh =
       chrono_types::make_shared<Ch_8DOF_vehicle>(rom_json, init_height,
-                                                 step_size);
+                                                 step_size, true);
   rom_veh->SetInitPos(initLoc + ChVector<>(0.0, 4.0, init_height));
   rom_veh->SetInitRot(0.0);
   rom_veh->Initialize(my_vehicle.GetSystem());
@@ -243,7 +243,7 @@ int main(int argc, char *argv[]) {
   // Simulation end time
   double t_end = 0.0;
   if (test_case == TEST_CASE::STRAIGHT) {
-    t_end = 14.0;
+    t_end = 8.0;
   } else if (test_case == TEST_CASE::TURN) {
     t_end = 16.0;
   }
@@ -271,20 +271,12 @@ int main(int argc, char *argv[]) {
 
     // Time-based drive inputs
     if (test_case == TEST_CASE::STRAIGHT) {
-      if (time < 3.0f) {
+      if (time < 2.0f) {
         driver_inputs.m_throttle = 0.0;
         driver_inputs.m_braking = 0.0;
         driver_inputs.m_steering = 0.0;
-      } else if (time >= 3.0f && time < 8.0f) {
-        driver_inputs.m_throttle = 0.5;
-        driver_inputs.m_braking = 0.0;
-        driver_inputs.m_steering = 0.0;
-      } else if (time >= 8.0f && time < 12.0f) {
-        driver_inputs.m_throttle = 0.0;
-        driver_inputs.m_braking = 0.4;
-        driver_inputs.m_steering = 0.0;
-      } else {
-        driver_inputs.m_throttle = 0.0;
+      } else if (time >= 2.0f && time < 8.0f) {
+        driver_inputs.m_throttle = 1.0;
         driver_inputs.m_braking = 0.0;
         driver_inputs.m_steering = 0.0;
       }
@@ -348,6 +340,8 @@ int main(int argc, char *argv[]) {
           << rom_rot_euler.x() << "," << rom_rot_euler.z() << ","
           << (rom_veh->GetVel()).Length() << std::endl;
       csv.write_to_file(out_dir + "/output.csv");
+
+      std::cout << rom_veh->GetVel().Length() << std::endl;
     }
 
     manager->Update();

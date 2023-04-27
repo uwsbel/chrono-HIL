@@ -15,19 +15,14 @@ int main(int argc, char *argv[]) {
 
   server.Initialize();
 
+  sleep(5);
+
   std::vector<float> write_data;
   write_data.push_back(1.f);
   write_data.push_back(2.f);
   write_data.push_back(3.f);
 
   server.Write(write_data);
-
-  sleep(5);
-
-  server.Read();
-  std::vector<float> temp = server.GetRecvData();
-  for (int i = 0; i < temp.size(); i++)
-    std::cout << temp[i] << std::endl;
 
   return 0;
 }

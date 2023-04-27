@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
                                                    step_size, true);
 
     // determine initial position and initial orientation
-    float deg_sec = (CH_C_PI * 1.9) / (num_rom);
+    float deg_sec = (CH_C_PI * 1.8) / (num_rom);
     ChVector<> initLoc = ChVector<>(ring_radius * cos(deg_sec * i),
                                     ring_radius * sin(deg_sec * i), 0.5);
     float rot_deg = deg_sec * i + CH_C_PI_2;
@@ -215,7 +215,7 @@ int main(int argc, char *argv[]) {
     // initialize idm control
     std::vector<double> params;
     if (idm_types[i] == AGG) {
-      params.push_back(8.9408); // 30 mph
+      params.push_back(13.4112);
       params.push_back(0.1);
       params.push_back(5.0);
       params.push_back(3.5);
@@ -223,7 +223,7 @@ int main(int argc, char *argv[]) {
       params.push_back(4.0);
       params.push_back(6.5);
     } else if (idm_types[i] == CONS) {
-      params.push_back(8.9408); // 25 mph
+      params.push_back(8.9408);
       params.push_back(0.7);
       params.push_back(8.0);
       params.push_back(2.5);
@@ -231,7 +231,7 @@ int main(int argc, char *argv[]) {
       params.push_back(4.0);
       params.push_back(6.5);
     } else if (idm_types[i] == NORMAL) {
-      params.push_back(8.9408); // 20 mph
+      params.push_back(11.176);
       params.push_back(0.2);
       params.push_back(6.0);
       params.push_back(3.0);
