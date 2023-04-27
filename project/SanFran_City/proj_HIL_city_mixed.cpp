@@ -400,6 +400,12 @@ int main(int argc, char *argv[]) {
   // add a sensor manager
   std::shared_ptr<ChSensorManager> manager;
 
+  // attach body
+  auto cam_body = chrono_types::make_shared<ChBody>();
+  cam_body->SetBodyFixed(true);
+  cam_body->SetCollide(false);
+  my_vehicle.GetSystem()->Add(cam_body);
+
   if (node_id == 1) {
 
     // mirrors position and rotations
@@ -509,27 +515,24 @@ int main(int argc, char *argv[]) {
         my_vehicle.GetChassisBody(), // body camera is attached to
                                      // my_vehicle.GetChassisBody()
         25,                          // update rate in Hz
-        chrono::ChFrame<double>({-6.0, 0.0, 2.5},
+        chrono::ChFrame<double>({-.3, .4, .98},
                                 Q_from_AngAxis(0.0, {0, 1, 0})), // offse pose
-        640,                                                     // image width
-        320,                                                     // image height
+        3 * 1920,                                                // image width
+        1080,                                                    // image height
         3.14 / 1.5,                                              // fov
-        1);
+        2);
 
     driver_cam->SetName("DriverCam");
     driver_cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
-        1920, 1080, "Camera1", false));
-
-    driver_cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
+        3 * 1920, 1080, "Camera1", false));
 
     manager->AddSensor(driver_cam);
-    // manager->AddSensor(lidar);
   } else if (node_id == 2) {
     manager =
         chrono_types::make_shared<ChSensorManager>(my_vehicle.GetSystem());
     auto lidar = chrono_types::make_shared<ChLidarSensor>(
-        my_vehicle.GetChassisBody(), // body lidar is attached to
-        25,                          // scanning rate in Hz
+        cam_body, // body lidar is attached to
+        25,       // scanning rate in Hz
         chrono::ChFrame<double>({0.0, 0.0, 3.0},
                                 Q_from_AngAxis(0.0, {0, 1, 0})), // offset pose
         1280,                 // number of horizontal samples
@@ -680,6 +683,9 @@ int main(int argc, char *argv[]) {
     // update necessary zombie info for IDM
     if (step_number % int(heartbeat / step_size) == 0 && node_id == 2) {
       ego_cur_pos = id_map.at(1)->GetZombiePos();
+      ChQuaternion<> temp_rot = id_map.at(1)->GetZombieRot();
+      cam_body->SetPos(ego_cur_pos + ChVector<>(0, 0, 1.5));
+      cam_body->SetRot(temp_rot);
       if (step_number == 0) {
         ego_prev_pos = ego_cur_pos;
       }
