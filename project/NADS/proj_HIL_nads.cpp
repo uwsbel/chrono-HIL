@@ -54,7 +54,7 @@ bool render = true;
 // =============================================================================
 
 // Initial vehicle location and orientation
-ChVector<> initLoc(-91.788, 98.647, 0.4);
+ChVector<> initLoc(-91.788, 98.647, 0.25);
 ChQuaternion<> initRot(1, 0, 0, 0);
 
 // Contact method
@@ -78,10 +78,12 @@ int main(int argc, char *argv[]) {
 
   std::string vehicle_filename =
       vehicle::GetDataFile("audi/json/audi_Vehicle.json");
-  std::string powertrain_filename =
-      vehicle::GetDataFile("audi/json/audi_SimpleMapPowertrain.json");
+  std::string engine_filename =
+      vehicle::GetDataFile("audi/json/audi_EngineSimpleMap.json");
+  std::string transmission_filename = vehicle::GetDataFile(
+      "audi/json/audi_AutomaticTransmissionSimpleMap.json");
   std::string tire_filename =
-      vehicle::GetDataFile("audi/json/audi_Pac02Tire.json");
+      vehicle::GetDataFile("audi/json/audi_TMeasyTire.json");
 
   // --------------
   // Create systems
@@ -92,7 +94,11 @@ int main(int argc, char *argv[]) {
   auto ego_chassis = my_vehicle.GetChassis();
   my_vehicle.Initialize(ChCoordsys<>(initLoc, initRot));
   my_vehicle.GetChassis()->SetFixed(false);
-  auto powertrain = ReadPowertrainJSON(powertrain_filename);
+
+  auto engine = ReadEngineJSON(engine_filename);
+  auto transmission = ReadTransmissionJSON(transmission_filename);
+  auto powertrain =
+      chrono_types::make_shared<ChPowertrainAssembly>(engine, transmission);
   my_vehicle.InitializePowertrain(powertrain);
   my_vehicle.SetChassisVisualizationType(VisualizationType::MESH);
   my_vehicle.SetSuspensionVisualizationType(VisualizationType::MESH);
@@ -156,7 +162,7 @@ int main(int argc, char *argv[]) {
   // Create a Irrlicht vis
   // ------------------------
   ChVector<> trackPoint(0.0, 0.0, 1.75);
-  int render_step = 100;
+  int render_step = 20;
   auto vis = chrono_types::make_shared<ChWheeledVehicleVisualSystemIrrlicht>();
   vis->SetWindowTitle("NADS");
   vis->SetChaseCamera(trackPoint, 6.0, 0.5);
@@ -192,7 +198,7 @@ int main(int argc, char *argv[]) {
   ChBoostOutStreamer boost_streamer(IP_OUT, PORT_OUT);
 
   // simulation loop
-  while (true) {
+  while (vis->Run()) {
     double time = my_vehicle.GetSystem()->GetChTime();
 
     ChVector<> pos = my_vehicle.GetChassis()->GetPos();
@@ -221,18 +227,18 @@ int main(int argc, char *argv[]) {
 
     float gear = recv_data[3];
     if (gear == 0.0) {
-      my_vehicle.GetPowertrain()->SetDriveMode(
-          ChPowertrain::DriveMode::NEUTRAL);
-      driver_inputs.m_braking = 1.0;
+      my_vehicle.GetTransmission()->SetDriveMode(
+          ChTransmission::DriveMode::NEUTRAL);
+      driver_inputs.m_braking = 0.8;
     } else if (gear == 1.0) {
-      my_vehicle.GetPowertrain()->SetDriveMode(
-          ChPowertrain::DriveMode::FORWARD);
+      my_vehicle.GetTransmission()->SetDriveMode(
+          ChTransmission::DriveMode::FORWARD);
     } else if (gear == 2.0) {
-      my_vehicle.GetPowertrain()->SetDriveMode(
-          ChPowertrain::DriveMode::REVERSE);
+      my_vehicle.GetTransmission()->SetDriveMode(
+          ChTransmission::DriveMode::REVERSE);
     } else if (gear == 3.0) {
-      my_vehicle.GetPowertrain()->SetDriveMode(
-          ChPowertrain::DriveMode::NEUTRAL);
+      my_vehicle.GetTransmission()->SetDriveMode(
+          ChTransmission::DriveMode::NEUTRAL);
     }
 
     // =======================
@@ -254,8 +260,8 @@ int main(int argc, char *argv[]) {
     boost_streamer.AddData(
         (float)(my_vehicle.GetSpeed() * MS_2_MPH)); // 10 - speed (m/s)
 
-    auto acc =
-        my_vehicle.GetChassis()->GetBody()->GetFrame_REF_to_abs().GetPos_dtdt();
+    auto acc = my_vehicle.GetChassis()->GetBody()->GetPos_dtdt();
+    std::cout << acc.x() << "," << acc.y() << acc.z() << std::endl;
     boost_streamer.AddData(acc.x()); // 11 - x acceleration
     boost_streamer.AddData(acc.y()); // 12 - y acceleration
     boost_streamer.AddData(acc.z()); // 13 - z acceleration
@@ -268,9 +274,8 @@ int main(int argc, char *argv[]) {
     boost_streamer.AddData(ang_vel.z()); // 16 - z ang vel of chassis
 
     boost_streamer.AddData(
-        my_vehicle.GetPowertrain()
-            ->GetCurrentTransmissionGear()); // 17 - current gear
-    boost_streamer.AddData(my_vehicle.GetPowertrain()->GetMotorSpeed() *
+        my_vehicle.GetTransmission()->GetCurrentGear()); // 17 - current gear
+    boost_streamer.AddData(my_vehicle.GetEngine()->GetMotorSpeed() *
                            RADS_2_RPM); // 18 - current RPM
     boost_streamer.Synchronize();
     // =======================
@@ -308,7 +313,7 @@ int main(int argc, char *argv[]) {
       start = std::chrono::high_resolution_clock::now();
     }
 
-    if (render == true) {
+    if (render == true && step_number % render_step == 0) {
       vis->BeginScene();
       vis->Render();
       vis->EndScene();

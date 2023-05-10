@@ -12,7 +12,7 @@
 // Authors: Jason Zhou
 // =============================================================================
 //
-// This is a class which encapsulates the 8dof vehicle model
+// This class models the zombies of the 8DOF ROM used in HIL simulation
 //
 // =============================================================================
 
@@ -41,8 +41,10 @@ public:
   void Update(ChVector<> pos, ChVector<> rot, float steering, float tire_rot_0,
               float tire_rot_1, float tire_rot_2, float tire_rot_3);
 
+  // set zombie positions
   void SetPos(ChVector<> pos);
 
+  // set zombie rotation
   void SetRot(float roll, float yaw);
 
   ChVector<> GetPos();
