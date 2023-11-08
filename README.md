@@ -1,4 +1,4 @@
-# HILchrono
+# chrono-HIL
 Code associated with human-in-the-loop experiments built off Chrono
 
 The expected functionalities need to be achieved including:
