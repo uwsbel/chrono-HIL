@@ -1,11 +1,12 @@
 // =============================================================================
-// CHRONO-HIL - https://github.com/zzhou292/chrono-HIL
+// PROJECT CHRONO - http://projectchrono.org
 //
 // Copyright (c) 2014 projectchrono.org
 // All rights reserved.
 //
 // Use of this source code is governed by a BSD-style license that can be found
-// in the LICENSE file at the top level of the distribution
+// in the LICENSE file at the top level of the distribution and at
+// http://projectchrono.org/license-chrono.txt.
 //
 // =============================================================================
 // Authors: Jason Zhou
@@ -15,14 +16,8 @@
 #include "chrono/utils/ChFilters.h"
 #include "chrono/utils/ChUtilsInputOutput.h"
 
-#include "chrono_sensor/ChSensorManager.h"
-#include "chrono_sensor/filters/ChFilterAccess.h"
-#include "chrono_sensor/filters/ChFilterCameraNoise.h"
-#include "chrono_sensor/filters/ChFilterGrayscale.h"
-#include "chrono_sensor/filters/ChFilterImageOps.h"
-#include "chrono_sensor/filters/ChFilterSave.h"
-#include "chrono_sensor/filters/ChFilterVisualize.h"
-#include "chrono_sensor/sensors/ChSegmentationCamera.h"
+#include "chrono/utils/ChFilters.h"
+
 #include "chrono_vehicle/driver/ChPathFollowerDriver.h"
 
 #include "chrono_hil/timer/ChRealtimeCumulative.h"
@@ -40,29 +35,43 @@
 
 #include "chrono_thirdparty/filesystem/path.h"
 
-#include "chrono_hil/driver/ChSDLInterface.h"
+#include "chrono_hil/network/udp/ChBoostInStreamer.h"
 #include "chrono_hil/network/udp/ChBoostOutStreamer.h"
+
+#include "chrono_vehicle/ChTransmission.h"
+#include "chrono_vehicle/powertrain/ChAutomaticTransmissionSimpleMap.h"
+
+#include "chrono_synchrono/SynChronoManager.h"
+#include "chrono_synchrono/SynConfig.h"
+#include "chrono_synchrono/agent/SynWheeledVehicleAgent.h"
+#include "chrono_synchrono/communication/dds/SynDDSCommunicator.h"
+#include "chrono_synchrono/utils/SynDataLoader.h"
+#include "chrono_synchrono/utils/SynLog.h"
+
+#include "chrono_thirdparty/cxxopts/ChCLI.h"
 
 using namespace chrono;
 using namespace chrono::irrlicht;
 using namespace chrono::vehicle;
 using namespace chrono::vehicle::sedan;
 using namespace chrono::geometry;
-using namespace chrono::sensor;
 using namespace chrono::hil;
+using namespace chrono::utils;
+using namespace chrono::synchrono;
 
 const double RADS_2_RPM = 30 / CH_C_PI;
+const double RADS_2_DEG = 180 / CH_C_PI;
 const double MS_2_MPH = 2.2369;
+const double M_2_FT = 3.28084;
+const double G_2_MPSS = 9.81;
 
-#define PORT_OUT 1209
-#define IP_OUT "127.0.0.1"
-bool render = true;
+bool render = false;
+ChVector<> driver_eyepoint(-0.3, 0.4, 0.98);
 
 // =============================================================================
 
 // Initial vehicle location and orientation
-// ChVector<> initLoc(-91.788, 98.647, 0.4);
-ChVector<> initLoc(0.0, 0.0, 0.4);
+ChVector<> initLoc(-91.788, 98.647, 0.25);
 ChQuaternion<> initRot(1, 0, 0, 0);
 
 // Contact method
@@ -76,10 +85,34 @@ double tire_step_size = 1e-5;
 double t_end = 1000;
 
 // =============================================================================
-
+void AddCommandLineOptions(ChCLI &cli);
 int main(int argc, char *argv[]) {
-  GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: "
-           << CHRONO_VERSION << "\n\n";
+
+  ChCLI cli(argv[0]);
+
+  AddCommandLineOptions(cli);
+  if (!cli.Parse(argc, argv, false, false))
+    return 0;
+
+  const int node_id = cli.GetAsType<int>("node_id");
+  const int num_nodes = cli.GetAsType<int>("num_nodes");
+
+  std::cout << "id:" << node_id << std::endl;
+  std::cout << "num:" << num_nodes << std::endl;
+
+  // =============================================================================
+
+  // -----------------------
+  // Create SynChronoManager
+  // -----------------------
+  auto communicator = chrono_types::make_shared<SynDDSCommunicator>(node_id);
+  SynChronoManager syn_manager(node_id, num_nodes, communicator);
+
+  // Change SynChronoManager settings
+  float heartbeat = 0.02f;
+  syn_manager.SetHeartbeat(heartbeat);
+
+  // ========================================================================
 
   SetChronoDataPath(CHRONO_DATA_DIR);
   vehicle::SetDataPath(CHRONO_DATA_DIR + std::string("vehicle/"));
@@ -100,10 +133,21 @@ int main(int argc, char *argv[]) {
   // Create the Sedan vehicle, set parameters, and initialize
   WheeledVehicle my_vehicle(vehicle_filename, ChContactMethod::SMC);
   auto ego_chassis = my_vehicle.GetChassis();
+  if (node_id == 1) {
+    initLoc = ChVector<>(-80.788, 98.647, 0.25);
+  } else if (node_id == 2) {
+    initLoc = ChVector<>(-70.788, 98.647, 0.25);
+  } else if (node_id == 3) {
+    initLoc = ChVector<>(-60.788, 98.647, 0.25);
+  } else if (node_id == 4) {
+    initLoc = ChVector<>(-50.788, 98.647, 0.25);
+  }
   my_vehicle.Initialize(ChCoordsys<>(initLoc, initRot));
   my_vehicle.GetChassis()->SetFixed(false);
+
   auto engine = ReadEngineJSON(engine_filename);
-  auto transmission = ReadTransmissionJSON(transmission_filename);
+  std::shared_ptr<ChTransmission> transmission =
+      ReadTransmissionJSON(transmission_filename);
   auto powertrain =
       chrono_types::make_shared<ChPowertrainAssembly>(engine, transmission);
   my_vehicle.InitializePowertrain(powertrain);
@@ -125,6 +169,26 @@ int main(int argc, char *argv[]) {
   my_vehicle.GetSystem()->AddBody(attached_body);
   attached_body->SetCollide(false);
   attached_body->SetBodyFixed(true);
+
+  // Add vehicle as an agent and initialize SynChronoManager
+  std::string zombie_filename =
+      CHRONO_DATA_DIR + std::string("synchrono/vehicle/audi.json");
+  auto agent = chrono_types::make_shared<SynWheeledVehicleAgent>(
+      &my_vehicle, zombie_filename);
+  syn_manager.AddAgent(agent);
+  syn_manager.Initialize(my_vehicle.GetSystem());
+
+  // Create the driver
+  std::string path_file = std::string(STRINGIFY(HIL_DATA_DIR)) +
+                          "/Environments/nads/nads_path_5.txt";
+  auto path = ChBezierCurve::read(path_file, true);
+
+  // lead_count
+  ChPathFollowerDriver driver(my_vehicle, path, "my_path", 10);
+  driver.GetSteeringController().SetLookAheadDistance(2.0);
+  driver.GetSteeringController().SetGains(1.0, 0, 0);
+  driver.GetSpeedController().SetGains(0.6, 0.05, 0);
+  driver.Initialize();
 
   // Create the terrain
   RigidTerrain terrain(my_vehicle.GetSystem());
@@ -166,66 +230,41 @@ int main(int argc, char *argv[]) {
   my_vehicle.GetSystem()->Add(terrain_body);
 
   // ------------------------
+  // Create a Irrlicht vis
+  // ------------------------
+  ChVector<> trackPoint(0.0, 0.0, 1.75);
+  int render_step = 20;
+  auto vis = chrono_types::make_shared<ChWheeledVehicleVisualSystemIrrlicht>();
+  vis->SetWindowTitle("NADS");
+  vis->SetChaseCamera(trackPoint, 6.0, 0.5);
+  vis->Initialize();
+  vis->AddLightDirectional();
+  vis->AddSkyBox();
+  vis->AddLogo();
+  vis->AttachVehicle(&my_vehicle);
+
+  // ------------------------
   // Create the driver system
   // ------------------------
-
-  std::vector<float> recv_data;
 
   // ---------------
   // Simulation loop
   // ---------------
-  std::cout << "\nVehicle mass: " << my_vehicle.GetMass() << std::endl;
 
   // Initialize simulation frame counters
   int step_number = 0;
 
-  // Create the camera sensor
-  auto manager =
-      chrono_types::make_shared<ChSensorManager>(my_vehicle.GetSystem());
-  if (render) {
-    float intensity = 1.2;
-    manager->scene->AddPointLight({0, 0, 1e8}, {1.0, 1.0, 1.0}, 1e12);
-    manager->scene->SetAmbientLight({.2, .2, .2});
-    manager->scene->SetSceneEpsilon(1e-3);
-    manager->scene->EnableDynamicOrigin(true);
-    manager->scene->SetOriginOffsetThreshold(500.f);
-
-    auto cam = chrono_types::make_shared<ChCameraSensor>(
-        attached_body, // body camera is attached to
-        30,            // update rate in Hz
-        chrono::ChFrame<double>(
-            ChVector<>(-10.0, 0.0, 2.0),
-            Q_from_Euler123(ChVector<>(0.0, 0.11, 0.0))), // offset pose
-        1920,                                             // image width
-        1080,                                             // image height
-        1.408f,
-        1); // fov, lag, exposure
-    cam->SetName("Camera Sensor");
-
-    cam->PushFilter(chrono_types::make_shared<ChFilterVisualize>(
-        1920, 1080, "hwwmv", false));
-    // Provide the host access to the RGBA8 buffer
-    cam->PushFilter(chrono_types::make_shared<ChFilterRGBA8Access>());
-    manager->AddSensor(cam);
-  }
-
   my_vehicle.EnableRealtime(false);
-
-  ChSDLInterface SDLDriver;
-  SDLDriver.Initialize();
-  SDLDriver.SetJoystickConfigFile(std::string(STRINGIFY(HIL_DATA_DIR)) +
-                                  "/joystick/controller_G27.json");
 
   ChRealtimeCumulative realtime_timer;
   std::chrono::high_resolution_clock::time_point start =
       std::chrono::high_resolution_clock::now();
   double last_time = 0;
 
-  // create boost data streaming interface
-  ChBoostOutStreamer boost_streamer(IP_OUT, PORT_OUT);
+  DriverInputs driver_inputs = {0, 0, 0};
 
   // simulation loop
-  while (true) {
+  while (vis->Run() && syn_manager.IsOk()) {
     double time = my_vehicle.GetSystem()->GetChTime();
 
     ChVector<> pos = my_vehicle.GetChassis()->GetPos();
@@ -239,46 +278,30 @@ int main(int argc, char *argv[]) {
     attached_body->SetPos(pos);
     attached_body->SetRot(y_0_rot);
 
-    if (render) {
-      manager->Update();
-    }
-
+#ifndef USENADS
     // End simulation
     if (time >= t_end)
       break;
+#endif
 
     // Get driver inputs
-    DriverInputs driver_inputs;
-
-    driver_inputs.m_throttle = SDLDriver.GetThrottle();
-    driver_inputs.m_steering = SDLDriver.GetSteering();
-    driver_inputs.m_braking = SDLDriver.GetBraking();
+    driver_inputs = driver.GetInputs();
 
     // =======================
-    // data stream out section
+    // end data stream out section
     // =======================
-    boost_streamer.AddData(pos.x()); // 0 - time
-    boost_streamer.AddData(pos.y());
-    boost_streamer.AddData(pos.z());
-
-    auto eu_rot = Q_to_Euler123(rot);
-    boost_streamer.AddData(eu_rot.x()); // 4 - x rotation
-    boost_streamer.AddData(eu_rot.y()); // 5 - y rotation
-    boost_streamer.AddData(eu_rot.z()); // 6 - z
-
-    boost_streamer.Synchronize();
-    // std::cout << pos.x() << "," << pos.y() << "," << pos.z() << std::endl;
-    //  =======================
-    //  end data stream out section
-    //  =======================
 
     // Update modules (process inputs from other modules)
+    syn_manager.Synchronize(time); // Synchronize between nodes
     terrain.Synchronize(time);
     my_vehicle.Synchronize(time, driver_inputs, terrain);
+    vis->Synchronize(time, driver_inputs);
 
     // Advance simulation for one timestep for all modules
     terrain.Advance(step_size);
     my_vehicle.Advance(step_size);
+    driver.Advance(step_size);
+    vis->Advance(step_size);
 
     // Increment frame number
     step_number++;
@@ -287,7 +310,9 @@ int main(int argc, char *argv[]) {
       realtime_timer.Reset();
     }
 
-    // realtime_timer.Spin(time);
+    if (step_number % 10 == 0) {
+      realtime_timer.Spin(time);
+    }
 
     if (step_number % 500 == 0) {
       std::chrono::high_resolution_clock::time_point end =
@@ -296,18 +321,24 @@ int main(int argc, char *argv[]) {
           std::chrono::duration_cast<std::chrono::duration<double>>(end -
                                                                     start);
 
-      std::cout << time << ":" << (wall_time.count()) / (time - last_time)
-                << "\n";
+      std::cout << "elapsed time = " << (wall_time.count()) / (time - last_time)
+                << ", t = " << time << "\n";
       last_time = time;
       start = std::chrono::high_resolution_clock::now();
     }
 
-    if (step_number % 20 == 0) {
-      if (SDLDriver.Synchronize() == 1) {
-        break;
-      }
+    if (render == true && step_number % render_step == 0) {
+      vis->BeginScene();
+      vis->Render();
+      vis->EndScene();
     }
   }
-
+  syn_manager.QuitSimulation();
   return 0;
+}
+
+void AddCommandLineOptions(ChCLI &cli) {
+  // DDS Specific
+  cli.AddOption<int>("DDS", "d,node_id", "ID for this Node", "1");
+  cli.AddOption<int>("DDS", "n,num_nodes", "Number of Nodes", "2");
 }

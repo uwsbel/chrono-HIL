@@ -1,12 +1,12 @@
 // =============================================================================
-// PROJECT CHRONO - http://projectchrono.org
+// CHRONO-HIL - https://github.com/zzhou292/chrono-HIL
 //
 // Copyright (c) 2014 projectchrono.org
+// Jason Zhou
 // All rights reserved.
 //
 // Use of this source code is governed by a BSD-style license that can be found
-// in the LICENSE file at the top level of the distribution and at
-// http://projectchrono.org/license-chrono.txt.
+// in the LICENSE file at the top level of the distribution
 //
 // =============================================================================
 // Authors: Jason Zhou
@@ -42,7 +42,7 @@ using namespace chrono::hil;
 using boost::asio::ip::address;
 using boost::asio::ip::udp;
 
-#define PORT_IN 1204
+#define PORT_IN 1210
 #define PORT_OUT 1209
 #define IP_OUT "127.0.0.1"
 

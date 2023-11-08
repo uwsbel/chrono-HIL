@@ -1,18 +1,17 @@
 // =============================================================================
-// PROJECT CHRONO - http://projectchrono.org
+// CHRONO-HIL - https://github.com/zzhou292/chrono-HIL
 //
-// Copyright (c) 2014 projectchrono.org
+// Copyright (c) Jason Zhou
 // All rights reserved.
 //
 // Use of this source code is governed by a BSD-style license that can be found
-// in the LICENSE file at the top level of the distribution and at
-// http://projectchrono.org/license-chrono.txt.
+// in the LICENSE file at the top level of the distribution
 //
 // =============================================================================
 // Authors: Jason Zhou
 // =============================================================================
 //
-// This class models the zombies of the 8DOF ROM used in HIL simulation
+// This is a class which encapsulates the 8dof vehicle model
 //
 // =============================================================================
 
@@ -41,10 +40,8 @@ public:
   void Update(ChVector<> pos, ChVector<> rot, float steering, float tire_rot_0,
               float tire_rot_1, float tire_rot_2, float tire_rot_3);
 
-  // set zombie positions
   void SetPos(ChVector<> pos);
 
-  // set zombie rotation
   void SetRot(float roll, float yaw);
 
   ChVector<> GetPos();
