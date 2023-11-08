@@ -20,6 +20,7 @@ The primary goal of Chrono::HIL is to deliver an accessible, open-source solutio
 ![Chrono::HIL Image 3](/images/2.png)
 ![Chrono::HIL Image 4](/images/3.png)
 ![Chrono::HIL Image 5](/images/4.png)
+![Chrono::HIL Image 6](/images/5.png)
 
 ## Simulation Video Demos
 
@@ -28,6 +29,7 @@ The primary goal of Chrono::HIL is to deliver an accessible, open-source solutio
 - [Demo 3](https://uwmadison.box.com/s/hyssonzu49pztmptc2boygbl22rw2ivt)
 - [Demo 4](https://uwmadison.box.com/s/ikvx4ckfkw96845ukmu86ma1po9fr8vm)
 - [Demo 5](https://uwmadison.box.com/s/dhdipn6d9fc7cn1dr9atat7sp2y04bx4)
+- [Demo 6](https://uwmadison.box.com/s/z3185uj889nftcykeuxgxk5s14prw9p5)
 
 ## Licensing and Support
 
